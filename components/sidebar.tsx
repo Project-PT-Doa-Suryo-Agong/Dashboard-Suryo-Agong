@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 // Kita definisikan tipe data untuk Menu
 export type MenuItem = {
@@ -17,9 +18,8 @@ export default function Sidebar({ divisiName, menuItems }: SidebarProps) {
   return (
     <aside className="w-64 bg-brand-dark text-white flex flex-col shrink-0 h-screen">
       {/* Header / Logo */}
-      <div className="p-6 text-xl font-bold border-b border-gray-700 flex items-center gap-2">
-        <span className="text-brand-gold">❖</span> {/* Icon Placeholder */}
-        {divisiName}
+      <div className="p-4 border-b border-gray-700 flex items-center gap-2">
+        <Image src="/logo.png" alt="NexusCore Logo" width={120} height={36} className="h-9 w-auto" />
       </div>
 
       {/* Menu Navigasi Dinamis */}

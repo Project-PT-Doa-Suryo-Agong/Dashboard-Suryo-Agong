@@ -2,6 +2,15 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import {
+  Mail,
+  Lock,
+  TriangleAlert,
+  LogIn,
+  ShieldCheck,
+  ArrowLeft,
+} from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,19 +23,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-background-light dark:bg-background-dark font-display min-h-screen flex items-center justify-center p-4 transition-colors duration-300">
+    <div className="bg-background-light dark:bg-[#999999] font-display min-h-screen flex items-center justify-center p-4 transition-colors duration-300">
       {/* Main Login Card Container */}
-      <div className="w-full max-w-[440px] bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden flex flex-col">
-        
+      <div className="w-full max-w-[440px] bg-white dark:bg-[#333333] rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header Image/Logo Section */}
-        <div className="pt-10 pb-6 px-8 flex flex-col items-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-primary text-4xl">hub</span>
+        <div className="pt-3 pb-3 px-8 flex flex-col items-center">
+          <div className="flex items-center justify-center mb-6">
+            <Image
+              src="/logo.png"
+              alt="NexusCore Logo"
+              width={160}
+              height={48}
+              className="h-12 w-auto"
+            />
           </div>
           <h1 className="text-slate-900 dark:text-slate-100 text-2xl font-bold tracking-tight text-center">
             Welcome Back
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-normal text-center mt-2 px-4">
+          <p className="text-slate-500 dark:text-[#999999] text-sm font-normal text-center mt-2 px-4">
             Please enter your credentials to access your cluster
           </p>
         </div>
@@ -40,15 +54,13 @@ export default function LoginPage() {
                 Email Address
               </label>
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">
-                  mail
-                </span>
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input
                   required
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  className="w-full pl-11 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#666666] text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400"
                   placeholder="name@company.com"
                 />
               </div>
@@ -68,57 +80,27 @@ export default function LoginPage() {
                 </Link>
               </div>
               <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">
-                  lock
-                </span>
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input
                   required
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  className="w-full pl-11 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#666666] text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400"
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
-            {/* Warning Notice (Contoh penggunaan warna amber F0AD4E) */}
-            <div className="bg-accent-warning/10 border border-accent-warning/30 p-3 rounded-lg flex items-start gap-3">
-              <span className="material-symbols-outlined text-accent-warning text-lg">warning</span>
-              <p className="text-xs text-amber-800 dark:text-amber-200">
-                Security Note: Ensure you are accessing via a secure network.
-              </p>
-            </div>
-
             {/* Sign In Button */}
             <button
               type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 mt-2"
+              className="w-full bg-slate-800    hover:bg-primary/90 text-white font-bold py-3.5 rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 mt-2"
             >
               <span>Sign In</span>
-              <span className="material-symbols-outlined text-lg">login</span>
+              <LogIn className="w-5 h-5" />
             </button>
           </form>
-
-          {/* Decorative Divider */}
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-slate-200 dark:border-slate-700"></span>
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white dark:bg-slate-900 px-3 text-slate-400 font-medium tracking-widest">
-                Security Note
-              </span>
-            </div>
-          </div>
-
-          {/* Footer Note */}
-          <div className="flex items-center justify-center gap-2">
-            <span className="material-symbols-outlined text-slate-400 text-sm">shield_lock</span>
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium italic">
-              Access is restricted based on assigned roles.
-            </p>
-          </div>
         </div>
 
         {/* Optional Bottom Bar */}
