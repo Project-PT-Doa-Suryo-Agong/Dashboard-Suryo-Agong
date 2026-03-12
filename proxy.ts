@@ -1,7 +1,9 @@
+// proxy.ts (sebelumnya middleware.ts)
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(req: NextRequest) {
+// Ubah nama fungsi dari middleware menjadi proxy
+export function proxy(req: NextRequest) {
   const url = req.nextUrl;
   
   // Dapatkan hostname yang diketik user (contoh: "finance.localhost:3000" atau "produksi.perusahaan.com")
@@ -14,21 +16,19 @@ export function middleware(req: NextRequest) {
   ];
 
   // Ekstrak kata pertama sebelum titik
-  // finance.localhost:3000 -> "finance"
   const subdomain = hostname.split('.')[0];
 
-  // Jika subdomainnya valid (ada di dalam array validSubdomains)
+  // Jika subdomainnya valid
   if (validSubdomains.includes(subdomain)) {
     // Arahkan (rewrite) secara gaib ke folder yang sesuai
-    // Contoh: finance.localhost:3000/cashflow -> di-rewrite ke /finance/cashflow
     return NextResponse.rewrite(new URL(`/${subdomain}${url.pathname}`, req.url));
   }
 
-  // Jika tidak ada subdomain (misal mengakses localhost:3000 biasa), biarkan lewat
+  // Jika tidak ada subdomain, biarkan lewat
   return NextResponse.next();
 }
 
-// Konfigurasi agar middleware tidak ikut me-rewrite file statis seperti CSS, JS, dan Gambar
+// Konfigurasi matcher tetap sama persis
 export const config = {
   matcher: [
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
