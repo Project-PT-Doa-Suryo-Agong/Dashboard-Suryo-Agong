@@ -13,7 +13,7 @@ import {
   Receipt, ShieldCheck, Factory,
   Headphones,
   Database, UserCog, Code2,
-  LogOut, User, Tags, ChevronDown,BookAlert
+  LogOut, User, Tags, ChevronDown, BookAlert, ScrollText, ChartCandlestick,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -25,7 +25,7 @@ const ICONS: Record<string, LucideIcon> = {
   ClipboardList, Package, RotateCcw, Truck,
   Receipt, ShieldCheck, Factory,
   Headphones,
-  Database, UserCog, Code2, User, Tags,BookAlert
+  Database, UserCog, Code2, User, Tags,BookAlert, ScrollText, ChartCandlestick,
 };
 
 export interface NavItem {

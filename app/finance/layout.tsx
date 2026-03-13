@@ -5,8 +5,8 @@ import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
 
 const navItems = [
-  { label: 'Finance Dashboard', href: '/finance', icon: 'LayoutDashboard' },
-  { label: 'Cashflow', href: '/finance/cashflow', icon: 'BarChart2' },
+  { label: 'Finance Dashboard', href: '/', icon: 'LayoutDashboard' },
+  { label: 'Cashflow', href: '/finance/cashflow', icon: 'ChartCandlestick' },
   { label: 'Payroll', href: '/finance/payroll', icon: 'Banknote' },
   { label: 'Reimburse', href: '/finance/reimburse', icon: 'ReceiptText' },
 ];
@@ -39,8 +39,8 @@ export default function FinanceLayout({
 
       <main className="flex-1 min-w-0 w-full md:ml-0 overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
-          title="Finance Command Center"
-          user={{ name: 'Soebardjo Djojokoesoemo', role: 'Finance Team' }}
+          title="Finance Dashboard"
+          user={{ name: 'Fernando Antonelli', role: 'Finance Team' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

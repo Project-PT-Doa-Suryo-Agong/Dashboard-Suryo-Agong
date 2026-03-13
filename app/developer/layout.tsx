@@ -5,7 +5,7 @@ import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
 
 const navItems = [
-  { label: 'Dashboard', href: '/developer', icon: 'LayoutDashboard' },
+  { label: 'Dashboard', href: '/', icon: 'LayoutDashboard' },
   {
     label: 'Master Data',
     href: '/developer/master-data',

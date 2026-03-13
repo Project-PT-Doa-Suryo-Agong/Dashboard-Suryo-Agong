@@ -30,8 +30,8 @@ export default function CreativeLayout({
 
       {/* Kiri: Sidebar */}
       <Sidebar
-        title="Creative & Sales"
-        subtitle="Management Portal"
+        title="Human Resource"
+        subtitle="Human Resource Portal"
         logoIcon="Palette"
         navItems={navItems}
         footerAction={{ label: 'New Campaign', icon: 'Plus' }}
@@ -42,8 +42,8 @@ export default function CreativeLayout({
       {/* Kanan: Area Utama */}
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
-          title="Creative & Sales Dashboard"
-          user={{ name: 'Soebardjo Djojokoesoemo', role: 'Developer' }}
+          title="Human Resource Dashboard"
+          user={{ name: 'Alex Morgan', role: 'Human Resource' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

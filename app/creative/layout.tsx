@@ -5,10 +5,10 @@ import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
 
 const navItems = [
-  { label: 'Dashboard Overview', href: '/creative', icon: 'LayoutDashboard' },
+  { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
   { label: 'Content Planner', href: '/creative/content', icon: 'CalendarDays' },
   { label: 'Live Performance', href: '/creative/live-perf', icon: 'TrendingUp' },
-  { label: 'Sales Order', href: '/creative/sales-order', icon: 'Handshake' },
+  { label: 'Sales Order', href: '/creative/sales-order', icon: 'ScrollText' },
 ];
 
 export default function CreativeLayout({
