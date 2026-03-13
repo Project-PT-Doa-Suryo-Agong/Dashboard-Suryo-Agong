@@ -274,7 +274,7 @@ export default function AttendancePage() {
 							value={searchTerm}
 							onChange={(event) => setSearchTerm(event.target.value)}
 							placeholder="Cari nama karyawan..."
-							className="w-full rounded-xl border border-slate-300 bg-slate-200 py-2.5 pl-10 pr-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+							className="w-full rounded-xl border border-slate-300 bg-slate-200 py-2.5 pl-10 pr-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
 						/>
 					</div>
 					<select
@@ -282,7 +282,7 @@ export default function AttendancePage() {
 						onChange={(event) =>
 							setFilterStatus(event.target.value as "all" | AttendanceStatus)
 						}
-						className="w-full rounded-xl border border-slate-300 bg-slate-200 px-3 py-2.5 text-sm text-slate-700 outline-none transition sm:w-44 focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+						className="w-full rounded-xl border border-slate-300 bg-slate-200 px-3 py-2.5 text-sm text-slate-700 outline-none transition sm:w-55 md:w-50 lg:w-55 focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
 					>
 						<option value="all">Semua Status</option>
 						<option value="hadir">Hadir</option>
@@ -295,7 +295,7 @@ export default function AttendancePage() {
 				<button
 					type="button"
 					onClick={openAddModal}
-					className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+					className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
 				>
 					<UserCheck size={18} />
 					Input Presensi

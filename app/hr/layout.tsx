@@ -7,8 +7,8 @@ import Topbar from '@/components/topbar';
 const navItems = [
   { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
   { label: 'Kehadiran', href: '/attendance', icon: 'CalendarDays' },
-  { label: 'Karyawan', href: '/karyawan', icon: 'TrendingUp' },
-  { label: 'Perigatan', href: '/warnings', icon: 'Handshake' },
+  { label: 'Karyawan', href: '/karyawan', icon: 'Users' },
+  { label: 'Perigatan', href: '/warnings', icon: 'BookAlert' },
 ];
 
 export default function CreativeLayout({

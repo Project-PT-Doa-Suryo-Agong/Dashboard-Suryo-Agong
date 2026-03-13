@@ -230,14 +230,14 @@ export default function EmployeeWarningsPage() {
 						value={searchTerm}
 						onChange={(event) => setSearchTerm(event.target.value)}
 						placeholder="Cari nama karyawan..."
-						className="w-full rounded-xl border border-slate-300 bg-slate-200 py-2.5 pl-10 pr-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+						className="w-full rounded-xl border border-slate-300 bg-slate-200 py-2.5 pl-10 pr-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
 					/>
 				</div>
 
 				<button
 					type="button"
 					onClick={openAddModal}
-					className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+					className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
 				>
 					<AlertTriangle size={18} />
 					Buat Warning
@@ -340,7 +340,7 @@ export default function EmployeeWarningsPage() {
 								value={employeeSearchTerm}
 								onChange={(event) => setEmployeeSearchTerm(event.target.value)}
 								placeholder="Ketik nama karyawan..."
-								className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+								className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
 							/>
 						</div>
 
@@ -352,7 +352,7 @@ export default function EmployeeWarningsPage() {
 								onChange={(event) =>
 									setFormData((prev) => ({ ...prev, employeeId: event.target.value }))
 								}
-								className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+								className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
 							>
 								{employeeSelectOptions.map((employee) => (
 									<option key={employee.id} value={employee.id}>
@@ -370,7 +370,7 @@ export default function EmployeeWarningsPage() {
 								onChange={(event) =>
 									setFormData((prev) => ({ ...prev, level: event.target.value }))
 								}
-								className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+								className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
 							>
 								{warningLevelOptions.map((levelOption) => (
 									<option key={levelOption} value={levelOption}>
@@ -390,7 +390,7 @@ export default function EmployeeWarningsPage() {
 									setFormData((prev) => ({ ...prev, alasan: event.target.value }))
 								}
 								placeholder="Tuliskan alasan peringatan secara jelas..."
-								className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+								className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
 							/>
 						</div>
 					</div>
@@ -405,7 +405,7 @@ export default function EmployeeWarningsPage() {
 						</button>
 						<button
 							type="submit"
-							className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95"
+							className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95"
 						>
 							Simpan Record
 						</button>
