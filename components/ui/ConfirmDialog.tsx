@@ -27,7 +27,7 @@ export default function ConfirmDialog({
   const confirmClassName =
     variant === 'danger'
       ? 'bg-red-600 text-white hover:bg-red-700'
-      : 'bg-[#BC934B] text-white hover:bg-[#a88342]';
+      : 'bg-green-500 text-white hover:bg-green-600';
 
   const iconClassName =
     variant === 'danger'

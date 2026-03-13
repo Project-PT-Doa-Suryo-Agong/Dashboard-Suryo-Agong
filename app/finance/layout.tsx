@@ -1,37 +1,49 @@
+"use client";
+
+import { useState } from 'react';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
 
 const navItems = [
-  { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
-  { label: 'Content Planner', href: '/content', icon: 'CalendarDays' },
-  { label: 'Live Performance', href: '/live-perf', icon: 'TrendingUp' },
-  { label: 'Sales Order', href: '/sales-order', icon: 'Handshake' },
+  { label: 'Finance Dashboard', href: '/finance', icon: 'LayoutDashboard' },
+  { label: 'Cashflow', href: '/finance/cashflow', icon: 'BarChart2' },
+  { label: 'Payroll', href: '/finance/payroll', icon: 'Banknote' },
+  { label: 'Reimburse', href: '/finance/reimburse', icon: 'ReceiptText' },
 ];
 
-export default function CreativeLayout({
+export default function FinanceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   return (
-    <div className="flex h-screen overflow-hidden bg-background-light font-display">
-      {/* Kiri: Sidebar */}
+    <div className="flex min-h-screen bg-background-light font-display">
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <Sidebar
-        title="Creative & Sales"
-        subtitle="Management Portal"
-        logoIcon="Palette"
+        title="Finance"
+        subtitle="Finance Dashboard Page"
+        logoIcon="Wallet"
         navItems={navItems}
-        footerAction={{ label: 'New Campaign', icon: 'Plus' }}
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Kanan: Area Utama */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-slate-100/50">
+      <main className="flex-1 min-w-0 w-full md:ml-0 overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
-          title="Creative & Sales Dashboard"
-          user={{ name: 'Soebardjo Djojokoesoemo', role: 'Developer' }}
+          title="Finance Command Center"
+          user={{ name: 'Soebardjo Djojokoesoemo', role: 'Finance Team' }}
+          onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 
-        {/* Area Konten Dinamis yang bisa di-scroll */}
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, CalendarDays, TrendingUp, Handshake, Palette, Plus,
-  Landmark, CreditCard, ReceiptText,
+  Landmark, CreditCard, ReceiptText, Banknote,
   Users, Fingerprint, AlertTriangle, UserPlus,
   BarChart2, Wallet,
   ClipboardList, Package, RotateCcw, Truck,
@@ -19,7 +19,7 @@ import type { LucideIcon } from 'lucide-react';
 
 const ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, CalendarDays, TrendingUp, Handshake, Palette, Plus,
-  Landmark, CreditCard, ReceiptText,
+  Landmark, CreditCard, ReceiptText, Banknote,
   Users, Fingerprint, AlertTriangle, UserPlus,
   BarChart2, Wallet,
   ClipboardList, Package, RotateCcw, Truck,
@@ -47,6 +47,8 @@ export interface SidebarProps {
   logoIcon?: string;
   navItems: NavItem[];
   footerAction?: SidebarFooterAction;
+  isOpen?: boolean;
+  onClose?: () => void;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -63,11 +65,15 @@ export default function Sidebar({
   logoIcon,
   navItems,
   footerAction,
+  isOpen,
+  onClose,
   isMobileOpen = false,
   onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const mobileIsOpen = isOpen ?? isMobileOpen;
+  const handleClose = onClose ?? onCloseMobile;
 
   // Most-specific prefix match: pick the nav item whose href is the longest
   // prefix of the current pathname (handles sub-pages transparently).
@@ -81,9 +87,12 @@ export default function Sidebar({
   return (
     <>
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 md:w-72 bg-slate-800 text-slate-100 flex flex-col h-screen transform transition-transform duration-300 md:translate-x-0 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-50 h-screen w-64 shrink-0 bg-[#1e293b] text-slate-100 transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:translate-x-0 ${
+          mobileIsOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
-        <div className="p-4 md:p-6">
+        <div className="flex h-full flex-col">
+          <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
           {/* Logo & Title */}
           <div className="mb-4 flex flex-col items-start gap-2 md:mb-5">
             <Image src="/logo.png" alt="logo" width={100} height={28} className="h-9 w-auto md:h-10" />
@@ -91,7 +100,7 @@ export default function Sidebar({
           </div>
 
           {/* Navigation */}
-          <nav className="space-y-1">
+          <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
             {navItems.map((item) => {
               const isGroupOpen =
                 pathname === item.href || pathname.startsWith(item.href + '/');
@@ -103,7 +112,7 @@ export default function Sidebar({
                   <Link
                     href={item.href}
                     onClick={() => {
-                      if (onCloseMobile) onCloseMobile();
+                      if (handleClose) handleClose();
                     }}
                     className={`flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 rounded-lg md:rounded-xl transition-colors min-w-0 ${
                       isActive || (hasChildren && isGroupOpen)
@@ -134,7 +143,7 @@ export default function Sidebar({
                             key={child.href}
                             href={child.href}
                             onClick={() => {
-                              if (onCloseMobile) onCloseMobile();
+                              if (handleClose) handleClose();
                             }}
                             className={`flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-md md:rounded-lg transition-colors min-w-0 ${
                               isChildActive
@@ -153,17 +162,18 @@ export default function Sidebar({
               );
             })}
           </nav>
-        </div>
+          </div>
 
-        {/* Logout Button */}
-        <div className="mt-auto p-4 md:p-6">
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="w-full flex items-center gap-2 md:gap-3 px-3 py-2.5 justify-center rounded-lg md:rounded-xl text-white bg-red-500 hover:bg-red-700 hover:text-red-350 transition-colors"
-          >
-            <LogOut size={16} />
-            <span className="text-xs md:text-sm text-white font-medium">Logout</span>
-          </button>
+          {/* Logout Button */}
+          <div className="mt-auto border-t border-slate-700/70 p-4 md:p-6">
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 px-3 py-2.5 text-white transition-colors hover:bg-red-700 md:gap-3 md:rounded-xl"
+            >
+              <LogOut size={16} />
+              <span className="text-xs font-medium text-white md:text-sm">Logout</span>
+            </button>
+          </div>
         </div>
       </aside>
 

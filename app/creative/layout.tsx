@@ -27,20 +27,20 @@ export default function CreativeLayout({
         logoIcon="Palette"
         navItems={navItems}
         footerAction={{ label: 'New Campaign', icon: 'Plus' }}
-        isMobileOpen={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
       />
 
       {isMobileSidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={() => setIsMobileSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
 
       {/* Kanan: Area Utama */}
-      <main className="flex-1 flex flex-col min-w-0 bg-slate-100/50 ml-0 md:ml-72">
+      <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Creative & Sales Dashboard"
           user={{ name: 'Alex Rivera', role: 'Creative Manager' }}
