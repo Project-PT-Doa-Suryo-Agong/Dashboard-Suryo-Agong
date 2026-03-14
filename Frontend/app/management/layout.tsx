@@ -6,9 +6,8 @@ import Topbar from '@/components/topbar';
 
 const navItems = [
   { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
-  { label: 'Content Planner', href: '/content', icon: 'CalendarDays' },
-  { label: 'Live Performance', href: '/live-perf', icon: 'TrendingUp' },
-  { label: 'Sales Order', href: '/sales-order', icon: 'Handshake' },
+  { label: 'Budget', href: '/budget', icon: 'Banknote' },
+  { label: 'KPI', href: '/kpi', icon: 'TrendingUp' },
 ];
 
 export default function CreativeLayout({

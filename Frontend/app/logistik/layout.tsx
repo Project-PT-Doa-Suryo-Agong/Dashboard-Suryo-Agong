@@ -6,9 +6,9 @@ import Topbar from '@/components/topbar';
 
 const navItems = [
   { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
-  { label: 'Content Planner', href: '/content', icon: 'CalendarDays' },
-  { label: 'Live Performance', href: '/live-perf', icon: 'TrendingUp' },
-  { label: 'Sales Order', href: '/sales-order', icon: 'Handshake' },
+  { label: 'Manifest', href: '/manifest', icon: 'Truck' },
+  { label: 'Packing', href: '/packing', icon: 'Package' },
+  { label: 'Returns', href: '/returns', icon: 'Undo2' },
 ];
 
 export default function CreativeLayout({
@@ -30,8 +30,8 @@ export default function CreativeLayout({
 
       {/* Kiri: Sidebar */}
       <Sidebar
-        title="Creative & Sales"
-        subtitle="Management Portal"
+        title="Logistik"
+        subtitle="Logistics Portal"
         logoIcon="Palette"
         navItems={navItems}
         footerAction={{ label: 'New Campaign', icon: 'Plus' }}
@@ -42,7 +42,7 @@ export default function CreativeLayout({
       {/* Kanan: Area Utama */}
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
-          title="Creative & Sales Dashboard"
+          title="Logistics Dashboard"
           user={{ name: 'Soebardjo Djojokoesoemo', role: 'Developer' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
