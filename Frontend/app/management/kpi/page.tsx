@@ -205,7 +205,7 @@ export default function ManagementKpiPage() {
 
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-500/40 bg-white px-4 py-2.5 text-sm font-semibold text-blue-500 transition hover:text-white hover:bg-blue-500"
         >
           <Download size={17} />
           Download Report
@@ -259,7 +259,7 @@ export default function ManagementKpiPage() {
                         <p className="text-sm font-semibold text-slate-800">{item.score}%</p>
                         <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-[#BC934B]"
+                            className="h-full rounded-full bg-cyan-500"
                             style={{ width: `${item.score}%` }}
                           />
                         </div>
