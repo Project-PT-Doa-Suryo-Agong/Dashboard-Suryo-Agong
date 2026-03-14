@@ -177,7 +177,7 @@ export default function ManagementBudgetPage() {
 
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#BC934B]/40 bg-white px-4 py-2.5 text-sm font-semibold text-[#BC934B] transition hover:bg-[#BC934B]/10"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-500/40 bg-white px-4 py-2.5 text-sm font-semibold text-blue-500 transition hover:text-white hover:bg-blue-500"
         >
           <Download size={17} />
           Export Laporan
@@ -251,7 +251,7 @@ export default function ManagementBudgetPage() {
                         className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
                           isProcessed
                             ? "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400"
-                            : "border border-[#BC934B]/30 bg-[#BC934B]/10 text-[#BC934B] hover:bg-[#BC934B]/15"
+                            : "border border-green-500/70 bg-white text-green-600 hover:bg-green-500 hover:text-white"
                         }`}
                       >
                         <Eye size={15} />
@@ -288,9 +288,9 @@ export default function ManagementBudgetPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#BC934B]/25 bg-[#BC934B]/10 px-4 py-5 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#8f6f35]">Nominal Pengajuan</p>
-            <p className="mt-1 text-xl md:text-2xl font-bold text-[#7d612f] break-words">
+          <div className="rounded-xl border border-yellow-400/25 bg-yellow-500/10 px-4 py-5 text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-yellow-700">Nominal Pengajuan</p>
+            <p className="mt-1 text-xl md:text-2xl font-bold text-yellow-600 break-words">
               {selectedRequest ? formatRupiah(selectedRequest.amount) : "-"}
             </p>
           </div>
@@ -307,7 +307,7 @@ export default function ManagementBudgetPage() {
               <button
                 type="button"
                 onClick={() => updateRequestStatus("approved")}
-                className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95"
+                className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-600"
               >
                 Setujui Anggaran
               </button>
