@@ -21,7 +21,7 @@ export default function LoginPage() {
     { id: "produksi", name: "Produksi" },
     { id: "logistik", name: "Logistik" },
     { id: "creative", name: "Creative & Sales" },
-    { id: "support", name: "Office Support" },
+    { id: "office", name: "Office Support" },
   ];
 
   const handleSubmit = (e: React.FormEvent) => {

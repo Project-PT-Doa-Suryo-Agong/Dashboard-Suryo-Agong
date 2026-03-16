@@ -17,7 +17,7 @@ export function proxy(req: NextRequest) {
   // Daftar nama folder/subdomain divisi kamu
   const validSubdomains = [
     'creative', 'developer', 'finance', 'hr', 
-    'logistik', 'management', 'produksi', 'support'
+    'logistik', 'management', 'produksi', 'office'
   ];
 
   // Ekstrak kata pertama sebelum titik
