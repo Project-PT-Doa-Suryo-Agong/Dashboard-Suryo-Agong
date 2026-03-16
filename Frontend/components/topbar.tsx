@@ -20,6 +20,13 @@ const DEFAULT_USER: TopbarUser = {
 
 export default function Topbar({ title = 'Dashboard Overview', user, onMenuClick }: TopbarProps) {
   const { name, role, avatar } = { ...DEFAULT_USER, ...user };
+  const initials = name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+
   return (
     <header className="sticky top-0 z-20 bg-white border-b border-slate-200 px-3 md:px-6 lg:px-8 p-10 py-3 md:py-4 flex items-center justify-between">
       <div className="flex items-center gap-2 md:gap-4 min-w-0">
@@ -41,6 +48,14 @@ export default function Topbar({ title = 'Dashboard Overview', user, onMenuClick
           <div className="text-right hidden sm:block">
             <p className="text-xs md:text-sm font-bold text-slate-900 leading-none">{name}</p>
             <p className="text-[10px] md:text-xs text-slate-500">{role}</p>
+          </div>
+          <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-slate-200 text-slate-700 overflow-hidden flex items-center justify-center text-xs font-semibold">
+            {avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatar} alt={name} className="h-full w-full object-cover" />
+            ) : (
+              <span>{initials || 'NA'}</span>
+            )}
           </div>
         </div>
       </div>

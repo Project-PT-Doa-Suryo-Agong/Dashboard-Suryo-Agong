@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Tag, Save, Search, Edit, Trash2, ChevronDown, PackageOpen, ChevronRight } from 'lucide-react';
+import { Tag, Save, Search, Edit, Trash2, PackageOpen, ChevronRight, ChevronDown } from 'lucide-react';
 
 // Simulasi data produk induk (nantinya dari Supabase core.m_produk)
 const PRODUK_LIST = [
@@ -143,16 +143,24 @@ export default function VarianPage() {
           {/* Produk Induk */}
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">
-              Nama Varian <span className="text-red-400">*</span>
+              Produk Induk <span className="text-red-400">*</span>
             </label>
-            <input
-              type="text"
-              value={namaVarian}
-              onChange={(e) => setNamaVarian(e.target.value)}
-              required
-              placeholder="contoh: Kaos Polos"
-              className="w-full px-4 py-3 bg-slate-200 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-slate-200/20 focus:border-slate-200 text-sm outline-none transition-all"
-            />
+            <div className="relative">
+              <select
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                required
+                className="w-full appearance-none px-4 py-3 pr-10 bg-slate-200 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-slate-200/20 focus:border-slate-200 text-sm outline-none transition-all"
+              >
+                <option value="">Pilih produk induk</option>
+                {PRODUK_LIST.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.nama_produk}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            </div>
           </div>
 
           {/* Nama Varian */}

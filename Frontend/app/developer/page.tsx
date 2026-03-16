@@ -4,8 +4,6 @@ import Link from 'next/link';
 import {
   Users,
   Database,
-  Activity,
-  FileText,
   ArrowRight,
   UserCog,
   Server,

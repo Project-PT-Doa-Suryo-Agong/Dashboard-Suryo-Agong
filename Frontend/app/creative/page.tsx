@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Banknote, Users, FileText, Tv2, Clapperboard, Camera, Play } from 'lucide-react';
+import { TrendingUp, TrendingDown, Banknote, Users, FileText, Tv2 } from 'lucide-react';
 
 export default function CreativeDashboard() {
   return (
