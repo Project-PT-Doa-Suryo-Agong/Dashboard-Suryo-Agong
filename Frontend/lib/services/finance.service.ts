@@ -66,6 +66,11 @@ export async function updatePayroll(client: DbClient, id: string, input: Record<
   return { data: data as TPayrollHistory | null, error };
 }
 
+export async function deletePayroll(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_payroll_history").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}
+
 // â”€â”€â”€ t_reimbursement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function listReimbursement(client: DbClient, page = 1, limit = 50, employeeId?: string) {
@@ -93,5 +98,10 @@ export async function updateReimbursement(client: DbClient, id: string, input: R
     .select("*")
     .maybeSingle();
   return { data: data as TReimbursement | null, error };
+}
+
+export async function deleteReimbursement(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_reimbursement").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
 }
 

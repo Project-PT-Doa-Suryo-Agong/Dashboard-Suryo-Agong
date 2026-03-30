@@ -116,11 +116,6 @@ const quick_links = [
     title: "Katalog Produk & Varian",
     description: "Atur master produk dan varian SKU yang aktif di sistem.",
   },
-  {
-    href: "/office/directory",
-    title: "Direktori Karyawan",
-    description: "Pantau profil karyawan lintas divisi untuk koordinasi operasional.",
-  },
 ];
 
 function formatDate(date: string): string {
@@ -212,7 +207,7 @@ export default function OfficeDashboardPage() {
 
       <section className="space-y-3">
         <h2 className="text-base md:text-lg font-bold text-slate-100">Quick Links</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {quick_links.map((item) => (
             <Link
               key={item.href}
@@ -224,7 +219,7 @@ export default function OfficeDashboardPage() {
                   <p className="text-sm md:text-base font-bold text-slate-900">{item.title}</p>
                   <p className="text-xs md:text-sm text-slate-600">{item.description}</p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:text-[#BC934B] group-hover:translate-x-0.5 shrink-0" />
+                <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:text-slate-700 group-hover:translate-x-0.5 shrink-0" />
               </div>
             </Link>
           ))}

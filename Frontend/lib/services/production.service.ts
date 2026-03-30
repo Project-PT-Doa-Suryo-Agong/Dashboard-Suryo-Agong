@@ -71,6 +71,11 @@ export async function updateQCInbound(client: DbClient, id: string, input: Recor
   return { data: data as TQCInbound | null, error };
 }
 
+export async function deleteQCInbound(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_qc_inbound").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}
+
 // â”€â”€â”€ t_qc_outbound â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function listQCOutbound(client: DbClient, page = 1, limit = 100) {
@@ -96,5 +101,10 @@ export async function updateQCOutbound(client: DbClient, id: string, input: Reco
     .select("*")
     .maybeSingle();
   return { data: data as TQCOutbound | null, error };
+}
+
+export async function deleteQCOutbound(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_qc_outbound").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
 }
 

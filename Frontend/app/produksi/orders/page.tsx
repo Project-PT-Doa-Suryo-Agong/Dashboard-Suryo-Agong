@@ -1,141 +1,180 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Edit3, Plus, Search } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Edit3, Plus, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type {
+  MProduk,
+  MVendor,
+  ProductionStatus,
+  TProduksiOrder,
+} from "@/types/supabase";
 
-type ProductionOrderStatus = "draft" | "ongoing" | "done";
-
-type VendorItem = { id: string; nama_vendor: string };
-type ProductItem = { id: string; nama_produk: string };
-
-type ProductionOrder = {
-  id: string;
-  vendor_id: string;
-  product_id: string;
-  target_qty: number;
-  start_date: string;
-  deadline: string;
-  status: ProductionOrderStatus;
+type OrdersListPayload = {
+  orders: TProduksiOrder[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 };
 
-const core_m_vendor_seed: VendorItem[] = [
-  { id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130001", nama_vendor: "Vendor Nusantara" },
-  { id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130002", nama_vendor: "Mitra Sejahtera" },
-  { id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130003", nama_vendor: "Prima Supply" },
-];
+type OrderPayload = {
+  order: TProduksiOrder | null;
+};
 
-const core_m_produk_seed: ProductItem[] = [
-  { id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710001", nama_produk: "Coffee Beans Arabica 250gr" },
-  { id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710002", nama_produk: "Chocolate Blend 500gr" },
-  { id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710003", nama_produk: "Syrup Caramel 1L" },
-  { id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710004", nama_produk: "Matcha Mix 400gr" },
-  { id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710005", nama_produk: "Roasted Robusta 1kg" },
-  { id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710006", nama_produk: "Vanilla Cream Powder 500gr" },
-  { id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710007", nama_produk: "Hazelnut Syrup 750ml" },
-];
+type ProductsListPayload = {
+  produk: MProduk[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
 
-const production_t_produksi_order_rows_seed: ProductionOrder[] = [
-  {
-    id: "PO-20260316-001",
-    product_id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710001",
-    vendor_id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130001",
-    target_qty: 500,
-    start_date: "2026-03-15",
-    deadline: "2026-03-18",
-    status: "ongoing",
-  },
-  {
-    id: "PO-20260316-002",
-    product_id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710002",
-    vendor_id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130002",
-    target_qty: 320,
-    start_date: "2026-03-16",
-    deadline: "2026-03-20",
-    status: "draft",
-  },
-  {
-    id: "PO-20260316-003",
-    product_id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710003",
-    vendor_id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130003",
-    target_qty: 220,
-    start_date: "2026-03-12",
-    deadline: "2026-03-16",
-    status: "done",
-  },
-  {
-    id: "PO-20260316-004",
-    product_id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710004",
-    vendor_id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130001",
-    target_qty: 280,
-    start_date: "2026-03-10",
-    deadline: "2026-03-14",
-    status: "draft",
-  },
-  {
-    id: "PO-20260316-005",
-    product_id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710005",
-    vendor_id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130002",
-    target_qty: 150,
-    start_date: "2026-03-16",
-    deadline: "2026-03-19",
-    status: "ongoing",
-  },
-  {
-    id: "PO-20260316-006",
-    product_id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710006",
-    vendor_id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130003",
-    target_qty: 260,
-    start_date: "2026-03-17",
-    deadline: "2026-03-21",
-    status: "draft",
-  },
-  {
-    id: "PO-20260316-007",
-    product_id: "a9f3f5f5-60e3-4b95-8cc7-7b6f5f710007",
-    vendor_id: "f31d0cdc-2f89-4a2e-b2ef-df7f1a130001",
-    target_qty: 180,
-    start_date: "2026-03-13",
-    deadline: "2026-03-17",
-    status: "done",
-  },
-];
+type VendorsListPayload = {
+  vendor: MVendor[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
 
-const status_label: Record<ProductionOrderStatus, string> = {
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
+
+const statusLabel: Record<ProductionStatus, string> = {
   draft: "Draft",
   ongoing: "Berjalan",
   done: "Selesai",
 };
 
-const status_badge_class: Record<ProductionOrderStatus, string> = {
+const statusBadgeClass: Record<ProductionStatus, string> = {
   draft: "bg-amber-100 text-amber-700",
   ongoing: "bg-blue-100 text-blue-700",
   done: "bg-emerald-100 text-emerald-700",
 };
 
-function formatDate(date: string): string {
+function formatDate(value: string): string {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(date));
+  }).format(new Date(value));
 }
 
 export default function ProductionOrdersPage() {
-  const [items, setItems] = useState<ProductionOrder[]>(production_t_produksi_order_rows_seed);
+  const [items, setItems] = useState<TProduksiOrder[]>([]);
+  const [produkList, setProdukList] = useState<MProduk[]>([]);
+  const [vendorList, setVendorList] = useState<MVendor[]>([]);
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | ProductionOrderStatus>("all");
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<ProductionOrder | null>(null);
+  const [filterStatus, setFilterStatus] = useState<"all" | ProductionStatus>("all");
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editData, setEditData] = useState<TProduksiOrder | null>(null);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState<{
+    product_id: string;
+    vendor_id: string;
+    quantity: string;
+    status: ProductionStatus;
+  }>({
+    product_id: "",
+    vendor_id: "",
+    quantity: "",
+    status: "draft",
+  });
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch("/api/production/orders?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<OrdersListPayload>(response);
+      setItems(payload.data.orders ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data pesanan produksi.";
+      alert(message);
+    }
+  };
+
+  const fetchProduk = async () => {
+    try {
+      const response = await fetch("/api/core/products?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<ProductsListPayload>(response);
+      setProdukList(payload.data.produk ?? []);
+      setFormData((prev) => ({
+        ...prev,
+        product_id: prev.product_id || payload.data.produk?.[0]?.id || "",
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
+      alert(message);
+    }
+  };
+
+  const fetchVendor = async () => {
+    try {
+      const response = await fetch("/api/core/vendors?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<VendorsListPayload>(response);
+      setVendorList(payload.data.vendor ?? []);
+      setFormData((prev) => ({
+        ...prev,
+        vendor_id: prev.vendor_id || payload.data.vendor?.[0]?.id || "",
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat daftar vendor.";
+      alert(message);
+    }
+  };
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([fetchOrders(), fetchProduk(), fetchVendor()]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadInitialData();
+  }, []);
 
   const productById = useMemo(
-    () => Object.fromEntries(core_m_produk_seed.map((item) => [item.id, item.nama_produk])) as Record<string, string>,
-    [],
+    () => Object.fromEntries(produkList.map((item) => [item.id, item.nama_produk])) as Record<string, string>,
+    [produkList],
   );
 
   const vendorById = useMemo(
-    () => Object.fromEntries(core_m_vendor_seed.map((item) => [item.id, item.nama_vendor])) as Record<string, string>,
-    [],
+    () => Object.fromEntries(vendorList.map((item) => [item.id, item.nama_vendor])) as Record<string, string>,
+    [vendorList],
   );
 
   const filteredItems = useMemo(() => {
@@ -146,41 +185,128 @@ export default function ProductionOrdersPage() {
       const matchSearch =
         normalizedSearch.length === 0 ||
         item.id.toLowerCase().includes(normalizedSearch) ||
-        (productById[item.product_id] ?? "").toLowerCase().includes(normalizedSearch);
+        (productById[item.product_id ?? ""] ?? "").toLowerCase().includes(normalizedSearch) ||
+        (vendorById[item.vendor_id ?? ""] ?? "").toLowerCase().includes(normalizedSearch);
 
       return matchStatus && matchSearch;
     });
-  }, [items, searchTerm, filterStatus, productById]);
+  }, [items, searchTerm, filterStatus, productById, vendorById]);
 
-  const handleOpenUpdateModal = (order: ProductionOrder) => {
-    setSelectedOrder(order);
-    setIsUpdateModalOpen(true);
+  const resetForm = () => {
+    setFormData({
+      product_id: produkList[0]?.id ?? "",
+      vendor_id: vendorList[0]?.id ?? "",
+      quantity: "",
+      status: "draft",
+    });
+    setEditData(null);
   };
 
-  const handleCloseUpdateModal = () => {
-    setIsUpdateModalOpen(false);
-    setSelectedOrder(null);
+  const openAddModal = () => {
+    resetForm();
+    setIsFormModalOpen(true);
   };
 
-  const handleSaveUpdate = () => {
-    if (!selectedOrder) return;
+  const openEditModal = (order: TProduksiOrder) => {
+    setEditData(order);
+    setFormData({
+      product_id: order.product_id ?? "",
+      vendor_id: order.vendor_id ?? "",
+      quantity: String(order.quantity ?? ""),
+      status: order.status ?? "draft",
+    });
+    setIsFormModalOpen(true);
+  };
 
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === selectedOrder.id ? selectedOrder : item,
-      ),
-    );
+  const closeFormModal = () => {
+    setIsFormModalOpen(false);
+    resetForm();
+  };
 
-    handleCloseUpdateModal();
+  const openDeleteModal = (id: string) => {
+    setDeleteId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteId(null);
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const parsedQty = Number(formData.quantity);
+    if (!formData.product_id || !formData.vendor_id) {
+      alert("Produk dan vendor wajib dipilih.");
+      return;
+    }
+    if (Number.isNaN(parsedQty) || parsedQty <= 0) {
+      alert("Target quantity harus angka lebih dari 0.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        product_id: formData.product_id,
+        vendor_id: formData.vendor_id,
+        quantity: parsedQty,
+        status: formData.status,
+      };
+
+      if (editData) {
+        const response = await fetch(`/api/production/orders/${editData.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<OrderPayload>(response);
+      } else {
+        const response = await fetch("/api/production/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<OrderPayload>(response);
+      }
+
+      await fetchOrders();
+      closeFormModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operasi simpan pesanan produksi gagal.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteId || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/production/orders/${deleteId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
+      await fetchOrders();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus pesanan produksi.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+      closeDeleteModal();
+    }
   };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Pesanan Produksi (Orders)</h1>
-        <p className="text-sm md:text-base text-slate-600">
-          Kelola dan pantau antrean proses manufaktur produk.
-        </p>
+        <p className="text-sm md:text-base text-slate-600">Kelola dan pantau antrean proses manufaktur produk.</p>
       </section>
 
       <section className="flex flex-col gap-3 md:gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -191,14 +317,14 @@ export default function ProductionOrdersPage() {
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Cari ID pesanan atau nama produk..."
+              placeholder="Cari ID pesanan, produk, atau vendor..."
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
             />
           </div>
 
           <select
             value={filterStatus}
-            onChange={(event) => setFilterStatus(event.target.value as "all" | ProductionOrderStatus)}
+            onChange={(event) => setFilterStatus(event.target.value as "all" | ProductionStatus)}
             className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
           >
             <option value="all">Semua Status</option>
@@ -210,6 +336,7 @@ export default function ProductionOrdersPage() {
 
         <button
           type="button"
+          onClick={openAddModal}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" />
@@ -220,40 +347,30 @@ export default function ProductionOrdersPage() {
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="px-4 md:px-6 py-4 border-b border-slate-100">
           <h2 className="text-base font-bold text-slate-900">Daftar Pesanan Produksi</h2>
-          <p className="mt-1 text-xs md:text-sm text-slate-500">
-            Data pesanan produksi dari antrean proses aktif dan historis.
-          </p>
+          <p className="mt-1 text-xs md:text-sm text-slate-500">Data pesanan produksi dari antrean proses aktif dan historis.</p>
         </div>
 
         <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
           <table className="w-full min-w-max">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  ID Pesanan
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  Produk
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  Vendor
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  Target (Qty)
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  Timeline
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  Status
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                  Aksi
-                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">ID Pesanan</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Produk</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Vendor</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Target (Qty)</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Dibuat</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredItems.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={7}>
+                    Memuat data...
+                  </td>
+                </tr>
+              ) : filteredItems.length === 0 ? (
                 <tr>
                   <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={7}>
                     Tidak ada pesanan yang sesuai filter.
@@ -262,37 +379,37 @@ export default function ProductionOrdersPage() {
               ) : (
                 filteredItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">
-                      {item.id}
-                    </td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-56">
-                      <p className="break-words">{productById[item.product_id] ?? "Produk tidak ditemukan"}</p>
-                    </td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">
-                      {vendorById[item.vendor_id] ?? "Vendor tidak ditemukan"}
-                    </td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">
-                      {item.target_qty} Unit
-                    </td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">
-                      {formatDate(item.start_date)} - {formatDate(item.deadline)}
-                    </td>
+                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.id}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-56">{productById[item.product_id ?? ""] ?? "Produk tidak ditemukan"}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{vendorById[item.vendor_id ?? ""] ?? "Vendor tidak ditemukan"}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.quantity ?? 0} Unit</td>
+                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                     <td className="px-4 md:px-6 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${status_badge_class[item.status]}`}
-                      >
-                        {status_label[item.status]}
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass[item.status ?? "draft"]}`}>
+                        {statusLabel[item.status ?? "draft"]}
                       </span>
                     </td>
                     <td className="px-4 md:px-6 py-3">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenUpdateModal(item)}
-                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#BC934B] transition hover:text-[#a88444] whitespace-nowrap"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                        Update Progress
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(item)}
+                          disabled={isSubmitting}
+                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#BC934B] transition hover:text-[#a88444] whitespace-nowrap disabled:opacity-50"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openDeleteModal(item.id)}
+                          disabled={isSubmitting}
+                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 transition hover:text-red-700 whitespace-nowrap disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Hapus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -303,100 +420,101 @@ export default function ProductionOrdersPage() {
       </section>
 
       <Modal
-        isOpen={isUpdateModalOpen}
-        onClose={handleCloseUpdateModal}
-        title="Update Progress Pesanan"
+        isOpen={isFormModalOpen}
+        onClose={closeFormModal}
+        title={editData ? "Edit Pesanan Produksi" : "Buat Pesanan Produksi"}
         maxWidth="max-w-lg"
       >
-        {selectedOrder ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              handleSaveUpdate();
-            }}
-          >
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="product-order" className="text-sm font-semibold text-slate-700">
-                  Produk
-                </label>
-                <select
-                  id="product-order"
-                  value={selectedOrder.product_id}
-                  onChange={(event) =>
-                    setSelectedOrder((prevOrder) =>
-                      prevOrder ? { ...prevOrder, product_id: event.target.value } : prevOrder,
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
-                >
-                  {core_m_produk_seed.map((product) => (
-                    <option key={product.id} value={product.id}>{product.nama_produk}</option>
-                  ))}
-                </select>
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="product-order" className="text-sm font-semibold text-slate-700">Produk</label>
+            <select
+              id="product-order"
+              required
+              value={formData.product_id}
+              onChange={(event) => setFormData((prev) => ({ ...prev, product_id: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            >
+              <option value="" disabled>Pilih produk</option>
+              {produkList.map((product) => (
+                <option key={product.id} value={product.id}>{product.nama_produk}</option>
+              ))}
+            </select>
+          </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="vendor-order" className="text-sm font-semibold text-slate-700">
-                  Vendor
-                </label>
-                <select
-                  id="vendor-order"
-                  value={selectedOrder.vendor_id}
-                  onChange={(event) =>
-                    setSelectedOrder((prevOrder) =>
-                      prevOrder ? { ...prevOrder, vendor_id: event.target.value } : prevOrder,
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
-                >
-                  {core_m_vendor_seed.map((vendor) => (
-                    <option key={vendor.id} value={vendor.id}>{vendor.nama_vendor}</option>
-                  ))}
-                </select>
-              </div>
+          <div className="space-y-1.5">
+            <label htmlFor="vendor-order" className="text-sm font-semibold text-slate-700">Vendor</label>
+            <select
+              id="vendor-order"
+              required
+              value={formData.vendor_id}
+              onChange={(event) => setFormData((prev) => ({ ...prev, vendor_id: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            >
+              <option value="" disabled>Pilih vendor</option>
+              {vendorList.map((vendor) => (
+                <option key={vendor.id} value={vendor.id}>{vendor.nama_vendor ?? "-"}</option>
+              ))}
+            </select>
+          </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="status-order" className="text-sm font-semibold text-slate-700">
-                  Ubah Status
-                </label>
-                <select
-                  id="status-order"
-                  value={selectedOrder.status}
-                  onChange={(event) =>
-                    setSelectedOrder((prevOrder) =>
-                      prevOrder
-                        ? { ...prevOrder, status: event.target.value as ProductionOrderStatus }
-                        : prevOrder,
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="ongoing">Berjalan</option>
-                  <option value="done">Selesai</option>
-                </select>
-              </div>
-            </div>
+          <div className="space-y-1.5">
+            <label htmlFor="target-order" className="text-sm font-semibold text-slate-700">Target Quantity</label>
+            <input
+              id="target-order"
+              required
+              min={1}
+              type="number"
+              value={formData.quantity}
+              onChange={(event) => setFormData((prev) => ({ ...prev, quantity: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            />
+          </div>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={handleCloseUpdateModal}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444]"
-              >
-                Simpan Perubahan
-              </button>
-            </div>
-          </form>
-        ) : null}
+          <div className="space-y-1.5">
+            <label htmlFor="status-order" className="text-sm font-semibold text-slate-700">Status</label>
+            <select
+              id="status-order"
+              value={formData.status}
+              onChange={(event) => setFormData((prev) => ({ ...prev, status: event.target.value as ProductionStatus }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            >
+              <option value="draft">Draft</option>
+              <option value="ongoing">Berjalan</option>
+              <option value="done">Selesai</option>
+            </select>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={closeFormModal}
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] disabled:opacity-50"
+            >
+              {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+            </button>
+          </div>
+        </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+        title="Hapus Pesanan Produksi"
+        description="Apakah Anda yakin ingin menghapus pesanan produksi ini?"
+        confirmText={isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+        cancelText="Batal"
+        variant="danger"
+      />
     </div>
   );
 }
