@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import {
   CreditCard,
   Users,
@@ -8,8 +11,17 @@ import {
   BarChart2,
   Palette,
 } from "lucide-react";
+import type { ApiError, ApiSuccess } from "@/types/api";
 
-// Data untuk Grid Cards Divisi
+type DashboardMetrics = {
+  totalKaryawan: number;
+  pendapatanBulanIni: number;
+  pesananAktif: number;
+  updatedAt: string;
+};
+
+type DashboardMetricsPayload = DashboardMetrics;
+
 const departments = [
   {
     title: "Finance",
@@ -49,11 +61,60 @@ const departments = [
   },
 ];
 
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
+
+function formatRupiah(value: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export default function LandingPage() {
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    totalKaryawan: 0,
+    pendapatanBulanIni: 0,
+    pesananAktif: 0,
+    updatedAt: new Date().toISOString(),
+  });
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      setIsLoadingMetrics(true);
+      try {
+        const response = await fetch("/api/dashboard/metrics", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
+        const payload = await parseJsonResponse<DashboardMetricsPayload>(response);
+        setMetrics(payload.data);
+      } catch {
+        setMetrics({
+          totalKaryawan: 0,
+          pendapatanBulanIni: 0,
+          pesananAktif: 0,
+          updatedAt: new Date().toISOString(),
+        });
+      } finally {
+        setIsLoadingMetrics(false);
+      }
+    };
+
+    void fetchMetrics();
+  }, []);
+
   return (
-    // Background utama #999999 diterapkan di sini
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#999999] font-display antialiased">
-      {/* Navbar */}
       <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#333333]/90 px-3 py-3 backdrop-blur-md md:px-4 md:py-4 lg:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-white">
@@ -75,15 +136,12 @@ export default function LandingPage() {
       </nav>
 
       <main className="grow">
-        {/* Hero Section */}
         <section className="mx-auto flex max-w-4xl flex-col items-center justify-center px-3 py-12 text-center md:px-4 md:py-20 lg:px-6 lg:py-32">
           <h1 className="mb-4 text-lg font-black leading-tight tracking-tight text-white drop-shadow-sm md:mb-6 md:text-2xl lg:text-3xl">
-            Unified Enterprise{" "}
-            <span className="text-primary drop-shadow-none">Dashboard</span>
+            Unified Enterprise <span className="text-primary drop-shadow-none">Dashboard</span>
           </h1>
           <p className="mb-6 max-w-2xl text-xs font-medium leading-relaxed text-white opacity-90 md:mb-8 md:text-sm lg:mb-10 lg:text-base">
-            Seamlessly manage Finance, HR, Production, and more from one
-            intelligent ecosystem. Designed for modern scale.
+            Seamlessly manage Finance, HR, Production, and more from one intelligent ecosystem. Designed for modern scale.
           </p>
           <div className="flex w-full flex-col justify-center gap-2 md:gap-3 sm:w-auto sm:flex-row lg:gap-4">
             <Link
@@ -95,10 +153,38 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Roles/Clusters Grid */}
+        <section className="mx-auto max-w-7xl px-3 pb-8 md:px-4 md:pb-12 lg:px-6 lg:pb-16">
+          <div className="mb-4 md:mb-5 lg:mb-6 flex items-center justify-between gap-3">
+            <h2 className="text-sm md:text-base lg:text-lg font-bold text-white">Enterprise Snapshot</h2>
+            <span className="text-[11px] md:text-xs text-white/80">
+              {isLoadingMetrics ? "Memuat data..." : `Updated: ${new Date(metrics.updatedAt).toLocaleString("id-ID")}`}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 md:gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-xl">
+              <p className="text-xs font-medium text-slate-500">Total Karyawan</p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {isLoadingMetrics ? "..." : metrics.totalKaryawan.toLocaleString("id-ID")}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-xl">
+              <p className="text-xs font-medium text-slate-500">Pendapatan Bulan Ini</p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {isLoadingMetrics ? "..." : formatRupiah(metrics.pendapatanBulanIni)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-xl sm:col-span-2 lg:col-span-1">
+              <p className="text-xs font-medium text-slate-500">Pesanan Aktif</p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {isLoadingMetrics ? "..." : metrics.pesananAktif.toLocaleString("id-ID")}
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section className="mx-auto max-w-7xl px-3 pb-12 md:px-4 md:pb-16 lg:px-6 lg:pb-24">
           <div className="grid grid-cols-1 gap-2 md:gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
-            {/* Mapping Array data ke dalam UI Cards */}
             {departments.map((dept, index) => (
               <div
                 key={index}
@@ -108,24 +194,17 @@ export default function LandingPage() {
                   <dept.icon className="h-8 w-8 shrink-0 text-[#BC934B] md:h-10 md:w-10 lg:h-12 lg:w-12" />
                 </div>
 
-                <h3 className="mb-2 text-sm font-bold text-slate-900 md:text-base lg:text-lg">
-                  {dept.title}
-                </h3>
-                <p className="grow text-xs leading-relaxed text-slate-600 md:text-sm lg:text-base">
-                  {dept.description}
-                </p>
+                <h3 className="mb-2 text-sm font-bold text-slate-900 md:text-base lg:text-lg">{dept.title}</h3>
+                <p className="grow text-xs leading-relaxed text-slate-600 md:text-sm lg:text-base">{dept.description}</p>
               </div>
             ))}
           </div>
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="mt-auto w-full bg-[#1F2937] px-3 py-6 text-slate-300 md:px-4 md:py-8 lg:px-6 lg:py-12">
-        <div className={`pt-8 border-t text-center border-[#e5ddd5]`}>
-          <p className={`text-xs text-slate-400 md:text-sm lg:text-base`}>
-            &copy; {new Date().getFullYear()}  PT DOA SURYO AGONG. All rights reserved.
-          </p>
+        <div className="pt-8 border-t text-center border-[#e5ddd5]">
+          <p className="text-xs text-slate-400 md:text-sm lg:text-base">&copy; {new Date().getFullYear()} PT DOA SURYO AGONG. All rights reserved.</p>
         </div>
       </footer>
     </div>
