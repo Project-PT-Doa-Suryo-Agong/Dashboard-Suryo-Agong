@@ -235,7 +235,6 @@ export default function OfficeDashboardPage() {
         <article className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-4 md:px-6 py-4 border-b border-slate-100">
             <h2 className="text-base font-bold text-slate-900">Update Vendor Terbaru</h2>
-            <p className="mt-1 text-xs md:text-sm text-slate-500">Aktivitas dari core.m_vendor</p>
           </div>
 
           <div className="overflow-x-auto w-full">
@@ -285,7 +284,6 @@ export default function OfficeDashboardPage() {
         <article className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-4 md:px-6 py-4 border-b border-slate-100">
             <h2 className="text-base font-bold text-slate-900">Produk &amp; Varian Baru</h2>
-            <p className="mt-1 text-xs md:text-sm text-slate-500">Aktivitas katalog dari core.m_produk dan core.m_varian</p>
           </div>
 
           <div className="overflow-x-auto w-full">

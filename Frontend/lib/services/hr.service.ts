@@ -75,6 +75,11 @@ export async function updateAttendance(client: DbClient, id: string, input: Reco
   return { data: data as TAttendance | null, error };
 }
 
+export async function deleteAttendance(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_attendance").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}
+
 // â”€â”€â”€ t_employee_warning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function listWarnings(client: DbClient, page = 1, limit = 50, employeeId?: string) {

@@ -1,19 +1,15 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, useEffect, useCallback } from "react";
 import { Pencil, Search, Trash2, UserCheck } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import type { HrAttendanceStatus } from "@/types/supabase";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type { HrAttendanceStatus, MKaryawan, TAttendance } from "@/types/supabase";
 
 type AttendanceStatus = HrAttendanceStatus;
 
-type AttendanceItem = {
-  id: string;
-  employee_id: string;
-  tanggal: string;
-  status: AttendanceStatus;
-};
+type AttendanceItem = TAttendance;
 
 type EmployeeOption = {
   id: string;
@@ -21,15 +17,36 @@ type EmployeeOption = {
   divisi: string;
 };
 
-const hr_m_karyawan_seed: EmployeeOption[] = [
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50001", nama: "Rani Wulandari", divisi: "HR" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50002", nama: "Bima Pratama", divisi: "Finance" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50003", nama: "Nadia Putri", divisi: "Produksi" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50004", nama: "Dwi Firmansyah", divisi: "Logistik" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50005", nama: "Salsa Maharani", divisi: "Creative" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50006", nama: "Agus Setiawan", divisi: "Office" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50007", nama: "Farhan Maulana", divisi: "CEO" },
-];
+type AttendanceListPayload = {
+  attendance: AttendanceItem[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type AttendancePayload = {
+  attendance: AttendanceItem | null;
+};
+
+type EmployeesListPayload = {
+  karyawan: MKaryawan[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
 
 function getTodayDateInput() {
   const now = new Date();
@@ -40,15 +57,6 @@ function getTodayDateInput() {
 }
 
 const todayDate = getTodayDateInput();
-
-const dummyAttendance: AttendanceItem[] = [
-  { id: "att-001", employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50001", tanggal: todayDate, status: "hadir" },
-  { id: "att-002", employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50002", tanggal: todayDate, status: "izin" },
-  { id: "att-003", employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50003", tanggal: todayDate, status: "sakit" },
-  { id: "att-004", employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50004", tanggal: todayDate, status: "alpha" },
-  { id: "att-005", employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50005", tanggal: todayDate, status: "hadir" },
-  { id: "att-006", employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50006", tanggal: todayDate, status: "hadir" },
-];
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "2-digit",
@@ -64,9 +72,15 @@ function statusBadgeClass(status: AttendanceStatus) {
 }
 
 export default function AttendancePage() {
-  const [items, setItems] = useState<AttendanceItem[]>(dummyAttendance);
+  const [items, setItems] = useState<AttendanceItem[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<"all" | AttendanceStatus>("all");
+  
   const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<AttendanceItem | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
@@ -77,20 +91,72 @@ export default function AttendancePage() {
     tanggal: string;
     status: AttendanceStatus;
   }>({
-    employee_id: hr_m_karyawan_seed[0]?.id ?? "",
+    employee_id: "",
     tanggal: todayDate,
     status: "hadir",
   });
 
+  const fetchAttendance = useCallback(async () => {
+    try {
+      const response = await fetch("/api/hr/attendance?page=1&limit=500", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<AttendanceListPayload>(response);
+      setItems(payload.data.attendance ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data presensi.";
+      alert(message);
+    }
+  }, []);
+
+  const fetchKaryawan = useCallback(async () => {
+    try {
+      const response = await fetch("/api/hr/employees?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<EmployeesListPayload>(response);
+      const normalizedEmployees = (payload.data.karyawan ?? []).map((employee) => ({
+        id: employee.id,
+        nama: employee.nama,
+        divisi: employee.divisi ?? "-",
+      }));
+      setEmployees(normalizedEmployees);
+      setFormData((prev) => ({
+        ...prev,
+        employee_id: prev.employee_id || normalizedEmployees[0]?.id || "",
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat daftar karyawan.";
+      alert(message);
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([fetchAttendance(), fetchKaryawan()]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadInitialData();
+  }, [fetchAttendance, fetchKaryawan]);
+
   const employeeById = useMemo(
-    () => Object.fromEntries(hr_m_karyawan_seed.map((employee) => [employee.id, employee])) as Record<string, EmployeeOption>,
-    [],
+    () => Object.fromEntries(employees.map((employee) => [employee.id, employee])) as Record<string, EmployeeOption>,
+    [employees],
   );
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     return items.filter((item) => {
-      const employee = employeeById[item.employee_id];
+      const employee = employeeById[item.employee_id ?? ""];
       const matchName = (employee?.nama ?? "").toLowerCase().includes(keyword);
       const matchStatus = filterStatus === "all" ? true : item.status === filterStatus;
       return matchName && matchStatus;
@@ -108,7 +174,7 @@ export default function AttendancePage() {
 
   const resetForm = () => {
     setFormData({
-      employee_id: hr_m_karyawan_seed[0]?.id ?? "",
+      employee_id: employees[0]?.id ?? "",
       tanggal: todayDate,
       status: "hadir",
     });
@@ -123,9 +189,9 @@ export default function AttendancePage() {
   const openEditModal = (item: AttendanceItem) => {
     setEditData(item);
     setFormData({
-      employee_id: item.employee_id,
-      tanggal: item.tanggal,
-      status: item.status,
+      employee_id: item.employee_id ?? "",
+      tanggal: item.tanggal ?? todayDate,
+      status: item.status ?? "alpha",
     });
     setIsFormModalOpen(true);
   };
@@ -145,49 +211,73 @@ export default function AttendancePage() {
     setIsDeleteModalOpen(false);
   };
 
-  const createRandomId = () => {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-    return `att-${Math.random().toString(36).slice(2, 10)}`;
-  };
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSubmitting) return;
 
-    const selectedEmployee = hr_m_karyawan_seed.find(
+    const selectedEmployee = employees.find(
       (employee) => employee.id === formData.employee_id,
     );
 
-    if (!selectedEmployee) return;
+    if (!selectedEmployee) {
+      alert("Silakan pilih karyawan terlebih dahulu.");
+      return;
+    }
 
-    const payload: Omit<AttendanceItem, "id"> = {
+    setIsSubmitting(true);
+
+    const payload = {
       employee_id: selectedEmployee.id,
       tanggal: formData.tanggal,
       status: formData.status,
     };
 
-    if (editData) {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === editData.id ? { ...item, ...payload } : item,
-        ),
-      );
-    } else {
-      const newItem: AttendanceItem = {
-        id: createRandomId(),
-        ...payload,
-      };
-      setItems((prev) => [newItem, ...prev]);
-    }
+    try {
+      if (editData) {
+        const response = await fetch(`/api/hr/attendance/${editData.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<AttendancePayload>(response);
+      } else {
+        const response = await fetch("/api/hr/attendance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<AttendancePayload>(response);
+      }
 
-    closeFormModal();
+      await fetchAttendance();
+      closeFormModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operasi simpan presensi gagal.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteId) return;
-    setItems((prev) => prev.filter((item) => item.id !== deleteId));
-    closeDeleteModal();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
+    try {
+      const response = await fetch(`/api/hr/attendance/${deleteId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
+      await fetchAttendance();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus presensi.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+      closeDeleteModal();
+    }
   };
 
   return (
@@ -290,9 +380,15 @@ export default function AttendancePage() {
             </tr>
           </thead>
           <tbody>
-            {filteredItems.length > 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">
+                  Memuat data...
+                </td>
+              </tr>
+            ) : filteredItems.length > 0 ? (
               filteredItems.map((item) => {
-                const employee = employeeById[item.employee_id];
+                const employee = employeeById[item.employee_id ?? ""];
                 const employeeName = employee?.nama ?? "Karyawan tidak ditemukan";
                 return (
                   <tr key={item.id} className="border-t border-slate-100">
@@ -301,15 +397,15 @@ export default function AttendancePage() {
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700">{employee?.divisi ?? "-"}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
-                      {dateFormatter.format(new Date(item.tanggal))}
+                      {item.tanggal ? dateFormatter.format(new Date(item.tanggal)) : "-"}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(
-                          item.status,
+                          item.status ?? "alpha",
                         )}`}
                       >
-                        {item.status}
+                        {item.status ?? "alpha"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -364,7 +460,10 @@ export default function AttendancePage() {
                 }
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
               >
-                {hr_m_karyawan_seed.map((employee) => (
+                <option value="" disabled>
+                  Pilih karyawan
+                </option>
+                {employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
                     {employee.nama} - {employee.divisi}
                   </option>
@@ -406,12 +505,21 @@ export default function AttendancePage() {
             </label>
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={closeFormModal}
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              Batal
+            </button>
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95"
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95 disabled:opacity-50"
             >
-              Simpan Presensi
+              {isSubmitting ? "Menyimpan..." : "Simpan Presensi"}
             </button>
           </div>
         </form>
@@ -423,7 +531,7 @@ export default function AttendancePage() {
         onConfirm={handleConfirmDelete}
         title="Hapus Data Presensi"
         description="Yakin ingin menghapus data presensi ini?"
-        confirmText="Ya, Hapus"
+        confirmText={isSubmitting ? "Menghapus..." : "Ya, Hapus"}
         cancelText="Batal"
         variant="danger"
       />

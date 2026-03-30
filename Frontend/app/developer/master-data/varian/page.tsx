@@ -1,104 +1,204 @@
-﻿'use client';
+﻿"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Tag, Save, Search, Edit, Trash2, PackageOpen, ChevronRight, ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  Tag,
+  Save,
+  Search,
+  Edit,
+  Trash2,
+  PackageOpen,
+  ChevronRight,
+  ChevronDown,
+} from "lucide-react";
+import type { MProduk, MVarian } from "@/types/supabase";
+import type { ApiError, ApiSuccess } from "@/types/api";
 
-// Simulasi data produk induk (nantinya dari Supabase core.m_produk)
-const PRODUK_LIST = [
-  { id: 'p-001', nama_produk: 'Kaos Polo Classic' },
-  { id: 'p-002', nama_produk: 'Hoodie Premium' },
-  { id: 'p-003', nama_produk: 'Topi Snapback' },
-  { id: 'p-004', nama_produk: 'Celana Chino Slim' },
-];
+type VarianItem = MVarian;
+type ProdukItem = MProduk;
 
-// Simulasi data varian (nantinya dari Supabase core.m_varian)
-const DUMMY_VARIAN = [
-  { id: 'v-001', product_id: 'p-001', nama_produk: 'Kaos Polo Classic', nama_varian: 'Putih - M', sku: 'KPC-WHT-M', harga: 85000 },
-  { id: 'v-002', product_id: 'p-001', nama_produk: 'Kaos Polo Classic', nama_varian: 'Merah - XL', sku: 'KPC-RED-XL', harga: 85000 },
-  { id: 'v-003', product_id: 'p-002', nama_produk: 'Hoodie Premium', nama_varian: 'Hitam - L', sku: 'HP-BLK-L', harga: 235000 },
-  { id: 'v-004', product_id: 'p-003', nama_produk: 'Topi Snapback', nama_varian: 'Navy - One Size', sku: 'TS-NVY-OS', harga: 120000 },
-];
+type VariantsListPayload = {
+  varian: VarianItem[];
+};
 
-interface Varian {
-  id: string;
-  product_id: string;
-  nama_produk: string;
-  nama_varian: string;
-  sku: string;
-  harga: number;
+type VariantPayload = {
+  varian: VarianItem | null;
+};
+
+type ProductsListPayload = {
+  produk: ProdukItem[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
 }
 
 const formatRupiah = (value: number) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value);
 
 export default function VarianPage() {
-  // --- Form State ---
-  const [productId, setProductId] = useState('');
-  const [namaVarian, setNamaVarian] = useState('');
-  const [sku, setSku] = useState('');
-  const [harga, setHarga] = useState('');
-
-  // --- Table State ---
-  const [varianList, setVarianList] = useState<Varian[]>(DUMMY_VARIAN);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [productId, setProductId] = useState("");
+  const [namaVarian, setNamaVarian] = useState("");
+  const [sku, setSku] = useState("");
+  const [harga, setHarga] = useState("");
+  const [varianList, setVarianList] = useState<VarianItem[]>([]);
+  const [produkList, setProdukList] = useState<ProdukItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const productNameById = useMemo(
+    () => new Map(produkList.map((produk) => [produk.id, produk.nama_produk])),
+    [produkList],
+  );
 
   const resetForm = () => {
-    setProductId('');
-    setNamaVarian('');
-    setSku('');
-    setHarga('');
+    setProductId("");
+    setNamaVarian("");
+    setSku("");
+    setHarga("");
     setEditingId(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const namaProdukterpilih = PRODUK_LIST.find((p) => p.id === productId)?.nama_produk ?? '';
-
-    if (editingId) {
-      // UPDATE
-      setVarianList((prev) =>
-        prev.map((v) =>
-          v.id === editingId
-            ? { ...v, product_id: productId, nama_produk: namaProdukterpilih, nama_varian: namaVarian, sku, harga: Number(harga) }
-            : v
-        )
-      );
-    } else {
-      // INSERT
-      const newVarian: Varian = {
-        id: `v-${Date.now()}`,
-        product_id: productId,
-        nama_produk: namaProdukterpilih,
-        nama_varian: namaVarian,
-        sku,
-        harga: Number(harga),
-      };
-      setVarianList((prev) => [newVarian, ...prev]);
+  const fetchVarian = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/core/variants", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<VariantsListPayload>(response);
+      setVarianList(payload.data.varian ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data varian.";
+      alert(message);
+    } finally {
+      setIsLoading(false);
     }
-
-    resetForm();
   };
 
-  const handleEdit = (v: Varian) => {
-    setEditingId(v.id);
-    setProductId(v.product_id);
-    setNamaVarian(v.nama_varian);
-    setSku(v.sku);
-    setHarga(String(v.harga));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const fetchProduk = async () => {
+    try {
+      const response = await fetch("/api/core/products?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<ProductsListPayload>(response);
+      setProdukList(payload.data.produk ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
+      alert(message);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setVarianList((prev) => prev.filter((v) => v.id !== id));
+  useEffect(() => {
+    void Promise.all([fetchVarian(), fetchProduk()]);
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const hargaNumber = Number(harga);
+      if (Number.isNaN(hargaNumber)) {
+        throw new Error("Harga harus berupa angka yang valid.");
+      }
+
+      if (editingId) {
+        const response = await fetch(`/api/core/variants/${editingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_id: productId,
+            nama_varian: namaVarian,
+            sku,
+            harga: hargaNumber,
+          }),
+        });
+        await parseJsonResponse<VariantPayload>(response);
+      } else {
+        const response = await fetch("/api/core/variants", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_id: productId,
+            nama_varian: namaVarian,
+            sku,
+            harga: hargaNumber,
+          }),
+        });
+        await parseJsonResponse<VariantPayload>(response);
+      }
+
+      await fetchVarian();
+      resetForm();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operasi simpan varian gagal.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const filteredVarian = varianList.filter(
-    (v) =>
-      v.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.nama_varian.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.nama_produk.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleEdit = (variant: VarianItem) => {
+    setEditingId(variant.id);
+    setProductId(variant.product_id ?? "");
+    setNamaVarian(variant.nama_varian ?? "");
+    setSku(variant.sku ?? "");
+    setHarga(String(variant.harga ?? ""));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/core/variants/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
+      await fetchVarian();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus varian.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const filteredVarian = useMemo(
+    () =>
+      varianList.filter((variant) => {
+        const productName = productNameById.get(variant.product_id ?? "") ?? "";
+        return (
+          (variant.sku ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (variant.nama_varian ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          productName.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }),
+    [productNameById, searchQuery, varianList],
   );
 
   return (
@@ -153,7 +253,7 @@ export default function VarianPage() {
                 className="w-full appearance-none px-4 py-3 pr-10 bg-slate-200 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-slate-200/20 focus:border-slate-200 text-sm outline-none transition-all"
               >
                 <option value="">Pilih produk induk</option>
-                {PRODUK_LIST.map((product) => (
+                {produkList.map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.nama_produk}
                   </option>
@@ -218,10 +318,11 @@ export default function VarianPage() {
           <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
-              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-xl shadow-md shadow-green-100 transition-all"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-xl shadow-md shadow-green-100 transition-all"
             >
               <Save size={17} />
-              {editingId ? 'Simpan Perubahan' : 'Tambah Varian'}
+              {isSubmitting ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Tambah Varian"}
             </button>
           </div>
 
@@ -265,7 +366,13 @@ export default function VarianPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredVarian.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">
+                    Memuat data...
+                  </td>
+                </tr>
+              ) : filteredVarian.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">
                     Tidak ada data varian yang ditemukan.
@@ -274,22 +381,24 @@ export default function VarianPage() {
               ) : (
                 filteredVarian.map((v) => (
                   <tr key={v.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="px-6 py-4 text-sm font-mono font-semibold text-slate-700">{v.sku}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{v.nama_produk}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-800">{v.nama_varian}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{formatRupiah(v.harga)}</td>
+                    <td className="px-6 py-4 text-sm font-mono font-semibold text-slate-700">{v.sku ?? "-"}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{productNameById.get(v.product_id ?? "") ?? "-"}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-800">{v.nama_varian ?? "-"}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{formatRupiah(v.harga ?? 0)}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => handleEdit(v)}
-                          className="p-2 rounded-lg text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                          disabled={isSubmitting}
+                          className="p-2 rounded-lg text-slate-400 hover:text-orange-500 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           title="Edit Varian"
                         >
                           <Edit size={15} />
                         </button>
                         <button
-                          onClick={() => handleDelete(v.id)}
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          onClick={() => void handleDelete(v.id)}
+                          disabled={isSubmitting}
+                          className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           title="Hapus Varian"
                         >
                           <Trash2 size={15} />
