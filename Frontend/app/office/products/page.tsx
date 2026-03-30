@@ -138,8 +138,8 @@ export default function OfficeProductsPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Katalog Produk &amp; Varian</h1>
-        <p className="text-sm md:text-base text-slate-600">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Katalog Produk &amp; Varian</h1>
+        <p className="text-sm md:text-base text-slate-300">
           Kelola master data produk dan varian SKU yang terdaftar di sistem.
         </p>
       </section>
@@ -171,7 +171,7 @@ export default function OfficeProductsPage() {
 
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] w-full sm:w-auto"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Tambah Produk Baru
@@ -219,7 +219,7 @@ export default function OfficeProductsPage() {
                   <button
                     type="button"
                     onClick={() => handleOpenVarianModal(produk)}
-                    className="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-[#BC934B] hover:text-[#a88444] transition whitespace-nowrap"
+                    className="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-blue-500 hover:text-sky-700 transition whitespace-nowrap"
                   >
                     <Plus className="h-4 w-4" />
                     Tambah Varian

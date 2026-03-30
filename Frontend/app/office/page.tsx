@@ -116,11 +116,6 @@ const quick_links = [
     title: "Katalog Produk & Varian",
     description: "Atur master produk dan varian SKU yang aktif di sistem.",
   },
-  {
-    href: "/office/directory",
-    title: "Direktori Karyawan",
-    description: "Pantau profil karyawan lintas divisi untuk koordinasi operasional.",
-  },
 ];
 
 function formatDate(date: string): string {
@@ -160,8 +155,8 @@ export default function OfficeDashboardPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 md:space-y-6 lg:space-y-8">
       <section className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Dashboard Utama Administrasi Office</h1>
-        <p className="text-sm md:text-base text-slate-600">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Dashboard Utama Administrasi Office</h1>
+        <p className="text-sm md:text-base text-slate-300">
           Command Center tim Administrasi untuk memantau dan menjaga kualitas master data perusahaan.
         </p>
       </section>
@@ -211,8 +206,8 @@ export default function OfficeDashboardPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-base md:text-lg font-bold text-slate-900">Quick Links</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <h2 className="text-base md:text-lg font-bold text-slate-100">Quick Links</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {quick_links.map((item) => (
             <Link
               key={item.href}
@@ -224,7 +219,7 @@ export default function OfficeDashboardPage() {
                   <p className="text-sm md:text-base font-bold text-slate-900">{item.title}</p>
                   <p className="text-xs md:text-sm text-slate-600">{item.description}</p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:text-[#BC934B] group-hover:translate-x-0.5 shrink-0" />
+                <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:text-slate-700 group-hover:translate-x-0.5 shrink-0" />
               </div>
             </Link>
           ))}
@@ -235,7 +230,6 @@ export default function OfficeDashboardPage() {
         <article className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-4 md:px-6 py-4 border-b border-slate-100">
             <h2 className="text-base font-bold text-slate-900">Update Vendor Terbaru</h2>
-            <p className="mt-1 text-xs md:text-sm text-slate-500">Aktivitas dari core.m_vendor</p>
           </div>
 
           <div className="overflow-x-auto w-full">
@@ -285,7 +279,6 @@ export default function OfficeDashboardPage() {
         <article className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-4 md:px-6 py-4 border-b border-slate-100">
             <h2 className="text-base font-bold text-slate-900">Produk &amp; Varian Baru</h2>
-            <p className="mt-1 text-xs md:text-sm text-slate-500">Aktivitas katalog dari core.m_produk dan core.m_varian</p>
           </div>
 
           <div className="overflow-x-auto w-full">

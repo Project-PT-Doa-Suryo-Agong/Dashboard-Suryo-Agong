@@ -29,6 +29,15 @@ export async function POST(request: Request) {
   if (input.amount === undefined || typeof input.amount !== "number") {
     return fail("VALIDATION_ERROR", "amount wajib diisi dan harus angka.", 400);
   }
+  if (
+    input.status !== undefined &&
+    input.status !== null &&
+    input.status !== "pending" &&
+    input.status !== "approved" &&
+    input.status !== "rejected"
+  ) {
+    return fail("VALIDATION_ERROR", "status harus pending, approved, atau rejected.", 400);
+  }
 
   const { data, error } = await createBudgetRequest(auth.ctx.supabase, input);
   if (error) return fail("DB_ERROR", "Gagal mengajukan budget request.", 500, error.message);

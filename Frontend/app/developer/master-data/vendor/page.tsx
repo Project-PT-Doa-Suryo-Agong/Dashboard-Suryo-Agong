@@ -1,71 +1,146 @@
-﻿'use client';
+﻿"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Truck, Save, Search, Edit, Trash2, PlusCircle, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  Truck,
+  Save,
+  Search,
+  Edit,
+  Trash2,
+  PlusCircle,
+  ChevronRight,
+} from "lucide-react";
+import type { MVendor } from "@/types/supabase";
+import type { ApiError, ApiSuccess } from "@/types/api";
 
-interface Vendor {
-  id: string;
-  nama_vendor: string;
-  kontak: string;
-  created_at: string;
+type VendorItem = MVendor;
+
+type VendorsListPayload = {
+  vendor: VendorItem[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type VendorPayload = {
+  vendor: VendorItem | null;
+};
+
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
 }
 
-const DUMMY_VENDORS: Vendor[] = [
-  { id: 'vnd-001', nama_vendor: 'PT. Sinar Abadi Tekstil', kontak: '021-5501234', created_at: '2026-01-10' },
-  { id: 'vnd-002', nama_vendor: 'CV. Maju Bersama', kontak: '0812-3456-7890', created_at: '2026-02-03' },
-  { id: 'vnd-003', nama_vendor: 'UD. Karya Sentosa', kontak: 'karya@sentosa.id', created_at: '2026-03-01' },
-];
-
 export default function VendorPage() {
-  const [namaVendor, setNamaVendor] = useState('');
-  const [kontak, setKontak] = useState('');
-  const [vendorList, setVendorList] = useState<Vendor[]>(DUMMY_VENDORS);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [namaVendor, setNamaVendor] = useState("");
+  const [kontak, setKontak] = useState("");
+  const [vendorList, setVendorList] = useState<VendorItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
-    setNamaVendor('');
-    setKontak('');
+    setNamaVendor("");
+    setKontak("");
     setEditingId(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingId) {
-      setVendorList((prev) =>
-        prev.map((v) =>
-          v.id === editingId ? { ...v, nama_vendor: namaVendor, kontak } : v
-        )
-      );
-    } else {
-      setVendorList((prev) => [
-        {
-          id: `vnd-${Date.now()}`,
-          nama_vendor: namaVendor,
-          kontak,
-          created_at: new Date().toISOString().split('T')[0],
-        },
-        ...prev,
-      ]);
+  const fetchVendor = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/core/vendors?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<VendorsListPayload>(response);
+      setVendorList(payload.data.vendor ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data vendor.";
+      alert(message);
+    } finally {
+      setIsLoading(false);
     }
-    resetForm();
   };
 
-  const handleEdit = (v: Vendor) => {
-    setEditingId(v.id);
-    setNamaVendor(v.nama_vendor);
-    setKontak(v.kontak);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  useEffect(() => {
+    void fetchVendor();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      if (editingId) {
+        const response = await fetch(`/api/core/vendors/${editingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nama_vendor: namaVendor, kontak }),
+        });
+        await parseJsonResponse<VendorPayload>(response);
+      } else {
+        const response = await fetch("/api/core/vendors", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nama_vendor: namaVendor, kontak }),
+        });
+        await parseJsonResponse<VendorPayload>(response);
+      }
+
+      await fetchVendor();
+      resetForm();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operasi simpan vendor gagal.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDelete = (id: string) =>
-    setVendorList((prev) => prev.filter((v) => v.id !== id));
+  const handleEdit = (vendor: VendorItem) => {
+    setEditingId(vendor.id);
+    setNamaVendor(vendor.nama_vendor ?? "");
+    setKontak(vendor.kontak ?? "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
-  const filtered = vendorList.filter(
-    (v) =>
-      v.nama_vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.kontak.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleDelete = async (id: string) => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/core/vendors/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
+      await fetchVendor();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus vendor.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const filtered = useMemo(
+    () =>
+      vendorList.filter(
+        (vendor) =>
+          (vendor.nama_vendor ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (vendor.kontak ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [searchQuery, vendorList],
   );
 
   return (
@@ -140,10 +215,11 @@ export default function VendorPage() {
           <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
-              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-xl shadow-md shadow-green-200 transition-all"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-xl shadow-md shadow-green-200 transition-all"
             >
               <Save size={17} />
-              {editingId ? 'Simpan Perubahan' : 'Save Vendor'}
+              {isSubmitting ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Save Vendor"}
             </button>
           </div>
         </form>
@@ -183,7 +259,13 @@ export default function VendorPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">
+                    Memuat data...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-400">
                     Tidak ada vendor yang ditemukan.
@@ -193,21 +275,23 @@ export default function VendorPage() {
                 filtered.map((v) => (
                   <tr key={v.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-6 py-4 text-xs font-mono text-slate-400">{v.id}</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-slate-800">{v.nama_vendor}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{v.kontak}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{v.created_at}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-slate-800">{v.nama_vendor ?? "-"}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{v.kontak ?? "-"}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500">{v.created_at ? v.created_at.split("T")[0] : "-"}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => handleEdit(v)}
-                          className="p-2 rounded-lg text-slate-400 hover:text-[#BC934B] hover:bg-yellow-50 transition-colors"
+                          disabled={isSubmitting}
+                          className="p-2 rounded-lg text-slate-400 hover:text-[#BC934B] hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           title="Edit Vendor"
                         >
                           <Edit size={15} />
                         </button>
                         <button
-                          onClick={() => handleDelete(v.id)}
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          onClick={() => void handleDelete(v.id)}
+                          disabled={isSubmitting}
+                          className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           title="Hapus Vendor"
                         >
                           <Trash2 size={15} />

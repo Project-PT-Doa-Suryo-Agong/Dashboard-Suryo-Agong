@@ -11,6 +11,29 @@ export type Json =
 type Tables<S extends keyof Database, T extends keyof Database[S]["Tables"]> =
   Database[S]["Tables"][T];
 
+export type CoreUserRole =
+  | "Developer"
+  | "CEO"
+  | "Finance"
+  | "HR"
+  | "Produksi"
+  | "Logistik"
+  | "Creative"
+  | "Office";
+
+export type HrEmployeeStatus = "aktif" | "nonaktif";
+export type HrAttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";
+
+export type FinanceCashflowType = "income" | "expense";
+export type FinanceReimburseStatus = "pending" | "approved" | "rejected";
+
+export type ProductionStatus = "draft" | "ongoing" | "done";
+export type ProductionQcResult = "pass" | "reject";
+
+export type LogisticsPackingStatus = "pending" | "packed" | "shipped";
+
+export type ManagementBudgetStatus = "pending" | "approved" | "rejected";
+
 // ─── Database ─────────────────────────────────────────────────────────────────
 
 export interface Database {
@@ -21,7 +44,7 @@ export interface Database {
         Row: {
           id: string;
           nama: string;
-          role: string;
+          role: CoreUserRole;
           phone: string | null;
           created_at: string | null;
           updated_at: string | null;
@@ -29,7 +52,7 @@ export interface Database {
         Insert: {
           id: string;
           nama: string;
-          role: string;
+          role: CoreUserRole;
           phone?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
@@ -37,7 +60,7 @@ export interface Database {
         Update: {
           id?: string;
           nama?: string;
-          role?: string;
+          role?: CoreUserRole;
           phone?: string | null;
           updated_at?: string | null;
         };
@@ -121,7 +144,9 @@ export interface Database {
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
-    Enums: { [_ in never]: never };
+    Enums: {
+      user_role: CoreUserRole;
+    };
     CompositeTypes: { [_ in never]: never };
   };
 
@@ -135,7 +160,7 @@ export interface Database {
           nama: string;
           posisi: string | null;
           divisi: string | null;
-          status: string | null;
+          status: HrEmployeeStatus | null;
           gaji_pokok: number | null;
           created_at: string | null;
           updated_at: string | null;
@@ -146,7 +171,7 @@ export interface Database {
           nama: string;
           posisi?: string | null;
           divisi?: string | null;
-          status?: string | null;
+          status?: HrEmployeeStatus | null;
           gaji_pokok?: number | null;
           created_at?: string | null;
           updated_at?: string | null;
@@ -157,7 +182,7 @@ export interface Database {
           nama?: string;
           posisi?: string | null;
           divisi?: string | null;
-          status?: string | null;
+          status?: HrEmployeeStatus | null;
           gaji_pokok?: number | null;
           updated_at?: string | null;
         };
@@ -168,21 +193,21 @@ export interface Database {
           id: string;
           employee_id: string | null;
           tanggal: string | null;
-          status: string | null;
+          status: HrAttendanceStatus | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
           employee_id?: string | null;
           tanggal?: string | null;
-          status?: string | null;
+          status?: HrAttendanceStatus | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
           employee_id?: string | null;
           tanggal?: string | null;
-          status?: string | null;
+          status?: HrAttendanceStatus | null;
         };
         Relationships: [];
       };
@@ -212,7 +237,10 @@ export interface Database {
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
-    Enums: { [_ in never]: never };
+    Enums: {
+      attendance_status: HrAttendanceStatus;
+      employee_status: HrEmployeeStatus;
+    };
     CompositeTypes: { [_ in never]: never };
   };
 
@@ -222,7 +250,7 @@ export interface Database {
       t_cashflow: {
         Row: {
           id: string;
-          tipe: string | null;
+          tipe: FinanceCashflowType | null;
           amount: number | null;
           keterangan: string | null;
           created_at: string | null;
@@ -230,7 +258,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          tipe?: string | null;
+          tipe?: FinanceCashflowType | null;
           amount?: number | null;
           keterangan?: string | null;
           created_at?: string | null;
@@ -238,7 +266,7 @@ export interface Database {
         };
         Update: {
           id?: string;
-          tipe?: string | null;
+          tipe?: FinanceCashflowType | null;
           amount?: number | null;
           keterangan?: string | null;
           updated_at?: string | null;
@@ -273,28 +301,31 @@ export interface Database {
           id: string;
           employee_id: string | null;
           amount: number | null;
-          status: string | null;
+          status: FinanceReimburseStatus | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
           employee_id?: string | null;
           amount?: number | null;
-          status?: string | null;
+          status?: FinanceReimburseStatus | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
           employee_id?: string | null;
           amount?: number | null;
-          status?: string | null;
+          status?: FinanceReimburseStatus | null;
         };
         Relationships: [];
       };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
-    Enums: { [_ in never]: never };
+    Enums: {
+      cashflow_type: FinanceCashflowType;
+      reimburse_status: FinanceReimburseStatus;
+    };
     CompositeTypes: { [_ in never]: never };
   };
 
@@ -307,7 +338,7 @@ export interface Database {
           vendor_id: string | null;
           product_id: string | null;
           quantity: number | null;
-          status: string | null;
+          status: ProductionStatus | null;
           created_at: string | null;
         };
         Insert: {
@@ -315,7 +346,7 @@ export interface Database {
           vendor_id?: string | null;
           product_id?: string | null;
           quantity?: number | null;
-          status?: string | null;
+          status?: ProductionStatus | null;
           created_at?: string | null;
         };
         Update: {
@@ -323,7 +354,7 @@ export interface Database {
           vendor_id?: string | null;
           product_id?: string | null;
           quantity?: number | null;
-          status?: string | null;
+          status?: ProductionStatus | null;
         };
         Relationships: [];
       };
@@ -331,19 +362,19 @@ export interface Database {
         Row: {
           id: string;
           produksi_order_id: string | null;
-          hasil: string | null;
+          hasil: ProductionQcResult | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
           produksi_order_id?: string | null;
-          hasil?: string | null;
+          hasil?: ProductionQcResult | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
           produksi_order_id?: string | null;
-          hasil?: string | null;
+          hasil?: ProductionQcResult | null;
         };
         Relationships: [];
       };
@@ -351,26 +382,29 @@ export interface Database {
         Row: {
           id: string;
           produksi_order_id: string | null;
-          hasil: string | null;
+          hasil: ProductionQcResult | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
           produksi_order_id?: string | null;
-          hasil?: string | null;
+          hasil?: ProductionQcResult | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
           produksi_order_id?: string | null;
-          hasil?: string | null;
+          hasil?: ProductionQcResult | null;
         };
         Relationships: [];
       };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
-    Enums: { [_ in never]: never };
+    Enums: {
+      production_status: ProductionStatus;
+      qc_result: ProductionQcResult;
+    };
     CompositeTypes: { [_ in never]: never };
   };
 
@@ -381,19 +415,19 @@ export interface Database {
         Row: {
           id: string;
           order_id: string | null;
-          status: string | null;
+          status: LogisticsPackingStatus | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
           order_id?: string | null;
-          status?: string | null;
+          status?: LogisticsPackingStatus | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
           order_id?: string | null;
-          status?: string | null;
+          status?: LogisticsPackingStatus | null;
         };
         Relationships: [];
       };
@@ -440,7 +474,9 @@ export interface Database {
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
-    Enums: { [_ in never]: never };
+    Enums: {
+      packing_status: LogisticsPackingStatus;
+    };
     CompositeTypes: { [_ in never]: never };
   };
 
@@ -548,21 +584,21 @@ export interface Database {
           id: string;
           divisi: string;
           amount: number;
-          status: string | null;
+          status: ManagementBudgetStatus | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
           divisi: string;
           amount: number;
-          status?: string | null;
+          status?: ManagementBudgetStatus | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
           divisi?: string;
           amount?: number;
-          status?: string | null;
+          status?: ManagementBudgetStatus | null;
         };
         Relationships: [];
       };
@@ -595,7 +631,9 @@ export interface Database {
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
-    Enums: { [_ in never]: never };
+    Enums: {
+      budget_status: ManagementBudgetStatus;
+    };
     CompositeTypes: { [_ in never]: never };
   };
 }

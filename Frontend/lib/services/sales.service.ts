@@ -69,6 +69,14 @@ export async function updateContentPlanner(client: DbClient, id: string, input: 
   return { data: data as TContentPlanner | null, error };
 }
 
+export async function deleteContentPlanner(client: DbClient, id: string) {
+  const { error, count } = await db(client)
+    .from("t_content_planner")
+    .delete({ count: "exact" })
+    .eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}
+
 // â”€â”€â”€ t_live_performance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function listLivePerformance(client: DbClient, page = 1, limit = 50) {
@@ -94,6 +102,14 @@ export async function updateLivePerformance(client: DbClient, id: string, input:
     .select("*")
     .maybeSingle();
   return { data: data as TLivePerformance | null, error };
+}
+
+export async function deleteLivePerformance(client: DbClient, id: string) {
+  const { error, count } = await db(client)
+    .from("t_live_performance")
+    .delete({ count: "exact" })
+    .eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
 }
 
 // â”€â”€â”€ t_sales_order â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -126,5 +142,13 @@ export async function updateSalesOrder(client: DbClient, id: string, input: Reco
     .select("*")
     .maybeSingle();
   return { data: data as TSalesOrder | null, error };
+}
+
+export async function deleteSalesOrder(client: DbClient, id: string) {
+  const { error, count } = await db(client)
+    .from("t_sales_order")
+    .delete({ count: "exact" })
+    .eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
 }
 

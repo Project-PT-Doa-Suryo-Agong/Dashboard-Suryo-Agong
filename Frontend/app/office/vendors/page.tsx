@@ -176,8 +176,8 @@ export default function OfficeVendorsPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Manajemen Mitra &amp; Vendor</h1>
-        <p className="text-sm md:text-base text-slate-600">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Manajemen Mitra &amp; Vendor</h1>
+        <p className="text-sm md:text-base text-slate-300">
           Kelola data kontak pemasok, supplier, dan mitra operasional perusahaan.
         </p>
       </section>
@@ -197,7 +197,7 @@ export default function OfficeVendorsPage() {
         <button
           type="button"
           onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] w-full sm:w-auto"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Tambah Vendor
@@ -260,7 +260,7 @@ export default function OfficeVendorsPage() {
                         <button
                           type="button"
                           onClick={() => openEditModal(vendor)}
-                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#BC934B] transition hover:text-[#a88444] whitespace-nowrap"
+                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-500 transition hover:text-green-700 whitespace-nowrap"
                         >
                           <Edit2 className="h-4 w-4" />
                           Edit

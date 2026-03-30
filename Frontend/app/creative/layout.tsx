@@ -6,6 +6,7 @@ import Topbar from '@/components/topbar';
 
 const navItems = [
   { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
+  { label: 'Affiliators', href: '/creative/affiliates', icon: 'Users' },
   { label: 'Content Planner', href: '/creative/content', icon: 'CalendarDays' },
   { label: 'Live Performance', href: '/creative/live-perf', icon: 'TrendingUp' },
   { label: 'Sales Order', href: '/creative/sales-order', icon: 'ScrollText' },

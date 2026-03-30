@@ -32,6 +32,11 @@ export async function updateManifest(client: DbClient, id: string, input: Record
   return { data: data as TLogistikManifest | null, error };
 }
 
+export async function deleteManifest(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_logistik_manifest").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}
+
 // â”€â”€â”€ t_packing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function listPacking(client: DbClient, page = 1, limit = 100) {
@@ -59,6 +64,11 @@ export async function updatePacking(client: DbClient, id: string, input: Record<
   return { data: data as TPacking | null, error };
 }
 
+export async function deletePacking(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_packing").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}
+
 // â”€â”€â”€ t_return_order â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function listReturnOrder(client: DbClient, page = 1, limit = 50) {
@@ -84,5 +94,10 @@ export async function updateReturnOrder(client: DbClient, id: string, input: Rec
     .select("*")
     .maybeSingle();
   return { data: data as TReturnOrder | null, error };
+}
+
+export async function deleteReturnOrder(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_return_order").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
 }
 

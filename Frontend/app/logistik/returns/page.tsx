@@ -1,78 +1,37 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { RefreshCcw, Search } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type { MProduk, TProduksiOrder, TReturnOrder } from "@/types/supabase";
 
-type ReturnStatus = "pending" | "inspected" | "approved" | "rejected";
-type ReturnFilterStatus = "all" | ReturnStatus;
-
-type ReturnItem = {
-  id: string;
-  order_id: string;
-  customer_name: string;
-  product_name: string;
-  reason: string;
-  status: ReturnStatus;
-  created_at: string;
+type ReturnsListPayload = {
+  returns: TReturnOrder[];
+  meta: { page: number; limit: number; total: number };
 };
 
-const DUMMY_RETURN_ITEMS: ReturnItem[] = [
-  {
-    id: "41d1d9cb-3f89-4c5f-a0f1-8ab31a780011",
-    order_id: "ORD-20260314-101",
-    customer_name: "Aulia Pramesti",
-    product_name: "Jaket Windproof",
-    reason: "cacat jahitan di bagian lengan",
-    status: "pending",
-    created_at: "2026-03-14T08:20:00+07:00",
-  },
-  {
-    id: "e42a1e84-b24e-4f98-a3b1-9dd9f8db0022",
-    order_id: "ORD-20260314-102",
-    customer_name: "Rizky Permana",
-    product_name: "Sepatu Safety",
-    reason: "salah kirim ukuran",
-    status: "inspected",
-    created_at: "2026-03-14T08:55:00+07:00",
-  },
-  {
-    id: "2a3789d2-9fc3-4fc7-9a4f-e96e59fe0033",
-    order_id: "ORD-20260314-103",
-    customer_name: "Dina Maharani",
-    product_name: "Helm Pro Guard",
-    reason: "warna tidak sesuai pesanan",
-    status: "approved",
-    created_at: "2026-03-14T09:10:00+07:00",
-  },
-  {
-    id: "b57de0ab-6ee9-45d6-8db7-f5437a220044",
-    order_id: "ORD-20260314-104",
-    customer_name: "Farhan Aji",
-    product_name: "Tas Utility",
-    reason: "barang digunakan dan tidak sesuai kebijakan retur",
-    status: "rejected",
-    created_at: "2026-03-14T09:45:00+07:00",
-  },
-  {
-    id: "5f4a0568-2ecf-4a6e-a9ab-6fdad6d20055",
-    order_id: "ORD-20260314-105",
-    customer_name: "Wulan Sari",
-    product_name: "Sarung Tangan Grip",
-    reason: "produk rusak saat diterima",
-    status: "pending",
-    created_at: "2026-03-14T10:05:00+07:00",
-  },
-  {
-    id: "18a83e6d-777f-4558-b9f7-34331e7d0066",
-    order_id: "ORD-20260314-106",
-    customer_name: "Yogi Prakoso",
-    product_name: "Kacamata Safety",
-    reason: "lensa tergores",
-    status: "inspected",
-    created_at: "2026-03-14T10:30:00+07:00",
-  },
-];
+type ReturnPayload = { return: TReturnOrder | null };
+
+type OrdersListPayload = {
+  orders: TProduksiOrder[];
+  meta: { page: number; limit: number; total: number };
+};
+
+type ProductsListPayload = {
+  produk: MProduk[];
+  meta: { page: number; limit: number; total: number };
+};
+
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "2-digit",
@@ -80,236 +39,331 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
 });
 
-function statusBadgeClass(status: ReturnStatus): string {
-  if (status === "pending") return "bg-amber-100 text-amber-700";
-  if (status === "inspected") return "bg-blue-100 text-blue-700";
-  if (status === "approved") return "bg-emerald-100 text-emerald-700";
-  return "bg-rose-100 text-rose-700";
-}
-
-function statusLabel(status: ReturnStatus): string {
-  if (status === "pending") return "Menunggu Inspeksi";
-  if (status === "inspected") return "Sedang Diinspeksi";
-  if (status === "approved") return "Disetujui";
-  return "Ditolak";
-}
-
 export default function ReturnsPage() {
-  const [items, setItems] = useState<ReturnItem[]>(DUMMY_RETURN_ITEMS);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<ReturnFilterStatus>("all");
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
-  const [selectedReturn, setSelectedReturn] = useState<ReturnItem | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<ReturnStatus>("pending");
+  const [items, setItems] = useState<TReturnOrder[]>([]);
+  const [orders, setOrders] = useState<TProduksiOrder[]>([]);
+  const [products, setProducts] = useState<MProduk[]>([]);
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editData, setEditData] = useState<TReturnOrder | null>(null);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState<{ order_id: string; alasan: string }>({
+    order_id: "",
+    alasan: "",
+  });
+
+  const fetchReturns = async () => {
+    try {
+      const response = await fetch("/api/logistics/returns?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<ReturnsListPayload>(response);
+      setItems(payload.data.returns ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data retur.";
+      alert(message);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch("/api/production/orders?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<OrdersListPayload>(response);
+      const list = payload.data.orders ?? [];
+      setOrders(list);
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || list[0]?.id || "" }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data pesanan.";
+      alert(message);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("/api/core/products?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<ProductsListPayload>(response);
+      setProducts(payload.data.produk ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
+      alert(message);
+    }
+  };
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([fetchReturns(), fetchOrders(), fetchProducts()]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadInitialData();
+  }, []);
+
+  const orderById = useMemo(
+    () => Object.fromEntries(orders.map((order) => [order.id, order])) as Record<string, TProduksiOrder>,
+    [orders],
+  );
+
+  const productById = useMemo(
+    () => Object.fromEntries(products.map((product) => [product.id, product.nama_produk])) as Record<string, string>,
+    [products],
+  );
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
     return items.filter((item) => {
-      const matchesSearch =
-        item.customer_name.toLowerCase().includes(keyword) ||
-        item.order_id.toLowerCase().includes(keyword);
-      const matchesStatus = filterStatus === "all" ? true : item.status === filterStatus;
-      return matchesSearch && matchesStatus;
+      const order = orderById[item.order_id ?? ""];
+      const productName = productById[order?.product_id ?? ""] ?? "";
+      return (
+        (order?.id ?? "").toLowerCase().includes(keyword) ||
+        productName.toLowerCase().includes(keyword) ||
+        (item.alasan ?? "").toLowerCase().includes(keyword)
+      );
     });
-  }, [items, searchTerm, filterStatus]);
+  }, [items, searchTerm, orderById, productById]);
 
-  const openUpdateModal = (item: ReturnItem) => {
-    setSelectedReturn(item);
-    setSelectedStatus(item.status);
-    setIsUpdateModalOpen(true);
+  const resetForm = () => {
+    setFormData({ order_id: orders[0]?.id ?? "", alasan: "" });
+    setEditData(null);
   };
 
-  const closeUpdateModal = () => {
-    setIsUpdateModalOpen(false);
-    setSelectedReturn(null);
-    setSelectedStatus("pending");
+  const openFormModal = (item?: TReturnOrder) => {
+    if (item) {
+      setEditData(item);
+      setFormData({ order_id: item.order_id ?? "", alasan: item.alasan ?? "" });
+    } else {
+      resetForm();
+    }
+    setIsFormModalOpen(true);
   };
 
-  const handleSaveDecision = () => {
-    if (!selectedReturn) return;
+  const closeFormModal = () => {
+    setIsFormModalOpen(false);
+    resetForm();
+  };
 
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === selectedReturn.id ? { ...item, status: selectedStatus } : item,
-      ),
-    );
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+    if (!formData.order_id) {
+      alert("Order wajib dipilih.");
+      return;
+    }
 
-    closeUpdateModal();
+    setIsSubmitting(true);
+    try {
+      const payload = { order_id: formData.order_id, alasan: formData.alasan.trim() || null };
+
+      if (editData) {
+        const response = await fetch(`/api/logistics/returns/${editData.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<ReturnPayload>(response);
+      } else {
+        const response = await fetch("/api/logistics/returns", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<ReturnPayload>(response);
+      }
+
+      await fetchReturns();
+      closeFormModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operasi simpan retur gagal.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openDeleteModal = (id: string) => {
+    setDeleteId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteId(null);
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/logistics/returns/${deleteId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
+      await fetchReturns();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus data retur.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+      closeDeleteModal();
+    }
   };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Manajemen Retur Barang</h1>
-        <p className="text-sm md:text-base text-slate-200">
-          Kelola pengajuan pengembalian barang dari pelanggan dan proses inspeksi.
-        </p>
+        <p className="text-sm md:text-base text-slate-200">Kelola pengajuan pengembalian barang berbasis referensi order produksi.</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative w-full sm:max-w-md">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-          />
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Cari nama pelanggan / no pesanan..."
+            placeholder="Cari order / produk / alasan..."
             className="w-full rounded-xl border border-slate-300 bg-slate-200 py-2.5 pl-10 pr-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
           />
         </div>
 
-        <select
-          value={filterStatus}
-          onChange={(event) => setFilterStatus(event.target.value as ReturnFilterStatus)}
-          className="w-full sm:w-56 rounded-xl border border-slate-300 bg-slate-200 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
+        <button
+          type="button"
+          onClick={() => openFormModal()}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
         >
-          <option value="all">Semua Status</option>
-          <option value="pending">pending</option>
-          <option value="inspected">inspected</option>
-          <option value="approved">approved</option>
-          <option value="rejected">rejected</option>
-        </select>
+          <Plus size={17} />
+          Tambah Retur
+        </button>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
         <table className="min-w-max w-full border-separate border-spacing-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                ID Retur
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                No. Pesanan
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Info Barang & Pelanggan
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Alasan
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Status
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Aksi
-              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">ID Retur</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Order</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Produk</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Alasan</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            {filteredItems.length > 0 ? (
-              filteredItems.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">
-                    {item.id.slice(0, 8).toUpperCase()}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">
-                    {item.order_id}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="space-y-0.5 min-w-[220px]">
-                      <p className="text-sm font-semibold text-slate-900">{item.product_name}</p>
-                      <p className="text-xs text-slate-600">{item.customer_name}</p>
-                      <p className="text-xs text-slate-500">
-                        Diajukan: {dateFormatter.format(new Date(item.created_at))}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-700 min-w-[220px]">
-                    {item.reason}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(
-                        item.status,
-                      )}`}
-                    >
-                      {statusLabel(item.status)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      type="button"
-                      onClick={() => openUpdateModal(item)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-yellow-400 bg-yellow-400/70 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-yellow-500"
-                    >
-                      <RefreshCcw size={15} />
-                      Proses Retur
-                    </button>
-                  </td>
-                </tr>
-              ))
+            {isLoading ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
+            ) : filteredItems.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
             ) : (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
-                  Data retur tidak ditemukan.
-                </td>
-              </tr>
+              filteredItems.map((item) => {
+                const order = orderById[item.order_id ?? ""];
+                const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
+                return (
+                  <tr key={item.id} className="border-t border-slate-100">
+                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{item.id.slice(0, 8).toUpperCase()}</td>
+                    <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{order?.id ?? "Order tidak ditemukan"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{productName}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{item.alasan ?? "-"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openFormModal(item)}
+                          disabled={isSubmitting}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-yellow-400 bg-yellow-400/70 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-yellow-500 disabled:opacity-50"
+                        >
+                          <RefreshCcw size={15} />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openDeleteModal(item.id)}
+                          disabled={isSubmitting}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border bg-red-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                        >
+                          <Trash2 size={15} />
+                          Hapus
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      <Modal
-        isOpen={isUpdateModalOpen}
-        onClose={closeUpdateModal}
-        title="Proses Retur Barang"
-        maxWidth="max-w-md"
-      >
-        <div className="space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Detail Retur
-            </p>
-            <p className="text-sm font-semibold text-slate-900">
-              {selectedReturn?.product_name ?? "-"}
-            </p>
-            <p className="text-xs text-slate-600">
-              Pelanggan: {selectedReturn?.customer_name ?? "-"}
-            </p>
-            <p className="text-xs text-slate-600">
-              No. Pesanan: {selectedReturn?.order_id ?? "-"}
-            </p>
-            <p className="text-xs text-slate-600">
-              Alasan: {selectedReturn?.reason ?? "-"}
-            </p>
-          </div>
-
+      <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title="Form Retur" maxWidth="max-w-md">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">Ubah Status Retur</span>
+            <span className="text-sm font-medium text-slate-700">Order</span>
             <select
-              value={selectedStatus}
-              onChange={(event) => setSelectedStatus(event.target.value as ReturnStatus)}
+              required
+              value={formData.order_id}
+              onChange={(event) => setFormData((prev) => ({ ...prev, order_id: event.target.value }))}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
-              <option value="pending">pending</option>
-              <option value="inspected">inspected</option>
-              <option value="approved">approved</option>
-              <option value="rejected">rejected</option>
+              <option value="" disabled>Pilih order</option>
+              {orders.map((order) => {
+                const productName = productById[order.product_id ?? ""] ?? "Produk";
+                return <option key={order.id} value={order.id}>{order.id} - {productName}</option>;
+              })}
             </select>
           </label>
 
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">Alasan Retur</span>
+            <textarea
+              rows={4}
+              value={formData.alasan}
+              onChange={(event) => setFormData((prev) => ({ ...prev, alasan: event.target.value }))}
+              className="w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
+            />
+          </label>
+
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={closeUpdateModal}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveDecision}
-              className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700"
-            >
-              Simpan Keputusan
-            </button>
+            <button type="button" onClick={closeFormModal} disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50">Batal</button>
+            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
           </div>
-        </div>
+        </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDelete}
+        title="Hapus Data Retur"
+        description="Apakah Anda yakin ingin menghapus data retur ini?"
+        confirmText={isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+        cancelText="Batal"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -1,4 +1,23 @@
-import type { UpdateProfileByIdInput } from "@/types/profile";
+import type {
+  CreateProfileInput,
+  UpdateProfileByIdInput,
+} from "@/types/profile";
+import type { CoreUserRole } from "@/types/supabase";
+
+const USER_ROLES: CoreUserRole[] = [
+  "Developer",
+  "CEO",
+  "Finance",
+  "HR",
+  "Produksi",
+  "Logistik",
+  "Creative",
+  "Office",
+];
+
+function isCoreUserRole(value: string): value is CoreUserRole {
+  return USER_ROLES.includes(value as CoreUserRole);
+}
 
 function validateOptionalString(
   key: string,
@@ -24,7 +43,7 @@ function validateOptionalString(
 }
 
 export function parseCreateProfileInput(payload: unknown):
-  | { ok: true; data: { email: string; password: string; nama: string; role: string; phone: string | null } }
+  | { ok: true; data: CreateProfileInput }
   | { ok: false; message: string } {
   if (!payload || typeof payload !== "object") {
     return { ok: false, message: "Body request harus berupa object JSON." };
@@ -48,6 +67,11 @@ export function parseCreateProfileInput(payload: unknown):
     return { ok: false, message: "role wajib diisi." };
   }
 
+  const role = body.role.trim();
+  if (!isCoreUserRole(role)) {
+    return { ok: false, message: "role tidak valid." };
+  }
+
   const phone = validateOptionalString("phone", body.phone, 50);
   if (!phone.ok) return phone;
 
@@ -57,7 +81,7 @@ export function parseCreateProfileInput(payload: unknown):
       email: body.email.trim(),
       password: body.password,
       nama: body.nama.trim(),
-      role: body.role.trim(),
+      role,
       phone: phone.value ?? null,
     },
   };
@@ -79,7 +103,12 @@ export function parseUpdateProfileByIdInput(payload: unknown):
 
   const role = validateOptionalString("role", body.role, 80, false);
   if (!role.ok) return role;
-  if (role.value !== undefined && role.value !== null) parsed.role = role.value;
+  if (role.value !== undefined && role.value !== null) {
+    if (!isCoreUserRole(role.value)) {
+      return { ok: false, message: "role tidak valid." };
+    }
+    parsed.role = role.value;
+  }
 
   const phone = validateOptionalString("phone", body.phone, 50);
   if (!phone.ok) return phone;

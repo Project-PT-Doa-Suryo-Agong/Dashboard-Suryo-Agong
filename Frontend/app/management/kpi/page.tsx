@@ -1,75 +1,47 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  Activity,
-  AlertTriangle,
-  Download,
-  Search,
-  Trophy,
-} from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Activity, Edit, PlusCircle, Trash2, Trophy } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Modal from "@/components/ui/Modal";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type { TKPIWeekly } from "@/types/supabase";
 
-type KpiWeeklyItem = {
-  id: string;
-  minggu: string;
-  divisi: string;
-  target: number;
-  realisasi: number;
-  score: number;
+type KpiListPayload = {
+  kpi: TKPIWeekly[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 };
 
-type WeekFilter = "all" | "Week 1 - Mar 2026" | "Week 2 - Mar 2026";
+type KpiPayload = {
+  kpi: TKPIWeekly | null;
+};
 
-const DUMMY_KPI_WEEKLY_DATA: KpiWeeklyItem[] = [
-  {
-    id: "KPI-2603-001",
-    minggu: "Week 1 - Mar 2026",
-    divisi: "Logistik",
-    target: 100,
-    realisasi: 52,
-    score: 52,
-  },
-  {
-    id: "KPI-2603-002",
-    minggu: "Week 1 - Mar 2026",
-    divisi: "HR",
-    target: 100,
-    realisasi: 68,
-    score: 68,
-  },
-  {
-    id: "KPI-2603-003",
-    minggu: "Week 1 - Mar 2026",
-    divisi: "Finance",
-    target: 100,
-    realisasi: 74,
-    score: 74,
-  },
-  {
-    id: "KPI-2603-004",
-    minggu: "Week 2 - Mar 2026",
-    divisi: "Produksi",
-    target: 100,
-    realisasi: 82,
-    score: 82,
-  },
-  {
-    id: "KPI-2603-005",
-    minggu: "Week 2 - Mar 2026",
-    divisi: "Management",
-    target: 100,
-    realisasi: 91,
-    score: 91,
-  },
-  {
-    id: "KPI-2603-006",
-    minggu: "Week 2 - Mar 2026",
-    divisi: "Creative",
-    target: 100,
-    realisasi: 98,
-    score: 98,
-  },
-];
+type FormState = {
+  minggu: string;
+  divisi: string;
+  target: string;
+  realisasi: string;
+};
+
+const initialFormState: FormState = {
+  minggu: "",
+  divisi: "",
+  target: "",
+  realisasi: "",
+};
+
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
 
 function statusClass(score: number): string {
   if (score < 60) return "bg-rose-100 text-rose-700";
@@ -83,58 +55,188 @@ function statusLabel(score: number): string {
   return "Baik";
 }
 
+function getScore(item: TKPIWeekly): number {
+  if (!item.target) return 0;
+  return Math.round((item.realisasi / item.target) * 100);
+}
+
 export default function ManagementKpiPage() {
-  const [items] = useState<KpiWeeklyItem[]>(DUMMY_KPI_WEEKLY_DATA);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filterWeek, setFilterWeek] = useState<WeekFilter>("all");
+  const [items, setItems] = useState<TKPIWeekly[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState<FormState>(initialFormState);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editData, setEditData] = useState<TKPIWeekly | null>(null);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const fetchKpi = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/management/kpi?page=1&limit=500", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<KpiListPayload>(response);
+      setItems(payload.data.kpi ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data KPI.";
+      alert(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchKpi();
+  }, []);
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-
-    return items.filter((item) => {
-      const matchDivision = item.divisi.toLowerCase().includes(keyword);
-      const matchWeek = filterWeek === "all" ? true : item.minggu === filterWeek;
-      return matchDivision && matchWeek;
-    });
-  }, [items, searchTerm, filterWeek]);
+    if (!keyword) return items;
+    return items.filter((item) => (item.divisi ?? "").toLowerCase().includes(keyword));
+  }, [items, searchTerm]);
 
   const averagePerformance = useMemo(() => {
     if (filteredItems.length === 0) return 0;
-    const totalScore = filteredItems.reduce((sum, item) => sum + item.score, 0);
+    const totalScore = filteredItems.reduce((sum, item) => sum + getScore(item), 0);
     return Math.round(totalScore / filteredItems.length);
   }, [filteredItems]);
 
   const bestDivision = useMemo(() => {
     if (filteredItems.length === 0) return null;
-    return [...filteredItems].sort((a, b) => b.score - a.score)[0];
+    return [...filteredItems].sort((a, b) => getScore(b) - getScore(a))[0];
   }, [filteredItems]);
 
   const needAttentionCount = useMemo(
-    () => filteredItems.filter((item) => item.score < 70).length,
+    () => filteredItems.filter((item) => getScore(item) < 70).length,
     [filteredItems],
   );
+
+  const resetForm = () => {
+    setFormData(initialFormState);
+    setEditData(null);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setIsFormModalOpen(true);
+  };
+
+  const openEditModal = (item: TKPIWeekly) => {
+    setEditData(item);
+    setFormData({
+      minggu: item.minggu,
+      divisi: item.divisi ?? "",
+      target: String(item.target),
+      realisasi: String(item.realisasi),
+    });
+    setIsFormModalOpen(true);
+  };
+
+  const closeFormModal = () => {
+    setIsFormModalOpen(false);
+    resetForm();
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const parsedTarget = Number(formData.target);
+    const parsedRealisasi = Number(formData.realisasi);
+
+    if (!formData.minggu.trim() || !formData.divisi.trim()) {
+      alert("Minggu dan divisi wajib diisi.");
+      return;
+    }
+    if (Number.isNaN(parsedTarget) || Number.isNaN(parsedRealisasi)) {
+      alert("Target dan realisasi harus berupa angka.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        minggu: formData.minggu.trim(),
+        divisi: formData.divisi.trim(),
+        target: parsedTarget,
+        realisasi: parsedRealisasi,
+      };
+
+      if (editData) {
+        const response = await fetch(`/api/management/kpi/${editData.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<KpiPayload>(response);
+      } else {
+        const response = await fetch("/api/management/kpi", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<KpiPayload>(response);
+      }
+
+      await fetchKpi();
+      closeFormModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menyimpan KPI.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openDeleteModal = (id: string) => {
+    setDeleteId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteId(null);
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteId || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/management/kpi/${deleteId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
+      await fetchKpi();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus KPI.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+      closeDeleteModal();
+    }
+  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">
-          Key Performance Indicator (KPI)
-        </h1>
-        <p className="text-sm md:text-base text-slate-200">
-          Pantau target dan realisasi kinerja mingguan setiap divisi.
-        </p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Key Performance Indicator (KPI)</h1>
+        <p className="text-sm md:text-base text-slate-200">Pantau target dan realisasi kinerja mingguan setiap divisi.</p>
       </section>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         <article className="rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Rata-Rata Performa
-              </p>
-              <p className="text-2xl md:text-3xl font-bold text-slate-900">
-                {averagePerformance}%
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rata-Rata Performa</p>
+              <p className="text-2xl md:text-3xl font-bold text-slate-900">{averagePerformance}%</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
               <Activity className="h-5 w-5" />
@@ -145,11 +247,9 @@ export default function ManagementKpiPage() {
         <article className="rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Divisi Terbaik
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Divisi Terbaik</p>
               <p className="text-lg md:text-2xl font-bold text-[#BC934B] break-words">
-                {bestDivision ? `${bestDivision.divisi} (${bestDivision.score}%)` : "-"}
+                {bestDivision ? `${bestDivision.divisi ?? "-"} (${getScore(bestDivision)}%)` : "-"}
               </p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-[#BC934B]">
@@ -161,54 +261,33 @@ export default function ManagementKpiPage() {
         <article className="rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm sm:col-span-2 xl:col-span-1">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Perlu Perhatian
-              </p>
-              <p className="text-2xl md:text-3xl font-bold text-rose-600">
-                {needAttentionCount}
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Perlu Perhatian</p>
+              <p className="text-2xl md:text-3xl font-bold text-rose-600">{needAttentionCount}</p>
               <p className="text-xs md:text-sm text-rose-500">Score di bawah target (&lt; 70%)</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
-              <AlertTriangle className="h-5 w-5" />
+              <Activity className="h-5 w-5" />
             </span>
           </div>
         </article>
       </section>
 
-      <section className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-        <div className="flex flex-col sm:flex-row gap-3 w-full lg:max-w-2xl">
-          <div className="relative w-full sm:flex-1">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Cari nama divisi..."
-              className="w-full rounded-xl border border-slate-300 bg-slate-200 py-2.5 pl-10 pr-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
-            />
-          </div>
-
-          <select
-            value={filterWeek}
-            onChange={(event) => setFilterWeek(event.target.value as WeekFilter)}
-            className="w-full sm:w-56 rounded-xl border border-slate-300 bg-slate-200 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
-          >
-            <option value="all">Semua Minggu</option>
-            <option value="Week 1 - Mar 2026">Week 1</option>
-            <option value="Week 2 - Mar 2026">Week 2</option>
-          </select>
-        </div>
+      <section className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder="Cari nama divisi..."
+          className="w-full sm:max-w-sm rounded-xl border border-slate-300 bg-slate-200 py-2.5 px-3 text-sm text-slate-700 shadow-sm outline-none"
+        />
 
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-500/40 bg-white px-4 py-2.5 text-sm font-semibold text-blue-500 transition hover:text-white hover:bg-blue-500"
+          onClick={openCreateModal}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
         >
-          <Download size={17} />
-          Download Report
+          <PlusCircle size={17} />
+          Tambah KPI
         </button>
       </section>
 
@@ -217,76 +296,133 @@ export default function ManagementKpiPage() {
           <table className="min-w-max w-full">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Minggu
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Divisi
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Target
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Realisasi
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Pencapaian (%)
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Status
-                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Minggu</th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Divisi</th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Target</th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Realisasi</th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Pencapaian (%)</th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+                <th className="px-4 md:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100">
-              {filteredItems.length > 0 ? (
-                filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">
-                      {item.minggu}
-                    </td>
-                    <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-800">
-                      {item.divisi}
-                    </td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">
-                      {item.target}
-                    </td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">
-                      {item.realisasi}
-                    </td>
-                    <td className="px-4 md:px-6 py-3 min-w-[220px]">
-                      <div className="space-y-1.5">
-                        <p className="text-sm font-semibold text-slate-800">{item.score}%</p>
-                        <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-cyan-500"
-                            style={{ width: `${item.score}%` }}
-                          />
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Memuat data...</td>
+                </tr>
+              ) : filteredItems.length > 0 ? (
+                filteredItems.map((item) => {
+                  const score = getScore(item);
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.minggu}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-800">{item.divisi ?? "-"}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.target}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.realisasi}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{score}%</td>
+                      <td className="px-4 md:px-6 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(score)}`}>
+                          {statusLabel(score)}
+                        </span>
+                      </td>
+                      <td className="px-4 md:px-6 py-3 text-right">
+                        <div className="inline-flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(item)}
+                            disabled={isSubmitting}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50 disabled:opacity-50"
+                            aria-label="Edit KPI"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(item.id)}
+                            disabled={isSubmitting}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                            aria-label="Hapus KPI"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 md:px-6 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(
-                          item.score,
-                        )}`}
-                      >
-                        {statusLabel(item.score)}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">
-                    Data KPI tidak ditemukan.
-                  </td>
+                  <td colSpan={7} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Data KPI tidak ditemukan.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       </section>
+
+      <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editData ? "Edit KPI" : "Tambah KPI"} maxWidth="max-w-lg">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            required
+            type="text"
+            value={formData.minggu}
+            onChange={(event) => setFormData((prev) => ({ ...prev, minggu: event.target.value }))}
+            className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
+            placeholder="Minggu (contoh: Week 1 - Mar 2026)"
+            disabled={isSubmitting}
+          />
+          <input
+            required
+            type="text"
+            value={formData.divisi}
+            onChange={(event) => setFormData((prev) => ({ ...prev, divisi: event.target.value }))}
+            className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
+            placeholder="Divisi"
+            disabled={isSubmitting}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              required
+              type="number"
+              value={formData.target}
+              onChange={(event) => setFormData((prev) => ({ ...prev, target: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
+              placeholder="Target"
+              disabled={isSubmitting}
+            />
+            <input
+              required
+              type="number"
+              value={formData.realisasi}
+              onChange={(event) => setFormData((prev) => ({ ...prev, realisasi: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
+              placeholder="Realisasi"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={closeFormModal} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
+              Batal
+            </button>
+            <button type="submit" disabled={isSubmitting} className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+              {isSubmitting ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+        title="Hapus KPI"
+        description="Apakah Anda yakin ingin menghapus data KPI ini?"
+        confirmText="Ya, Hapus"
+        cancelText="Batal"
+        variant="danger"
+      />
     </div>
   );
 }

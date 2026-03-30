@@ -1,158 +1,464 @@
 "use client";
 
-import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Edit, PlusCircle, Search, Trash2 } from "lucide-react";
+import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type { MKaryawan, TPayrollHistory } from "@/types/supabase";
 
-type PayrollItem = {
-	id: string;
-	employeeName: string;
-	bulan: string;
-	total: number;
-	createdAt: string;
+type EmployeeOption = {
+  id: string;
+  nama: string;
 };
 
-const PAYROLL_HISTORY_DATA: PayrollItem[] = [
-	{
-		id: 'PR-260201',
-		employeeName: 'Andi Saputra',
-		bulan: '2026-02-01',
-		total: 8750000,
-		createdAt: '2026-03-01T08:15:00Z',
-	},
-	{
-		id: 'PR-260202',
-		employeeName: 'Nabila Putri',
-		bulan: '2026-02-01',
-		total: 9250000,
-		createdAt: '2026-03-01T08:21:00Z',
-	},
-	{
-		id: 'PR-260203',
-		employeeName: 'Rizky Maulana',
-		bulan: '2026-02-01',
-		total: 8100000,
-		createdAt: '2026-03-01T08:28:00Z',
-	},
-	{
-		id: 'PR-260204',
-		employeeName: 'Dewi Anggraini',
-		bulan: '2026-02-01',
-		total: 9800000,
-		createdAt: '2026-03-01T08:36:00Z',
-	},
-	{
-		id: 'PR-260205',
-		employeeName: 'Fajar Nugraha',
-		bulan: '2026-02-01',
-		total: 8600000,
-		createdAt: '2026-03-01T08:44:00Z',
-	},
-	{
-		id: 'PR-260206',
-		employeeName: 'Siti Rahma',
-		bulan: '2026-02-01',
-		total: 8950000,
-		createdAt: '2026-03-01T08:53:00Z',
-	},
-];
+type PayrollListPayload = {
+  payroll: TPayrollHistory[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type PayrollPayload = {
+  payroll: TPayrollHistory | null;
+};
+
+type EmployeesListPayload = {
+  karyawan: MKaryawan[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
 
 function formatRupiah(value: number): string {
-	return new Intl.NumberFormat('id-ID', {
-		style: 'currency',
-		currency: 'IDR',
-		maximumFractionDigits: 0,
-	}).format(value);
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function formatPeriod(value: string): string {
-	return new Intl.DateTimeFormat('id-ID', {
-		month: 'long',
-		year: 'numeric',
-	}).format(new Date(value));
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function formatDate(value: string): string {
-	return new Intl.DateTimeFormat('id-ID', {
-		day: '2-digit',
-		month: 'short',
-		year: 'numeric',
-	}).format(new Date(value));
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function toMonthInput(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
 }
 
 export default function FinancePayrollPage() {
-	const [searchTerm, setSearchTerm] = useState('');
+  const [items, setItems] = useState<TPayrollHistory[]>([]);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
 
-	const totalPayroll = useMemo(
-		() => PAYROLL_HISTORY_DATA.reduce((sum, item) => sum + item.total, 0),
-		[],
-	);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const filteredPayroll = useMemo(() => {
-		const keyword = searchTerm.trim().toLowerCase();
-		if (!keyword) return PAYROLL_HISTORY_DATA;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editData, setEditData] = useState<TPayrollHistory | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-		return PAYROLL_HISTORY_DATA.filter((item) =>
-			item.employeeName.toLowerCase().includes(keyword),
-		);
-	}, [searchTerm]);
+  const [formData, setFormData] = useState<{
+    employee_id: string;
+    bulan: string;
+    total: string;
+  }>({
+    employee_id: "",
+    bulan: "",
+    total: "",
+  });
 
-	return (
-		<div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
-			<section className="space-y-1 md:space-y-2">
-				<h1 className="text-lg md:text-2xl lg:text-3xl font-bold text-slate-100">Riwayat Penggajian (Payroll)</h1>
-				<p className="text-sm md:text-base text-slate-300">Laporan distribusi gaji karyawan per periode.</p>
-			</section>
+  const fetchPayroll = async () => {
+    try {
+      const response = await fetch("/api/finance/payroll?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<PayrollListPayload>(response);
+      setItems(payload.data.payroll ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data payroll.";
+      alert(message);
+    }
+  };
 
-			<section className="bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6">
-				<p className="text-xs uppercase tracking-wide font-semibold text-slate-500">Total Pengeluaran Gaji Bulan Ini</p>
-				<p className="mt-2 text-xl md:text-3xl font-bold text-blue-900 break-all">{formatRupiah(totalPayroll)}</p>
-			</section>
+  const fetchKaryawan = async () => {
+    try {
+      const response = await fetch("/api/hr/employees?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<EmployeesListPayload>(response);
+      const options = (payload.data.karyawan ?? []).map((employee) => ({
+        id: employee.id,
+        nama: employee.nama,
+      }));
+      setEmployees(options);
+      setFormData((prev) => ({
+        ...prev,
+        employee_id: prev.employee_id || options[0]?.id || "",
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat daftar karyawan.";
+      alert(message);
+    }
+  };
 
-			<section className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
-				<div className="px-4 md:px-6 py-4 border-b border-slate-100">
-					<div className="relative w-full md:max-w-md">
-						<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-						<input
-							type="text"
-							value={searchTerm}
-							onChange={(event) => setSearchTerm(event.target.value)}
-							placeholder="Cari nama karyawan..."
-							className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
-						/>
-					</div>
-				</div>
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([fetchPayroll(), fetchKaryawan()]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-				<div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
-					<table className="w-full min-w-max text-left">
-						<thead className="bg-slate-50/80">
-							<tr>
-								<th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Periode</th>
-								<th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Karyawan</th>
-								<th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Total Gaji</th>
-								<th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Tanggal Eksekusi</th>
-							</tr>
-						</thead>
-						<tbody className="divide-y divide-slate-100">
-							{filteredPayroll.map((item) => (
-								<tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-									<td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{formatPeriod(item.bulan)}</td>
-									<td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-900 whitespace-nowrap">{item.employeeName}</td>
-									<td className="px-4 md:px-6 py-3 text-sm font-semibold text-right text-slate-900 whitespace-nowrap">{formatRupiah(item.total)}</td>
-									<td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(item.createdAt)}</td>
-								</tr>
-							))}
+    void loadInitialData();
+  }, []);
 
-							{filteredPayroll.length === 0 && (
-								<tr>
-									<td colSpan={4} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
-										Karyawan tidak ditemukan.
-									</td>
-								</tr>
-							)}
-						</tbody>
-					</table>
-				</div>
-			</section>
-		</div>
-	);
+  const employeeById = useMemo(
+    () => Object.fromEntries(employees.map((employee) => [employee.id, employee.nama])) as Record<string, string>,
+    [employees],
+  );
+
+  const totalPayroll = useMemo(
+    () => items.reduce((sum, item) => sum + (item.total ?? 0), 0),
+    [items],
+  );
+
+  const filteredPayroll = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return items;
+
+    return items.filter((item) =>
+      (employeeById[item.employee_id ?? ""] ?? "").toLowerCase().includes(keyword),
+    );
+  }, [items, searchTerm, employeeById]);
+
+  const resetForm = () => {
+    setFormData({
+      employee_id: employees[0]?.id ?? "",
+      bulan: "",
+      total: "",
+    });
+    setEditData(null);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    setIsFormModalOpen(true);
+  };
+
+  const openEditModal = (item: TPayrollHistory) => {
+    setEditData(item);
+    setFormData({
+      employee_id: item.employee_id ?? "",
+      bulan: toMonthInput(item.bulan),
+      total: String(item.total ?? ""),
+    });
+    setIsFormModalOpen(true);
+  };
+
+  const closeFormModal = () => {
+    setIsFormModalOpen(false);
+    resetForm();
+  };
+
+  const openDeleteModal = (id: string) => {
+    setDeleteId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteId(null);
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const parsedTotal = Number(formData.total);
+    if (!formData.employee_id) {
+      alert("Pilih karyawan terlebih dahulu.");
+      return;
+    }
+    if (!formData.bulan) {
+      alert("Periode bulan wajib diisi.");
+      return;
+    }
+    if (Number.isNaN(parsedTotal) || parsedTotal <= 0) {
+      alert("Total gaji harus berupa angka lebih dari 0.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        employee_id: formData.employee_id,
+        bulan: `${formData.bulan}-01`,
+        total: parsedTotal,
+      };
+
+      if (editData) {
+        const response = await fetch(`/api/finance/payroll/${editData.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<PayrollPayload>(response);
+      } else {
+        const response = await fetch("/api/finance/payroll", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        await parseJsonResponse<PayrollPayload>(response);
+      }
+
+      await fetchPayroll();
+      closeFormModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operasi simpan payroll gagal.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteId || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/finance/payroll/${deleteId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
+      await fetchPayroll();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus payroll.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+      closeDeleteModal();
+    }
+  };
+
+  return (
+    <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
+      <section className="space-y-1 md:space-y-2">
+        <h1 className="text-lg md:text-2xl lg:text-3xl font-bold text-slate-100">Riwayat Penggajian (Payroll)</h1>
+        <p className="text-sm md:text-base text-slate-300">Laporan distribusi gaji karyawan per periode.</p>
+      </section>
+
+      <section className="bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-wide font-semibold text-slate-500">Total Pengeluaran Gaji</p>
+          <p className="mt-2 text-xl md:text-3xl font-bold text-blue-900 break-all">{formatRupiah(totalPayroll)}</p>
+        </div>
+        <button
+          type="button"
+          onClick={openAddModal}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+        >
+          <PlusCircle size={18} />
+          Tambah Payroll
+        </button>
+      </section>
+
+      <section className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+        <div className="px-4 md:px-6 py-4 border-b border-slate-100">
+          <div className="relative w-full md:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Cari nama karyawan..."
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
+          <table className="w-full min-w-max text-left">
+            <thead className="bg-slate-50/80">
+              <tr>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Periode</th>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Karyawan</th>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Total Gaji</th>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Tanggal Eksekusi</th>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
+                    Memuat data...
+                  </td>
+                </tr>
+              ) : filteredPayroll.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
+                    Karyawan tidak ditemukan.
+                  </td>
+                </tr>
+              ) : (
+                filteredPayroll.map((item) => {
+                  const employeeName = employeeById[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan";
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.bulan ? formatPeriod(item.bulan) : "-"}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-900 whitespace-nowrap">{employeeName}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm font-semibold text-right text-slate-900 whitespace-nowrap">{formatRupiah(item.total ?? 0)}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
+                      <td className="px-4 md:px-6 py-3 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(item)}
+                            disabled={isSubmitting}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 text-amber-600 transition hover:bg-amber-50 disabled:opacity-50"
+                            aria-label="Edit payroll"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(item.id)}
+                            disabled={isSubmitting}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                            aria-label="Hapus payroll"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <Modal
+        isOpen={isFormModalOpen}
+        onClose={closeFormModal}
+        title={editData ? "Edit Payroll" : "Tambah Payroll"}
+        maxWidth="max-w-md"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Karyawan</label>
+            <select
+              required
+              value={formData.employee_id}
+              onChange={(event) => setFormData((prev) => ({ ...prev, employee_id: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            >
+              <option value="" disabled>
+                Pilih karyawan
+              </option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.nama}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Periode Bulan</label>
+            <input
+              required
+              type="month"
+              value={formData.bulan}
+              onChange={(event) => setFormData((prev) => ({ ...prev, bulan: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Gaji</label>
+            <input
+              required
+              type="number"
+              min={1}
+              value={formData.total}
+              onChange={(event) => setFormData((prev) => ({ ...prev, total: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              placeholder="Masukkan total gaji"
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
+            <button
+              type="button"
+              onClick={closeFormModal}
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:brightness-95 transition disabled:opacity-50"
+            >
+              {isSubmitting ? "Menyimpan..." : "Simpan Payroll"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+        title="Hapus Data Payroll"
+        description="Apakah Anda yakin ingin menghapus data payroll ini?"
+        confirmText={isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+        cancelText="Batal"
+        variant="danger"
+      />
+    </div>
+  );
 }

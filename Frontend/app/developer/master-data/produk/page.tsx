@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import React, { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -12,13 +12,23 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
+import type { MProduk } from "@/types/supabase";
+import type { ApiError, ApiSuccess } from "@/types/api";
 
-interface Produk {
-  id: string;
-  nama_produk: string;
-  kategori: string;
-  created_at: string;
-}
+type ProdukItem = MProduk;
+
+type ProductsListPayload = {
+  produk: ProdukItem[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type ProductPayload = {
+  produk: ProdukItem | null;
+};
 
 const KATEGORI_LIST = [
   "Pakaian",
@@ -29,33 +39,23 @@ const KATEGORI_LIST = [
   "Lainnya",
 ];
 
-const DUMMY_PRODUK: Produk[] = [
-  {
-    id: "prd-001",
-    nama_produk: "Kaos Polo Classic",
-    kategori: "Pakaian",
-    created_at: "2026-01-10",
-  },
-  {
-    id: "prd-002",
-    nama_produk: "Hoodie Premium",
-    kategori: "Pakaian",
-    created_at: "2026-02-03",
-  },
-  {
-    id: "prd-003",
-    nama_produk: "Topi Snapback",
-    kategori: "Aksesoris",
-    created_at: "2026-03-01",
-  },
-];
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
 
 export default function ProdukPage() {
   const [namaProduk, setNamaProduk] = useState("");
   const [kategori, setKategori] = useState("");
-  const [produkList, setProdukList] = useState<Produk[]>(DUMMY_PRODUK);
+  const [produkList, setProdukList] = useState<ProdukItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
     setNamaProduk("");
@@ -63,47 +63,98 @@ export default function ProdukPage() {
     setEditingId(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingId) {
-      setProdukList((prev) =>
-        prev.map((p) =>
-          p.id === editingId ? { ...p, nama_produk: namaProduk, kategori } : p,
-        ),
-      );
-    } else {
-      setProdukList((prev) => [
-        {
-          id: `prd-${Date.now()}`,
-          nama_produk: namaProduk,
-          kategori,
-          created_at: new Date().toISOString().split("T")[0],
-        },
-        ...prev,
-      ]);
+  const fetchProduk = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/core/products?page=1&limit=200", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<ProductsListPayload>(response);
+      setProdukList(payload.data.produk ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data produk.";
+      alert(message);
+    } finally {
+      setIsLoading(false);
     }
-    resetForm();
   };
 
-  const handleEdit = (p: Produk) => {
+  useEffect(() => {
+    void fetchProduk();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      if (editingId) {
+        const response = await fetch(`/api/core/products/${editingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nama_produk: namaProduk, kategori }),
+        });
+        await parseJsonResponse<ProductPayload>(response);
+      } else {
+        const response = await fetch("/api/core/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nama_produk: namaProduk, kategori }),
+        });
+        await parseJsonResponse<ProductPayload>(response);
+      }
+
+      await fetchProduk();
+      resetForm();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operasi simpan produk gagal.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEdit = (p: ProdukItem) => {
     setEditingId(p.id);
     setNamaProduk(p.nama_produk);
-    setKategori(p.kategori);
+    setKategori(p.kategori ?? "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = (id: string) =>
-    setProdukList((prev) => prev.filter((p) => p.id !== id));
+  const handleDelete = async (id: string) => {
+    if (isSubmitting) return;
 
-  const filtered = produkList.filter(
-    (p) =>
-      p.nama_produk.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.kategori.toLowerCase().includes(searchQuery.toLowerCase()),
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/core/products/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
+      await fetchProduk();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus produk.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const filtered = useMemo(
+    () =>
+      produkList.filter(
+        (p) =>
+          p.nama_produk.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.kategori ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [produkList, searchQuery],
   );
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
-      {/* Header */}
       <div>
         <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
           <Link
@@ -137,7 +188,6 @@ export default function ProdukPage() {
         </div>
       </div>
 
-      {/* Form Card */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-6">
           <PlusCircle size={18} className="text-slate-400" />
@@ -184,7 +234,7 @@ export default function ProdukPage() {
                 className="w-full appearance-none px-4 py-3 bg-slate-200 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-slate-200/20 focus:border-slate-200 text-sm outline-none transition-all cursor-pointer"
               >
                 <option value="" disabled>
-                  — Pilih Kategori —
+                  - Pilih Kategori -
                 </option>
                 {KATEGORI_LIST.map((k) => (
                   <option key={k} value={k}>
@@ -202,16 +252,16 @@ export default function ProdukPage() {
           <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
-              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-xl shadow-md shadow-green-100 transition-all"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-xl shadow-md shadow-green-100 transition-all"
             >
               <Save size={17} />
-              {editingId ? "Simpan Perubahan" : "Save Product"}
+              {isSubmitting ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Save Product"}
             </button>
           </div>
         </form>
       </section>
 
-      {/* Table Card */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -260,7 +310,16 @@ export default function ProdukPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-6 py-12 text-center text-sm text-slate-400"
+                  >
+                    Memuat data...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
@@ -283,24 +342,26 @@ export default function ProdukPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
-                        {p.kategori}
+                        {p.kategori ?? "-"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-500">
-                      {p.created_at}
+                      {p.created_at ? p.created_at.split("T")[0] : "-"}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => handleEdit(p)}
-                          className="p-2 rounded-lg text-orange-300 hover:text-orange-400 hover:bg-yellow-50 transition-colors"
+                          disabled={isSubmitting}
+                          className="p-2 rounded-lg text-orange-300 hover:text-orange-400 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           title="Edit Produk"
                         >
                           <Edit size={15} />
                         </button>
                         <button
-                          onClick={() => handleDelete(p.id)}
-                          className="p-2 rounded-lg text-red-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          onClick={() => void handleDelete(p.id)}
+                          disabled={isSubmitting}
+                          className="p-2 rounded-lg text-red-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           title="Hapus Produk"
                         >
                           <Trash2 size={15} />

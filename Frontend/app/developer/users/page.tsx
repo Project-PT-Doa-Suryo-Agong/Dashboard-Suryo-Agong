@@ -2,16 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { Pencil, Trash2, UserPlus, Users2 } from 'lucide-react';
+import type { CoreUserRole } from '@/types/supabase';
 
-type UserRole =
-	| 'Developer'
-	| 'Management'
-	| 'Finance'
-	| 'HR'
-	| 'Produksi'
-	| 'Logistik'
-	| 'Creative'
-	| 'Office';
+type UserRole = CoreUserRole;
 
 type SystemUser = {
 	id: string;
@@ -23,7 +16,7 @@ type SystemUser = {
 
 const ROLE_OPTIONS: UserRole[] = [
 	'Developer',
-	'Management',
+	'CEO',
 	'Finance',
 	'HR',
 	'Produksi',
@@ -34,7 +27,7 @@ const ROLE_OPTIONS: UserRole[] = [
 
 const ROLE_BADGE_MAP: Record<UserRole, string> = {
 	Developer: 'bg-purple-100 text-purple-700 border-purple-200',
-	Management: 'bg-slate-900 text-white border-slate-900',
+	CEO: 'bg-slate-900 text-white border-slate-900',
 	Finance: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 	HR: 'bg-sky-100 text-sky-700 border-sky-200',
 	Produksi: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -52,9 +45,9 @@ const DUMMY_USERS: SystemUser[] = [
 		created_at: '2026-01-04T08:14:00Z',
 	},
 	{
-		id: 'MGMT-001',
+		id: 'CEO-001',
 		nama: 'Nadia Kusuma',
-		role: 'Management',
+		role: 'CEO',
 		phone: '0813-2244-9988',
 		created_at: '2026-01-12T09:30:00Z',
 	},
