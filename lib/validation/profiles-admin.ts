@@ -5,14 +5,14 @@ import type {
 import type { CoreUserRole } from "@/types/supabase";
 
 const USER_ROLES: CoreUserRole[] = [
-  "Developer",
-  "CEO",
-  "Finance",
-  "HR",
-  "Produksi",
-  "Logistik",
-  "Creative",
-  "Office",
+  'Developer',
+  'Management & Strategy',
+  'Finance & Administration',
+  'HR & Operation Manager',
+  'Produksi & Quality Control',
+  'Logistics & Packing',
+  'Creative & Sales',
+  'Office Support'
 ];
 
 function isCoreUserRole(value: string): value is CoreUserRole {
