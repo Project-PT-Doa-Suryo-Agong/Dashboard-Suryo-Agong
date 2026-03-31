@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -103,7 +103,7 @@ export default function LoginPage() {
           <div className="mb-4 flex items-center justify-center md:mb-6">
             <Image
               src="/logo.png"
-              alt="NexusCore Logo"
+              alt="Suryo Agong Logo"
               width={160}
               height={48}
               className="h-10 w-auto md:h-12 lg:h-14"
