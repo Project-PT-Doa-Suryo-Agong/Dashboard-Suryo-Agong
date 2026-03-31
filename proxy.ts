@@ -16,6 +16,7 @@ type ProtectedRoute = {
 };
 
 const LOGIN_PATH = "/auth/login";
+const DEV_ROOT_HOST = "lvh.me";
 
 const VALID_SUBDOMAINS: AppRole[] = [
   "creative",
@@ -162,14 +163,35 @@ function resolveRewrittenPath(pathname: string, hostHeader: string): string {
   return `/${subdomain}${pathname}`;
 }
 
+function isLocalhostSubdomain(hostHeader: string) {
+  const hostWithoutPort = hostHeader.split(":")[0]?.toLowerCase() ?? "";
+  if (hostWithoutPort.endsWith(".localhost")) {
+    return hostWithoutPort !== "localhost";
+  }
+  if (hostWithoutPort.endsWith(`.${DEV_ROOT_HOST}`)) {
+    return hostWithoutPort !== DEV_ROOT_HOST;
+  }
+  return false;
+}
+
 export function proxy(request: NextRequest) {
   const url = request.nextUrl;
+  const hostHeader = request.headers.get("host") ?? "";
 
   if (url.pathname.includes(".")) {
     return NextResponse.next();
   }
 
-  const hostHeader = request.headers.get("host") ?? "";
+  if (url.pathname.startsWith("/auth")) {
+    if (isLocalhostSubdomain(hostHeader)) {
+      const authUrl = request.nextUrl.clone();
+      authUrl.hostname = DEV_ROOT_HOST;
+      return NextResponse.redirect(authUrl);
+    }
+
+    return NextResponse.next();
+  }
+
   const effectivePathname = resolveRewrittenPath(url.pathname, hostHeader);
   const routeRule = findRouteRule(effectivePathname);
 
@@ -177,6 +199,7 @@ export function proxy(request: NextRequest) {
     const role = resolveCurrentRole(request);
     if (!role) {
       const loginUrl = request.nextUrl.clone();
+      loginUrl.hostname = DEV_ROOT_HOST;
       loginUrl.pathname = LOGIN_PATH;
       loginUrl.searchParams.set("next", effectivePathname);
       return NextResponse.redirect(loginUrl);

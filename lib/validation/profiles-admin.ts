@@ -4,19 +4,40 @@ import type {
 } from "@/types/profile";
 import type { CoreUserRole } from "@/types/supabase";
 
-const USER_ROLES: CoreUserRole[] = [
-  'Developer',
-  'Management & Strategy',
-  'Finance & Administration',
-  'HR & Operation Manager',
-  'Produksi & Quality Control',
-  'Logistics & Packing',
-  'Creative & Sales',
-  'Office Support'
+type SystemRoleKey =
+  | "management"
+  | "finance"
+  | "hr"
+  | "produksi"
+  | "logistik"
+  | "creative"
+  | "office"
+  | "developer";
+
+const USER_ROLES: SystemRoleKey[] = [
+  'management',
+  'finance',
+  'hr',
+  'produksi',
+  'logistik',
+  'creative',
+  'office',
+  'developer'
 ];
 
-function isCoreUserRole(value: string): value is CoreUserRole {
-  return USER_ROLES.includes(value as CoreUserRole);
+const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
+  management: "CEO",
+  finance: "Finance",
+  hr: "HR",
+  produksi: "Produksi",
+  logistik: "Logistik",
+  creative: "Creative",
+  office: "Office",
+  developer: "Developer",
+};
+
+function isSystemRoleKey(value: string): value is SystemRoleKey {
+  return USER_ROLES.includes(value as SystemRoleKey);
 }
 
 function validateOptionalString(
@@ -67,8 +88,8 @@ export function parseCreateProfileInput(payload: unknown):
     return { ok: false, message: "role wajib diisi." };
   }
 
-  const role = body.role.trim();
-  if (!isCoreUserRole(role)) {
+  const role = body.role.trim().toLowerCase();
+  if (!isSystemRoleKey(role)) {
     return { ok: false, message: "role tidak valid." };
   }
 
@@ -81,7 +102,7 @@ export function parseCreateProfileInput(payload: unknown):
       email: body.email.trim(),
       password: body.password,
       nama: body.nama.trim(),
-      role,
+      role: SYSTEM_ROLE_TO_CORE_ROLE[role],
       phone: phone.value ?? null,
     },
   };
@@ -104,10 +125,11 @@ export function parseUpdateProfileByIdInput(payload: unknown):
   const role = validateOptionalString("role", body.role, 80, false);
   if (!role.ok) return role;
   if (role.value !== undefined && role.value !== null) {
-    if (!isCoreUserRole(role.value)) {
+    const systemRole = role.value.toLowerCase();
+    if (!isSystemRoleKey(systemRole)) {
       return { ok: false, message: "role tidak valid." };
     }
-    parsed.role = role.value;
+    parsed.role = SYSTEM_ROLE_TO_CORE_ROLE[systemRole];
   }
 
   const phone = validateOptionalString("phone", body.phone, 50);

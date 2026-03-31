@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import {
   LogIn,
   Mail,
@@ -15,20 +14,22 @@ type AuthMePayload = {
   profileRole: string | null;
 };
 
+const DEV_ROOT_DOMAIN = "lvh.me";
+
 const ROLE_TO_DASHBOARD: Record<string, string> = {
-  developer: "/developer",
-  ceo: "/management",
-  management: "/management",
-  finance: "/finance",
-  hr: "/hr",
-  "human resource": "/hr",
-  produksi: "/produksi",
-  production: "/produksi",
-  logistik: "/logistik",
-  logistics: "/logistik",
-  creative: "/creative",
-  sales: "/creative",
-  office: "/office",
+  developer: "developer",
+  ceo: "management",
+  management: "management",
+  finance: "finance",
+  hr: "hr",
+  "human resource": "hr",
+  produksi: "produksi",
+  production: "produksi",
+  logistik: "logistik",
+  logistics: "logistik",
+  creative: "creative",
+  sales: "creative",
+  office: "office",
 };
 
 function normalizeRole(role: string | null | undefined) {
@@ -37,11 +38,10 @@ function normalizeRole(role: string | null | undefined) {
 
 function resolveDashboardPath(role: string | null | undefined) {
   const normalized = normalizeRole(role);
-  return ROLE_TO_DASHBOARD[normalized] ?? "/";
+  return ROLE_TO_DASHBOARD[normalized] ?? "";
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,18 +77,23 @@ export default function LoginPage() {
         const normalizedRole = normalizeRole(role);
 
         if (normalizedRole) {
-          document.cookie = `role=${encodeURIComponent(normalizedRole)}; Path=/; Max-Age=604800; SameSite=Lax`;
+          document.cookie = `role=${encodeURIComponent(normalizedRole)}; Path=/; domain=.${DEV_ROOT_DOMAIN}; Max-Age=604800; SameSite=Lax`;
         } else {
-          document.cookie = "role=; Path=/; Max-Age=0; SameSite=Lax";
+          document.cookie = `role=; Path=/; domain=.${DEV_ROOT_DOMAIN}; Max-Age=0; SameSite=Lax`;
         }
 
-        router.push(resolveDashboardPath(role));
-        router.refresh();
+        const subdomain = resolveDashboardPath(role);
+
+        if (subdomain) {
+          window.location.href = `http://${subdomain}.${DEV_ROOT_DOMAIN}:3000`;
+        } else {
+          window.location.href = `http://${DEV_ROOT_DOMAIN}:3000/`;
+        }
+
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      window.location.href = `http://${DEV_ROOT_DOMAIN}:3000/`;
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Terjadi kesalahan saat login.");
     } finally {
