@@ -5,7 +5,7 @@ type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("logistics");
 
-// â”€â”€â”€ t_logistik_manifest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_logistik_manifest 
 
 export async function listManifest(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -37,7 +37,7 @@ export async function deleteManifest(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_packing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_packing 
 
 export async function listPacking(client: DbClient, page = 1, limit = 100) {
   const from = (page - 1) * limit;
@@ -69,7 +69,7 @@ export async function deletePacking(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_return_order â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_return_order 
 
 export async function listReturnOrder(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;

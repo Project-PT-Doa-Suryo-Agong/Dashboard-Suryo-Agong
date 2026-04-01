@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -13,22 +13,12 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { MProduk } from "@/types/supabase";
-import type { ApiError, ApiSuccess } from "@/types/api";
-
-type ProdukItem = MProduk;
-
-type ProductsListPayload = {
-  produk: ProdukItem[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-};
-
-type ProductPayload = {
-  produk: ProdukItem | null;
-};
+import {
+  useProducts,
+  useInsertProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+} from "@/lib/supabase/hooks/index";
 
 const KATEGORI_LIST = [
   "Pakaian",
@@ -39,51 +29,26 @@ const KATEGORI_LIST = [
   "Lainnya",
 ];
 
-async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
-  if (!response.ok || !payload.success) {
-    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
-    throw new Error(message);
-  }
-  return payload;
-}
-
 export default function ProdukPage() {
   const [namaProduk, setNamaProduk] = useState("");
   const [kategori, setKategori] = useState("");
-  const [produkList, setProdukList] = useState<ProdukItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Supabase Direct: read products ──
+  const { data: produkList, loading: isLoading, refresh } = useProducts();
+
+  // ── Supabase Direct: mutations ──
+  const { insert } = useInsertProduct();
+  const { update } = useUpdateProduct();
+  const { remove } = useDeleteProduct();
 
   const resetForm = () => {
     setNamaProduk("");
     setKategori("");
     setEditingId(null);
   };
-
-  const fetchProduk = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/core/products?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<ProductsListPayload>(response);
-      setProdukList(payload.data.produk ?? []);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat data produk.";
-      alert(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void fetchProduk();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,22 +57,14 @@ export default function ProdukPage() {
     setIsSubmitting(true);
     try {
       if (editingId) {
-        const response = await fetch(`/api/core/products/${editingId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nama_produk: namaProduk, kategori }),
-        });
-        await parseJsonResponse<ProductPayload>(response);
+        const result = await update(editingId, { nama_produk: namaProduk, kategori });
+        if (!result) throw new Error("Gagal update produk.");
       } else {
-        const response = await fetch("/api/core/products", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nama_produk: namaProduk, kategori }),
-        });
-        await parseJsonResponse<ProductPayload>(response);
+        const result = await insert({ nama_produk: namaProduk, kategori });
+        if (!result) throw new Error("Gagal membuat produk.");
       }
 
-      await fetchProduk();
+      refresh();
       resetForm();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Operasi simpan produk gagal.";
@@ -117,7 +74,7 @@ export default function ProdukPage() {
     }
   };
 
-  const handleEdit = (p: ProdukItem) => {
+  const handleEdit = (p: MProduk) => {
     setEditingId(p.id);
     setNamaProduk(p.nama_produk);
     setKategori(p.kategori ?? "");
@@ -129,12 +86,9 @@ export default function ProdukPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/core/products/${id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-      await parseJsonResponse<null>(response);
-      await fetchProduk();
+      const success = await remove(id);
+      if (!success) throw new Error("Gagal menghapus produk.");
+      refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal menghapus produk.";
       alert(message);

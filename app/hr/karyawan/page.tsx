@@ -1,11 +1,16 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useEffect } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Pencil, PlusCircle, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import type { ApiError, ApiSuccess } from "@/types/api";
 import type { HrEmployeeStatus, MKaryawan } from "@/types/supabase";
+import {
+  useKaryawan,
+  useInsertKaryawan,
+  useUpdateKaryawan,
+  useDeleteKaryawan,
+} from "@/lib/supabase/hooks/index";
 
 type KaryawanItem = {
   id: string;
@@ -15,28 +20,6 @@ type KaryawanItem = {
   status: HrEmployeeStatus;
   gaji_pokok: number;
 };
-
-type EmployeesListPayload = {
-  karyawan: MKaryawan[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-};
-
-type EmployeePayload = {
-  karyawan: MKaryawan | null;
-};
-
-async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
-  if (!response.ok || !payload.success) {
-    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
-    throw new Error(message);
-  }
-  return payload;
-}
 
 const divisiOptions = [
   "HR",
@@ -69,8 +52,6 @@ function Badge({ status }: { status: HrEmployeeStatus }) {
 }
 
 export default function KaryawanPage() {
-  const [items, setItems] = useState<KaryawanItem[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
@@ -86,35 +67,25 @@ export default function KaryawanPage() {
     gaji_pokok: 0,
   });
 
-  const fetchKaryawan = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/hr/employees?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<EmployeesListPayload>(response);
-      const normalized = (payload.data.karyawan ?? []).map((item) => ({
+  // ── Supabase Direct ──
+  const { data: rawKaryawan, loading: isLoading, refresh } = useKaryawan();
+  const { insert } = useInsertKaryawan();
+  const { update } = useUpdateKaryawan();
+  const { remove } = useDeleteKaryawan();
+
+  // ── Normalize karyawan data ──
+  const items: KaryawanItem[] = useMemo(
+    () =>
+      rawKaryawan.map((item: MKaryawan) => ({
         id: item.id,
         nama: item.nama,
         posisi: item.posisi ?? "",
         divisi: item.divisi ?? divisiOptions[0],
         status: item.status ?? "aktif",
         gaji_pokok: item.gaji_pokok ?? 0,
-      }));
-      setItems(normalized);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat data karyawan.";
-      alert(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void fetchKaryawan();
-  }, []);
+      })),
+    [rawKaryawan],
+  );
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -162,22 +133,14 @@ export default function KaryawanPage() {
 
     try {
       if (editData) {
-        const response = await fetch(`/api/hr/employees/${editData.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-        await parseJsonResponse<EmployeePayload>(response);
+        const result = await update(editData.id, formData);
+        if (!result) throw new Error("Gagal update karyawan.");
       } else {
-        const response = await fetch("/api/hr/employees", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-        await parseJsonResponse<EmployeePayload>(response);
+        const result = await insert(formData);
+        if (!result) throw new Error("Gagal menambah karyawan.");
       }
 
-      await fetchKaryawan();
+      refresh();
       closeFormModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Operasi simpan karyawan gagal.";
@@ -202,12 +165,9 @@ export default function KaryawanPage() {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/hr/employees/${deleteId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-      await parseJsonResponse<null>(response);
-      await fetchKaryawan();
+      const success = await remove(deleteId);
+      if (!success) throw new Error("Gagal menghapus karyawan.");
+      refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal menghapus karyawan.";
       alert(message);

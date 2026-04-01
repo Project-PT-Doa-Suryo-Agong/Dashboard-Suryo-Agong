@@ -1,17 +1,19 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, useEffect } from "react";
 import { AlertTriangle, Pencil, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import {
+  useWarnings,
+  useInsertWarning,
+  useUpdateWarning,
+  useDeleteWarning,
+} from "@/lib/supabase/hooks/use-warnings";
+import { useKaryawan } from "@/lib/supabase/hooks/use-karyawan";
+import type { TEmployeeWarning, MKaryawan } from "@/types/supabase";
 
-type WarningItem = {
-  id: string;
-  employee_id: string;
-  level: string;
-  alasan: string;
-  createdAt: string;
-};
+type WarningItem = TEmployeeWarning;
 
 type EmployeeOption = {
   id: string;
@@ -19,47 +21,7 @@ type EmployeeOption = {
   posisi: string;
 };
 
-const hr_m_karyawan_seed: EmployeeOption[] = [
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50001", nama: "Rani Wulandari", posisi: "HR Generalist" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50002", nama: "Bima Pratama", posisi: "Staff Finance" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50003", nama: "Nadia Putri", posisi: "QC Lead" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50004", nama: "Dwi Firmansyah", posisi: "Supervisor Logistik" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50005", nama: "Salsa Maharani", posisi: "Content Specialist" },
-  { id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50006", nama: "Agus Setiawan", posisi: "Office Assistant" },
-];
-
 const warningLevelOptions = ["Teguran Lisan", "SP1", "SP2", "SP3"];
-
-const dummyWarnings: WarningItem[] = [
-  {
-    id: "wrn-001",
-    employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50003",
-    level: "SP1",
-    alasan: "Ketidaksesuaian prosedur quality check berulang selama dua pekan.",
-    createdAt: "2026-03-08",
-  },
-  {
-    id: "wrn-002",
-    employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50006",
-    level: "Teguran Lisan",
-    alasan: "Terlambat hadir lebih dari tiga kali dalam satu bulan kerja.",
-    createdAt: "2026-03-05",
-  },
-  {
-    id: "wrn-003",
-    employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50004",
-    level: "SP2",
-    alasan: "Keterlambatan pengiriman manifest yang berdampak pada jadwal distribusi.",
-    createdAt: "2026-02-27",
-  },
-  {
-    id: "wrn-004",
-    employee_id: "95fcf2da-8f8f-4a9b-a8b0-6e6eb1c50002",
-    level: "SP3",
-    alasan: "Pelanggaran SOP approval reimbursement meski sudah diberikan pembinaan.",
-    createdAt: "2026-02-16",
-  },
-];
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "2-digit",
@@ -75,12 +37,12 @@ function levelBadgeClass(level: string) {
 }
 
 export default function EmployeeWarningsPage() {
-  const [items, setItems] = useState<WarningItem[]>(dummyWarnings);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<WarningItem | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState<string>("");
   const [formData, setFormData] = useState<{
@@ -88,36 +50,66 @@ export default function EmployeeWarningsPage() {
     level: string;
     alasan: string;
   }>({
-    employee_id: hr_m_karyawan_seed[0]?.id ?? "",
+    employee_id: "",
     level: warningLevelOptions[0],
     alasan: "",
   });
 
+  // ── Supabase Direct ──
+  const { data: warnings, loading: isLoadingWarnings, refresh: refreshWarnings } = useWarnings();
+  const { data: rawKaryawan, loading: isLoadingKaryawan } = useKaryawan();
+  const { insert } = useInsertWarning();
+  const { update } = useUpdateWarning();
+  const { remove } = useDeleteWarning();
+
+  const isLoading = isLoadingWarnings || isLoadingKaryawan;
+
+  // Normalize employees
+  const employees: EmployeeOption[] = useMemo(
+    () =>
+      rawKaryawan.map((employee: MKaryawan) => ({
+        id: employee.id,
+        nama: employee.nama,
+        posisi: employee.posisi ?? "-",
+      })),
+    [rawKaryawan],
+  );
+
+  // Default selection when employees load
+  useEffect(() => {
+    if (employees.length > 0 && !formData.employee_id) {
+      setFormData((prev) => ({
+        ...prev,
+        employee_id: employees[0].id,
+      }));
+    }
+  }, [employees, formData.employee_id]);
+
   const employeeById = useMemo(
-    () => Object.fromEntries(hr_m_karyawan_seed.map((employee) => [employee.id, employee])) as Record<string, EmployeeOption>,
-    [],
+    () => Object.fromEntries(employees.map((employee) => [employee.id, employee])) as Record<string, EmployeeOption>,
+    [employees],
   );
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) return items;
-    return items.filter((item) => (employeeById[item.employee_id]?.nama ?? "").toLowerCase().includes(keyword));
-  }, [items, searchTerm, employeeById]);
+    if (!keyword) return warnings;
+    return warnings.filter((item) => (employeeById[item.employee_id ?? ""]?.nama ?? "").toLowerCase().includes(keyword));
+  }, [warnings, searchTerm, employeeById]);
 
   const filteredEmployeeOptions = useMemo(() => {
     const keyword = employeeSearchTerm.trim().toLowerCase();
-    if (!keyword) return hr_m_karyawan_seed;
-    return hr_m_karyawan_seed.filter((employee) =>
+    if (!keyword) return employees;
+    return employees.filter((employee) =>
       employee.nama.toLowerCase().includes(keyword),
     );
-  }, [employeeSearchTerm]);
+  }, [employeeSearchTerm, employees]);
 
   const employeeSelectOptions =
-    filteredEmployeeOptions.length > 0 ? filteredEmployeeOptions : hr_m_karyawan_seed;
+    filteredEmployeeOptions.length > 0 ? filteredEmployeeOptions : employees;
 
   const resetForm = () => {
     setFormData({
-      employee_id: hr_m_karyawan_seed[0]?.id ?? "",
+      employee_id: employees[0]?.id ?? "",
       level: warningLevelOptions[0],
       alasan: "",
     });
@@ -133,9 +125,9 @@ export default function EmployeeWarningsPage() {
   const openEditModal = (item: WarningItem) => {
     setEditData(item);
     setFormData({
-      employee_id: item.employee_id,
-      level: item.level,
-      alasan: item.alasan,
+      employee_id: item.employee_id ?? "",
+      level: item.level ?? warningLevelOptions[0],
+      alasan: item.alasan ?? "",
     });
     setEmployeeSearchTerm("");
     setIsFormModalOpen(true);
@@ -146,44 +138,44 @@ export default function EmployeeWarningsPage() {
     resetForm();
   };
 
-  const createRandomId = () => {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-    return `wrn-${Math.random().toString(36).slice(2, 10)}`;
-  };
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSubmitting) return;
 
-    const selectedEmployee = hr_m_karyawan_seed.find(
+    const selectedEmployee = employees.find(
       (employee) => employee.id === formData.employee_id,
     );
 
-    if (!selectedEmployee) return;
+    if (!selectedEmployee) {
+      alert("Silakan pilih karyawan terlebih dahulu.");
+      return;
+    }
 
-    const normalizedPayload: Omit<WarningItem, "id"> = {
+    setIsSubmitting(true);
+
+    const payload = {
       employee_id: selectedEmployee.id,
       level: formData.level,
       alasan: formData.alasan.trim(),
-      createdAt: editData ? editData.createdAt : new Date().toISOString().slice(0, 10),
     };
 
-    if (editData) {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === editData.id ? { ...item, ...normalizedPayload } : item,
-        ),
-      );
-    } else {
-      const newItem: WarningItem = {
-        id: createRandomId(),
-        ...normalizedPayload,
-      };
-      setItems((prev) => [newItem, ...prev]);
-    }
+    try {
+      if (editData) {
+        const result = await update(editData.id, payload);
+        if (!result) throw new Error("Gagal update surat peringatan.");
+      } else {
+        const result = await insert(payload);
+        if (!result) throw new Error("Gagal membuat surat peringatan.");
+      }
 
-    closeFormModal();
+      refreshWarnings();
+      closeFormModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operasi simpan gagal.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const openDeleteModal = (id: string) => {
@@ -196,10 +188,22 @@ export default function EmployeeWarningsPage() {
     setIsDeleteModalOpen(false);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteId) return;
-    setItems((prev) => prev.filter((item) => item.id !== deleteId));
-    closeDeleteModal();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
+    try {
+      const success = await remove(deleteId);
+      if (!success) throw new Error("Gagal menghapus peringatan.");
+      refreshWarnings();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menghapus peringatan.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+      closeDeleteModal();
+    }
   };
 
   return (
@@ -260,14 +264,20 @@ export default function EmployeeWarningsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredItems.length > 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">
+                  Memuat data...
+                </td>
+              </tr>
+            ) : filteredItems.length > 0 ? (
               filteredItems.map((item) => {
-                const employee = employeeById[item.employee_id];
+                const employee = employeeById[item.employee_id ?? ""];
                 const employeeName = employee?.nama ?? "Karyawan tidak ditemukan";
                 return (
                   <tr key={item.id} className="border-t border-slate-100">
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
-                      {dateFormatter.format(new Date(item.createdAt))}
+                      {item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <p className="font-medium text-slate-900">{employeeName}</p>
@@ -276,7 +286,7 @@ export default function EmployeeWarningsPage() {
                     <td className="px-4 py-3 text-sm">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${levelBadgeClass(
-                          item.level,
+                          item.level ?? "",
                         )}`}
                       >
                         {item.level}
@@ -397,15 +407,17 @@ export default function EmployeeWarningsPage() {
             <button
               type="button"
               onClick={closeFormModal}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95"
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-95 disabled:opacity-50"
             >
-              Simpan Record
+              {isSubmitting ? "Menyimpan..." : "Simpan Record"}
             </button>
           </div>
         </form>
@@ -417,7 +429,7 @@ export default function EmployeeWarningsPage() {
         onConfirm={handleConfirmDelete}
         title="Hapus Catatan Warning"
         description="Yakin ingin menghapus data warning ini?"
-        confirmText="Ya, Hapus"
+        confirmText={isSubmitting ? "Menghapus..." : "Ya, Hapus"}
         cancelText="Batal"
         variant="danger"
       />

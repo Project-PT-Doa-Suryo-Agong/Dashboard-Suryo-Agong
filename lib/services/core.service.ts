@@ -1,11 +1,26 @@
-﻿import type { MProduk, MVarian, MVendor } from "@/types/supabase";
+/**
+ * @deprecated — FASE 2 MIGRASI HYBRID BACKEND
+ *
+ * File ini sudah di-deprecated per April 2026.
+ * Semua operasi CRUD produk, varian, dan vendor sekarang dilakukan
+ * langsung dari frontend via Supabase hooks (lib/supabase/hooks/).
+ *
+ * File ini TIDAK boleh dihapus sampai semua consumer yang lain
+ * (misalnya: pages di luar master-data yang masih pakai fetch('/api/core/...'))
+ * sudah dimigrasikan juga.
+ *
+ * @see lib/supabase/hooks/use-products.ts
+ * @see lib/supabase/hooks/use-variants.ts
+ * @see lib/supabase/hooks/use-vendors.ts
+ */
+import type { MProduk, MVarian, MVendor } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("core");
 
-// â”€â”€â”€ m_produk â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  m_produk 
 
 export async function listProduk(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -46,7 +61,7 @@ export async function deleteProduk(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ m_varian â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  m_varian 
 
 export async function listVarian(client: DbClient, produkId?: string) {
   let query = db(client).from("m_varian").select("*").order("created_at", { ascending: false });
@@ -80,7 +95,7 @@ export async function deleteVarian(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ m_vendor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  m_vendor 
 
 export async function listVendor(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
