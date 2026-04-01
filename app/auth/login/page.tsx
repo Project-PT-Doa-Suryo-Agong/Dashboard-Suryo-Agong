@@ -1,3 +1,5 @@
+export { default } from "../page";
+
 "use client";
 
 import { useState } from "react";

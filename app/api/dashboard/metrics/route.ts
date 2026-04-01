@@ -1,5 +1,6 @@
 import { ok } from "@/lib/http/response";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
@@ -15,30 +16,46 @@ function getMonthBounds(date: Date) {
 }
 
 export async function GET() {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  const [{ count: employeeCount }, { count: activeOrderCount }] = await Promise.all([
-    db(supabase, "hr").from("m_karyawan").select("id", { count: "exact", head: true }),
-    db(supabase, "production")
-      .from("t_produksi_order")
-      .select("id", { count: "exact", head: true })
-      .in("status", ["draft", "ongoing"]),
-  ]);
+    const [{ count: employeeCount }, { count: activeOrderCount }] = await Promise.all([
+      db(supabase, "hr").from("m_karyawan").select("id", { count: "exact", head: true }),
+      db(supabase, "production")
+        .from("t_produksi_order")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["draft", "ongoing"]),
+    ]);
 
-  const { start, end } = getMonthBounds(new Date());
-  const { data: liveRows } = await db(supabase, "sales")
-    .from("t_live_performance")
-    .select("revenue, created_at")
-    .gte("created_at", start)
-    .lt("created_at", end);
+    const { start, end } = getMonthBounds(new Date());
+    const { data: liveRows } = await db(supabase, "sales")
+      .from("t_live_performance")
+      .select("revenue, created_at")
+      .gte("created_at", start)
+      .lt("created_at", end);
 
-  const rows = (liveRows ?? []) as Array<{ revenue: number | null }>;
-  const pendapatanBulanIni = rows.reduce((sum, row) => sum + (row.revenue ?? 0), 0);
+    const rows = (liveRows ?? []) as Array<{ revenue: number | null }>;
+    const pendapatanBulanIni = rows.reduce((sum, row) => sum + (row.revenue ?? 0), 0);
 
-  return ok({
-    totalKaryawan: employeeCount ?? 0,
-    pendapatanBulanIni,
-    pesananAktif: activeOrderCount ?? 0,
-    updatedAt: new Date().toISOString(),
-  });
+    return ok({
+      totalKaryawan: employeeCount ?? 0,
+      pendapatanBulanIni,
+      pesananAktif: activeOrderCount ?? 0,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal Server Error";
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "status" in error &&
+      [400, 404, 500].includes((error as { status: number }).status)
+        ? (error as { status: number }).status
+        : 500;
+
+    return NextResponse.json(
+      { success: false, error: { message } },
+      { status }
+    );
+  }
 }

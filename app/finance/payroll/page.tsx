@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Edit, PlusCircle, Search, Trash2 } from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -279,6 +281,34 @@ export default function FinancePayrollPage() {
     }
   };
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const exportRows = filteredPayroll.map((item) => {
+      const employeeName = employeeById[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan";
+      return [
+        item.bulan ? formatPeriod(item.bulan) : "-",
+        employeeName,
+        formatRupiah(item.total ?? 0),
+        item.created_at ? formatDate(item.created_at) : "-",
+      ];
+    });
+
+    doc.setFontSize(14);
+    doc.text("Slip Gaji - PT Doa Suryo Agong", 14, 16);
+    doc.setFontSize(10);
+    doc.text(`Tanggal cetak: ${formatDate(new Date().toISOString())}`, 14, 22);
+
+    autoTable(doc, {
+      startY: 28,
+      head: [["Periode", "Nama Karyawan", "Total Gaji", "Tanggal Eksekusi"]],
+      body: exportRows,
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: [30, 58, 138] },
+    });
+
+    doc.save("Slip_Gaji_PT_Doa_Suryo_Agong.pdf");
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1 md:space-y-2">
@@ -291,14 +321,23 @@ export default function FinancePayrollPage() {
           <p className="text-xs uppercase tracking-wide font-semibold text-slate-500">Total Pengeluaran Gaji</p>
           <p className="mt-2 text-xl md:text-3xl font-bold text-blue-900 break-all">{formatRupiah(totalPayroll)}</p>
         </div>
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-        >
-          <PlusCircle size={18} />
-          Tambah Payroll
-        </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E3A8A] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+          >
+            Cetak PDF
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+          >
+            <PlusCircle size={18} />
+            Tambah Payroll
+          </button>
+        </div>
       </section>
 
       <section className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">

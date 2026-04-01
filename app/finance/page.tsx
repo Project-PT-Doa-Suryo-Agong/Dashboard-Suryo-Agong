@@ -7,7 +7,11 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
+<<<<<<< HEAD
 import FinanceCashFlowChart from '@/components/charts/FinanceCashFlowChart';
+=======
+import { CashflowLineChart, type CashflowPoint } from '@/components/ui/DashboardCharts';
+>>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
 
 type TransactionType = 'In' | 'Out';
 
@@ -54,6 +58,15 @@ const RECENT_TRANSACTIONS: TransactionItem[] = [
     type: 'Out',
     amount: 18750000,
   },
+];
+
+const CASHFLOW_PREVIEW_DATA: CashflowPoint[] = [
+  { bulan: 'Okt', pemasukan: 235000000, pengeluaran: 172000000 },
+  { bulan: 'Nov', pemasukan: 261000000, pengeluaran: 183000000 },
+  { bulan: 'Des', pemasukan: 289000000, pengeluaran: 204000000 },
+  { bulan: 'Jan', pemasukan: 248000000, pengeluaran: 191000000 },
+  { bulan: 'Feb', pemasukan: 307000000, pengeluaran: 212000000 },
+  { bulan: 'Mar', pemasukan: 325000000, pengeluaran: 189500000 },
 ];
 
 function formatRupiah(amount: number): string {
@@ -110,6 +123,14 @@ export default function FinanceDashboardPage() {
             </span>
           </div>
         </article>
+      </section>
+
+      <section className="bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6">
+        <div className="mb-3 md:mb-4">
+          <h2 className="text-sm md:text-base font-bold text-slate-900">Tren Cashflow</h2>
+          <p className="text-xs md:text-sm text-slate-500 mt-1">Preview interaktif pemasukan vs pengeluaran 6 bulan terakhir.</p>
+        </div>
+        <CashflowLineChart data={CASHFLOW_PREVIEW_DATA} />
       </section>
 
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">

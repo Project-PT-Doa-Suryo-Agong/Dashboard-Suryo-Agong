@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Plus, Search, Truck, Trash2 } from "lucide-react";
+import * as XLSX from "xlsx";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -238,6 +239,26 @@ export default function ManifestPage() {
     }
   };
 
+  const handleExportExcel = () => {
+    const exportRows = filteredItems.map((item) => {
+      const order = orderById[item.order_id ?? ""];
+      const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
+
+      return {
+        manifest_id: item.id,
+        order_id: order?.id ?? "Order tidak ditemukan",
+        produk: productName,
+        resi: item.resi ?? "-",
+        dibuat_pada: item.created_at ? dateTimeFormatter.format(new Date(item.created_at)) : "-",
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Manifest");
+    XLSX.writeFile(workbook, "Manifest_Logistik.xlsx");
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
@@ -257,14 +278,23 @@ export default function ManifestPage() {
           />
         </div>
 
-        <button
-          type="button"
-          onClick={() => openFormModal()}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
-        >
-          <Plus size={17} />
-          Tambah Manifest
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+          >
+            Export ke Excel
+          </button>
+          <button
+            type="button"
+            onClick={() => openFormModal()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
+          >
+            <Plus size={17} />
+            Tambah Manifest
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
