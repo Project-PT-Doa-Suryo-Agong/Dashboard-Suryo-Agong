@@ -33,7 +33,7 @@ type MutationResult = {
   error: string | null;
 };
 
-type UseTableOptions = {
+export type UseTableOptions = {
   /** Page number (1-indexed) */
   page?: number;
   /** Items per page */

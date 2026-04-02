@@ -16,24 +16,24 @@ type SystemUser = {
 
 const ROLE_OPTIONS: UserRole[] = [
 	'Developer',
-	'CEO',
-	'Finance',
-	'HR',
-	'Produksi',
-	'Logistik',
-	'Creative',
-	'Office',
+	'Management & Strategy',
+	'Finance & Administration',
+	'HR & Operation Manager',
+	'Produksi & Quality Control',
+	'Logistics & Packing',
+	'Creative & Sales',
+	'Office Support',
 ];
 
 const ROLE_BADGE_MAP: Record<UserRole, string> = {
 	Developer: 'bg-purple-100 text-purple-700 border-purple-200',
-	CEO: 'bg-slate-900 text-white border-slate-900',
-	Finance: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-	HR: 'bg-sky-100 text-sky-700 border-sky-200',
-	Produksi: 'bg-amber-100 text-amber-700 border-amber-200',
-	Logistik: 'bg-orange-100 text-orange-700 border-orange-200',
-	Creative: 'bg-pink-100 text-pink-700 border-pink-200',
-	Office: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+	'Management & Strategy': 'bg-slate-900 text-white border-slate-900',
+	'Finance & Administration': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+	'HR & Operation Manager': 'bg-sky-100 text-sky-700 border-sky-200',
+	'Produksi & Quality Control': 'bg-amber-100 text-amber-700 border-amber-200',
+	'Logistics & Packing': 'bg-orange-100 text-orange-700 border-orange-200',
+	'Creative & Sales': 'bg-pink-100 text-pink-700 border-pink-200',
+	'Office Support': 'bg-indigo-100 text-indigo-700 border-indigo-200',
 };
 
 const DUMMY_USERS: SystemUser[] = [
@@ -47,21 +47,21 @@ const DUMMY_USERS: SystemUser[] = [
 	{
 		id: 'CEO-001',
 		nama: 'Nadia Kusuma',
-		role: 'CEO',
+		role: 'Management & Strategy',
 		phone: '0813-2244-9988',
 		created_at: '2026-01-12T09:30:00Z',
 	},
 	{
 		id: 'FINA-001',
 		nama: 'Dimas Saputra',
-		role: 'Finance',
+		role: 'Finance & Administration',
 		phone: '0821-7700-5544',
 		created_at: '2026-02-09T13:00:00Z',
 	},
 	{
 		id: 'CREA-001',
 		nama: 'Putri Amalia',
-		role: 'Creative',
+		role: 'Creative & Sales',
 		phone: '0857-6001-2211',
 		created_at: '2026-02-17T07:42:00Z',
 	},

@@ -1,11 +1,26 @@
-﻿import type { MKaryawan, TAttendance, TEmployeeWarning } from "@/types/supabase";
+/**
+ * @deprecated — FASE 2 MIGRASI HYBRID BACKEND
+ *
+ * File ini sudah di-deprecated per April 2026.
+ * Semua operasi CRUD karyawan, attendance, dan warnings sekarang dilakukan
+ * langsung dari frontend via Supabase hooks (lib/supabase/hooks/).
+ *
+ * File ini TIDAK boleh dihapus sampai semua consumer yang lain
+ * (misalnya: finance/payroll dan finance/reimburse yang masih pakai fetch('/api/hr/employees'))
+ * sudah dimigrasikan juga.
+ *
+ * @see lib/supabase/hooks/use-karyawan.ts
+ * @see lib/supabase/hooks/use-attendance.ts
+ * @see lib/supabase/hooks/use-warnings.ts
+ */
+import type { MKaryawan, TAttendance, TEmployeeWarning } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("hr");
 
-// â”€â”€â”€ m_karyawan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  m_karyawan 
 
 export async function listKaryawan(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -46,7 +61,7 @@ export async function deleteKaryawan(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_attendance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_attendance 
 
 export async function listAttendance(client: DbClient, page = 1, limit = 100, employeeId?: string) {
   const from = (page - 1) * limit;
@@ -80,7 +95,7 @@ export async function deleteAttendance(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_employee_warning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_employee_warning 
 
 export async function listWarnings(client: DbClient, page = 1, limit = 50, employeeId?: string) {
   const from = (page - 1) * limit;

@@ -1,14 +1,19 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useEffect, useCallback } from "react";
+import { FormEvent, useMemo, useState, useEffect } from "react";
 import { Pencil, Search, Trash2, UserCheck } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import type { ApiError, ApiSuccess } from "@/types/api";
 import type { HrAttendanceStatus, MKaryawan, TAttendance } from "@/types/supabase";
+import {
+  useAttendance,
+  useInsertAttendance,
+  useUpdateAttendance,
+  useDeleteAttendance,
+} from "@/lib/supabase/hooks/use-attendance";
+import { useKaryawan } from "@/lib/supabase/hooks/use-karyawan";
 
 type AttendanceStatus = HrAttendanceStatus;
-
 type AttendanceItem = TAttendance;
 
 type EmployeeOption = {
@@ -16,37 +21,6 @@ type EmployeeOption = {
   nama: string;
   divisi: string;
 };
-
-type AttendanceListPayload = {
-  attendance: AttendanceItem[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-};
-
-type AttendancePayload = {
-  attendance: AttendanceItem | null;
-};
-
-type EmployeesListPayload = {
-  karyawan: MKaryawan[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-};
-
-async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
-  if (!response.ok || !payload.success) {
-    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
-    throw new Error(message);
-  }
-  return payload;
-}
 
 function getTodayDateInput() {
   const now = new Date();
@@ -72,15 +46,9 @@ function statusBadgeClass(status: AttendanceStatus) {
 }
 
 export default function AttendancePage() {
-  const [items, setItems] = useState<AttendanceItem[]>([]);
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<"all" | AttendanceStatus>("all");
-  
   const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<AttendanceItem | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
@@ -96,57 +64,35 @@ export default function AttendancePage() {
     status: "hadir",
   });
 
-  const fetchAttendance = useCallback(async () => {
-    try {
-      const response = await fetch("/api/hr/attendance?page=1&limit=500", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<AttendanceListPayload>(response);
-      setItems(payload.data.attendance ?? []);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat data presensi.";
-      alert(message);
-    }
-  }, []);
+  // ── Supabase Direct ──
+  const { data: items, loading: isLoadingAttendance, refresh: refreshAttendance } = useAttendance();
+  const { data: rawKaryawan, loading: isLoadingKaryawan } = useKaryawan();
+  const { insert } = useInsertAttendance();
+  const { update } = useUpdateAttendance();
+  const { remove } = useDeleteAttendance();
 
-  const fetchKaryawan = useCallback(async () => {
-    try {
-      const response = await fetch("/api/hr/employees?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<EmployeesListPayload>(response);
-      const normalizedEmployees = (payload.data.karyawan ?? []).map((employee) => ({
+  const isLoading = isLoadingAttendance || isLoadingKaryawan;
+
+  // Normalize employees
+  const employees: EmployeeOption[] = useMemo(
+    () =>
+      rawKaryawan.map((employee: MKaryawan) => ({
         id: employee.id,
         nama: employee.nama,
         divisi: employee.divisi ?? "-",
-      }));
-      setEmployees(normalizedEmployees);
+      })),
+    [rawKaryawan],
+  );
+
+  // Set default employee_id when employees first load
+  useEffect(() => {
+    if (employees.length > 0 && !formData.employee_id) {
       setFormData((prev) => ({
         ...prev,
-        employee_id: prev.employee_id || normalizedEmployees[0]?.id || "",
+        employee_id: employees[0].id,
       }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat daftar karyawan.";
-      alert(message);
     }
-  }, []);
-
-  useEffect(() => {
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      try {
-        await Promise.all([fetchAttendance(), fetchKaryawan()]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void loadInitialData();
-  }, [fetchAttendance, fetchKaryawan]);
+  }, [employees, formData.employee_id]);
 
   const employeeById = useMemo(
     () => Object.fromEntries(employees.map((employee) => [employee.id, employee])) as Record<string, EmployeeOption>,
@@ -234,22 +180,14 @@ export default function AttendancePage() {
 
     try {
       if (editData) {
-        const response = await fetch(`/api/hr/attendance/${editData.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        await parseJsonResponse<AttendancePayload>(response);
+        const result = await update(editData.id, payload);
+        if (!result) throw new Error("Gagal update presensi.");
       } else {
-        const response = await fetch("/api/hr/attendance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        await parseJsonResponse<AttendancePayload>(response);
+        const result = await insert(payload);
+        if (!result) throw new Error("Gagal mencatat presensi.");
       }
 
-      await fetchAttendance();
+      refreshAttendance();
       closeFormModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Operasi simpan presensi gagal.";
@@ -265,12 +203,9 @@ export default function AttendancePage() {
     setIsSubmitting(true);
     
     try {
-      const response = await fetch(`/api/hr/attendance/${deleteId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-      await parseJsonResponse<null>(response);
-      await fetchAttendance();
+      const success = await remove(deleteId);
+      if (!success) throw new Error("Gagal menghapus presensi.");
+      refreshAttendance();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal menghapus presensi.";
       alert(message);

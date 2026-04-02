@@ -5,7 +5,7 @@ type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("management");
 
-// â”€â”€â”€ t_budget_request â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_budget_request 
 
 export async function listBudgetRequest(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -42,7 +42,7 @@ export async function deleteBudgetRequest(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_kpi_weekly â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_kpi_weekly 
 
 export async function listKPIWeekly(client: DbClient, page = 1, limit = 50, divisi?: string) {
   const from = (page - 1) * limit;

@@ -5,7 +5,7 @@ type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("finance");
 
-// â”€â”€â”€ t_cashflow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_cashflow 
 
 export async function listCashflow(client: DbClient, page = 1, limit = 100) {
   const from = (page - 1) * limit;
@@ -37,7 +37,7 @@ export async function deleteCashflow(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_payroll_history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_payroll_history 
 
 export async function listPayroll(client: DbClient, page = 1, limit = 50, employeeId?: string) {
   const from = (page - 1) * limit;
@@ -71,7 +71,7 @@ export async function deletePayroll(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_reimbursement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_reimbursement 
 
 export async function listReimbursement(client: DbClient, page = 1, limit = 50, employeeId?: string) {
   const from = (page - 1) * limit;
