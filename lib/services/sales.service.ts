@@ -1,4 +1,12 @@
-﻿import type { MAfiliator, TContentPlanner, TLivePerformance, TSalesOrder } from "@/types/supabase";
+/**
+ * @deprecated — FASE 2 MIGRASI HYBRID BACKEND
+ *
+ * File ini sudah di-deprecated per April 2026.
+ * Segera migrasikan endpoint yang menggunakan service ini menuju direct Supabase hooks.
+ * 
+ * @see lib/supabase/hooks/use-sales.ts
+ */
+import type { MAfiliator, TContentPlanner, TLivePerformance, TSalesOrder } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;

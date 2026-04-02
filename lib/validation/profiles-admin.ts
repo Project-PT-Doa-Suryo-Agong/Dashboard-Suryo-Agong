@@ -26,13 +26,13 @@ const USER_ROLES: SystemRoleKey[] = [
 ];
 
 const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
-  management: "CEO",
-  finance: "Finance",
-  hr: "HR",
-  produksi: "Produksi",
-  logistik: "Logistik",
-  creative: "Creative",
-  office: "Office",
+  management: "Management & Strategy",
+  finance: "Finance & Administration",
+  hr: "HR & Operation Manager",
+  produksi: "Produksi & Quality Control",
+  logistik: "Logistics & Packing",
+  creative: "Creative & Sales",
+  office: "Office Support",
   developer: "Developer",
 };
 

@@ -138,6 +138,26 @@ types/
 └── supabase.ts           # Auto-generated database types
 ```
 
+## Migration Note: Phase 2 Hybrid Backend (April 2026)
+
+Sebuah inisiatif sedang berlangsung untuk memigrasikan endpoint CRUD konvensional yang membebani Next.js server (`/api/*`) menuju komunikasi akses langsung **Supabase Hooks** lewat folder `lib/supabase/hooks/` untuk meningkatkan skalabilitas dan mengurangi beban server.
+
+### Status hooks:
+Hook internal telah dibuat untuk domain logika berikut: `finance`, `logistics`, `management`, `production`, `sales`. 
+File service server-side di folder `lib/services/*.ts` telah ditandai `@deprecated`.
+
+### Menunggu Refactor UI/Frontend:
+Untuk menyelesaikan migrasi ini, halaman-halaman _frontend_ berikut harus direfactor agar berhenti memanggil fungsi `fetch('/api/...')` dan menggantinya dengan memanggil custom hooks yang telah dibuat.
+**Daftar halaman yang perlu disesuaikan (untuk CRUD langsung):**
+1. **Core / HR:** `app/hr/attendance/page.tsx`, `app/hr/warnings/page.tsx`, dsb (sudah dibuat sebagian).
+2. **Logistik:** `app/logistik/manifest/page.tsx`, `app/logistik/packing/page.tsx`, `app/logistik/returns/page.tsx` 
+3. **Sales/Creative:** `app/creative/content/page.tsx`, jadwal live, affiliator (**CATATAN: Sales Order tetap via Next.js API**)
+4. **Finance:** `app/finance/cashflow/page.tsx` (**CATATAN: Payroll & Reimburse tetap via Next.js API**)
+5. **Management:** `app/management/kpi/page.tsx` (**CATATAN: Budget request tetap via Next.js API**)
+6. **Produksi:** **Semua operasi produksi (QC, Pesanan) tetap via Next.js API untuk orkestrasi.**
+
+Setelah semua komponen ini di-refactor menggunakan Supabase hooks (_misal:_ `useManifest()`), maka direktori API rute CRUD murni di `app/api/...` dan file deprecated di `lib/services/...` dapat dihapus seluruhnya.
+
 ## Getting Started
 
 ### Prerequisites
