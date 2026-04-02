@@ -76,12 +76,12 @@ export default function LandingPage() {
               className="h-8 w-auto md:h-9 lg:h-10"
             />
           </div>
-          <Link
-            href="/auth"
+          <a
+            href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/login`}
             className="flex h-10 w-full items-center justify-center rounded-lg bg-[#BC934B] px-4 text-xs font-bold text-white shadow-md transition-all hover:bg-opacity-90 sm:w-auto md:px-6 md:text-sm lg:text-base"
           >
             Sign In
-          </Link>
+          </a>
         </div>
       </nav>
 
@@ -94,12 +94,12 @@ export default function LandingPage() {
             Seamlessly manage Finance, HR, Production, and more from one intelligent ecosystem. Designed for modern scale.
           </p>
           <div className="flex w-full flex-col justify-center gap-2 md:gap-3 sm:w-auto sm:flex-row lg:gap-4">
-            <Link
-              href="/auth"
+            <a
+              href={`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/login`}
               className="flex h-11 items-center justify-center rounded-xl bg-[#BC934B] px-5 text-sm font-bold text-white shadow-lg transition-transform hover:-translate-y-0.5 md:h-12 md:px-6 md:text-base lg:h-14 lg:px-8 lg:text-lg"
             >
               Access System
-            </Link>
+            </a>
           </div>
         </section>
 

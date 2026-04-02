@@ -4,19 +4,88 @@ import type {
 } from "@/types/profile";
 import type { CoreUserRole } from "@/types/supabase";
 
+<<<<<<< HEAD
 const USER_ROLES: CoreUserRole[] = [
-  'Developer',
-  'Management & Strategy',
-  'Finance & Administration',
-  'HR & Operation Manager',
-  'Produksi & Quality Control',
-  'Logistics & Packing',
-  'Creative & Sales',
-  'Office Support'
+  "Developer",
+  "CEO",
+  "Finance",
+  "HR",
+  "Produksi",
+  "Logistik",
+  "Creative",
+  "Office",
 ];
+
+const ROLE_ALIASES: Record<string, CoreUserRole> = {
+  developer: "Developer",
+  ceo: "CEO",
+  management: "CEO",
+  "management & strategy": "CEO",
+  finance: "Finance",
+  "finance & administration": "Finance",
+  hr: "HR",
+  "human resource": "HR",
+  "hr & operation manager": "HR",
+  produksi: "Produksi",
+  production: "Produksi",
+  "produksi & quality control": "Produksi",
+  logistik: "Logistik",
+  logistics: "Logistik",
+  "logistics & packing": "Logistik",
+  creative: "Creative",
+  sales: "Creative",
+  "creative & sales": "Creative",
+  office: "Office",
+  "office support": "Office",
+};
 
 function isCoreUserRole(value: string): value is CoreUserRole {
   return USER_ROLES.includes(value as CoreUserRole);
+=======
+type SystemRoleKey =
+  | "management"
+  | "finance"
+  | "hr"
+  | "produksi"
+  | "logistik"
+  | "creative"
+  | "office"
+  | "developer";
+
+const USER_ROLES: SystemRoleKey[] = [
+  'management',
+  'finance',
+  'hr',
+  'produksi',
+  'logistik',
+  'creative',
+  'office',
+  'developer'
+];
+
+const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
+  management: "CEO",
+  finance: "Finance",
+  hr: "HR",
+  produksi: "Produksi",
+  logistik: "Logistik",
+  creative: "Creative",
+  office: "Office",
+  developer: "Developer",
+};
+
+function isSystemRoleKey(value: string): value is SystemRoleKey {
+  return USER_ROLES.includes(value as SystemRoleKey);
+>>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
+}
+
+function normalizeCoreUserRole(value: string): CoreUserRole | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (isCoreUserRole(trimmed)) return trimmed;
+
+  const byAlias = ROLE_ALIASES[trimmed.toLowerCase()];
+  return byAlias ?? null;
 }
 
 function validateOptionalString(
@@ -67,8 +136,13 @@ export function parseCreateProfileInput(payload: unknown):
     return { ok: false, message: "role wajib diisi." };
   }
 
-  const role = body.role.trim();
-  if (!isCoreUserRole(role)) {
+<<<<<<< HEAD
+  const role = normalizeCoreUserRole(body.role);
+  if (!role) {
+=======
+  const role = body.role.trim().toLowerCase();
+  if (!isSystemRoleKey(role)) {
+>>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
     return { ok: false, message: "role tidak valid." };
   }
 
@@ -81,7 +155,7 @@ export function parseCreateProfileInput(payload: unknown):
       email: body.email.trim(),
       password: body.password,
       nama: body.nama.trim(),
-      role,
+      role: SYSTEM_ROLE_TO_CORE_ROLE[role],
       phone: phone.value ?? null,
     },
   };
@@ -104,10 +178,19 @@ export function parseUpdateProfileByIdInput(payload: unknown):
   const role = validateOptionalString("role", body.role, 80, false);
   if (!role.ok) return role;
   if (role.value !== undefined && role.value !== null) {
-    if (!isCoreUserRole(role.value)) {
+<<<<<<< HEAD
+    const normalizedRole = normalizeCoreUserRole(role.value);
+    if (!normalizedRole) {
       return { ok: false, message: "role tidak valid." };
     }
-    parsed.role = role.value;
+    parsed.role = normalizedRole;
+=======
+    const systemRole = role.value.toLowerCase();
+    if (!isSystemRoleKey(systemRole)) {
+      return { ok: false, message: "role tidak valid." };
+    }
+    parsed.role = SYSTEM_ROLE_TO_CORE_ROLE[systemRole];
+>>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
   }
 
   const phone = validateOptionalString("phone", body.phone, 50);

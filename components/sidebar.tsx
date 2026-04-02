@@ -126,9 +126,72 @@ export default function Sidebar(props: SidebarProps) {
 
   const pathname = usePathname();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const mobileIsOpen = isOpen ?? isMobileOpen;
   const handleClose = onClose ?? onCloseMobile;
+
+<<<<<<< HEAD
+  const resolveRootHost = () => {
+    const { hostname } = window.location;
+    if (hostname.endsWith(".localhost")) return "localhost";
+    if (hostname.endsWith(".lvh.me")) return "lvh.me";
+    return hostname;
+=======
+  const resolveLoginUrl = () => {
+    if (typeof window === "undefined") return "/auth/login";
+    const host = window.location.hostname.toLowerCase();
+    const port = window.location.port || "3000";
+
+    if (host.endsWith(".lvh.me") || host === "lvh.me") {
+      return `http://lvh.me:${port}/auth/login`;
+    }
+
+    if (host.endsWith(".localhost") || host === "localhost") {
+      return `http://localhost:${port}/auth/login`;
+    }
+
+    return "/auth/login";
+  };
+
+  const clearRoleCookies = () => {
+    document.cookie = "role=; Path=/; Max-Age=0; SameSite=Lax";
+    document.cookie = "role=; Path=/; domain=localhost; Max-Age=0; SameSite=Lax";
+    document.cookie = "role=; Path=/; domain=.localhost; Max-Age=0; SameSite=Lax";
+    document.cookie = "role=; Path=/; domain=lvh.me; Max-Age=0; SameSite=Lax";
+    document.cookie = "role=; Path=/; domain=.lvh.me; Max-Age=0; SameSite=Lax";
+>>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
+  };
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+<<<<<<< HEAD
+      // Tetap lanjutkan cleanup lokal agar user tidak terjebak di halaman saat ini.
+    } finally {
+      document.cookie = "role=; Path=/; Max-Age=0; SameSite=Lax";
+      document.cookie = "role=; Path=/; Domain=.localhost; Max-Age=0; SameSite=Lax";
+      document.cookie = "role=; Path=/; Domain=.lvh.me; Max-Age=0; SameSite=Lax";
+
+      const rootHost = resolveRootHost();
+      const { protocol, port } = window.location;
+      const portPart = port ? `:${port}` : "";
+      window.location.href = `${protocol}//${rootHost}${portPart}/auth`;
+=======
+      // Redirect tetap dipaksa agar sesi lokal dibersihkan meski request gagal.
+    } finally {
+      clearRoleCookies();
+      window.location.href = resolveLoginUrl();
+>>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
+    }
+  };
 
   const isPathActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -293,18 +356,24 @@ export default function Sidebar(props: SidebarProps) {
             <div className="flex gap-2 md:gap-3 w-full">
               <button
                 onClick={() => setShowLogoutConfirm(false)}
+                disabled={isLoggingOut}
                 className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 Batal
               </button>
               <button
+<<<<<<< HEAD
                 onClick={() => {
                   setShowLogoutConfirm(false);
-                  // TODO: tambahkan logika logout di sini
+                  void handleLogout();
                 }}
+=======
+                onClick={handleLogout}
+>>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
+                disabled={isLoggingOut}
                 className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors"
               >
-                Logout
+                {isLoggingOut ? "Logging out..." : "Logout"}
               </button>
             </div>
           </div>

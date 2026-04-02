@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { ArrowRight, Landmark, Target, Users } from "lucide-react";
+<<<<<<< HEAD
+import ManagementPerformanceChart from '@/components/charts/ManagementPerformanceChart';
+=======
 import { PerformanceBarChart, type PerformancePoint } from "@/components/ui/DashboardCharts";
+>>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
 
 type BudgetStatus = "pending" | "approved" | "rejected";
 type EmployeeStatus = "aktif" | "nonaktif";
@@ -204,6 +208,9 @@ export default function ManagementDashboardPage() {
         </Link>
       </section>
 
+<<<<<<< HEAD
+      <ManagementPerformanceChart />
+=======
       <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
         <div className="mb-3 md:mb-4">
           <h2 className="text-sm md:text-base font-bold text-slate-900">KPI Divisi</h2>
@@ -211,6 +218,7 @@ export default function ManagementDashboardPage() {
         </div>
         <PerformanceBarChart data={MANAGEMENT_PERFORMANCE_PREVIEW} barLabel="Target KPI" />
       </section>
+>>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <article className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
