@@ -39,6 +39,7 @@ const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
 function isSystemRoleKey(value: string): value is SystemRoleKey {
   return USER_ROLES.includes(value as SystemRoleKey);
 }
+
 function validateOptionalString(
   key: string,
   value: unknown,
