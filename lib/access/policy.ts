@@ -29,41 +29,51 @@ function normalize(input: string | null | undefined) {
 }
 
 export function inferAccessLevel(role: string | null): AccessLevel {
-  const source = normalize(role);
+  const normalized = (role ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
+  // 1. Strategic level
   if (
-    source.includes("managerial") ||
-    source.includes("manager") ||
-    source.includes("asst ceo") ||
-    source.includes("assistant ceo") ||
-    source.includes("lead") ||
-    source.includes("supervisor")
-  ) {
-    return "managerial";
-  }
-
-  if (
-    source.includes("strategic") ||
-    source.includes("ceo") ||
-    source.includes("komisaris") ||
-    source.includes("director") ||
-    source.includes("owner") ||
-    source.includes("admin") ||
-    source.includes("developer")
+    normalized === "developer" ||
+    normalized.includes("senior-developer") ||
+    normalized.includes("ceo") ||
+    normalized.includes("director") ||
+    normalized.includes("strategic") ||
+    normalized.includes("komisaris") ||
+    normalized.includes("owner") ||
+    normalized.includes("admin")
   ) {
     return "strategic";
   }
 
+  // 2. Managerial level
   if (
-    source.includes("support") ||
-    source.includes("security") ||
-    source.includes("maintenance") ||
-    source.includes("office support") ||
-    source.includes("art")
+    normalized.includes("management") ||
+    normalized.includes("manager") ||
+    normalized.includes("managerial") ||
+    normalized.includes("head") ||
+    normalized.includes("supervisor") ||
+    normalized.includes("lead") ||
+    normalized.includes("asst-ceo") ||
+    normalized.includes("assistant-ceo")
+  ) {
+    return "managerial";
+  }
+
+  // 3. Support level
+  if (
+    normalized.includes("support") ||
+    normalized.includes("security") ||
+    normalized.includes("maintenance") ||
+    normalized.includes("art")
   ) {
     return "support";
   }
 
+  // 4. Operational level (default fallback for HR, Finance, Logistics, Production, Sales, Creative)
   return "operational";
 }
 

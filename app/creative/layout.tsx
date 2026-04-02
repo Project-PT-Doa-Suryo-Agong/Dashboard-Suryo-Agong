@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
+import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
-  { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
+  { label: 'Dashboard Overview', href: '/creative', icon: 'LayoutDashboard' },
   { label: 'Affiliators', href: '/creative/affiliates', icon: 'Users' },
   { label: 'Content Planner', href: '/creative/content', icon: 'CalendarDays' },
   { label: 'Live Performance', href: '/creative/live-perf', icon: 'TrendingUp' },
@@ -18,6 +19,7 @@ export default function CreativeLayout({
   children: React.ReactNode;
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const { name, role } = useProfile();
 
   return (
     <div className="flex min-h-screen bg-background-light font-display">
@@ -44,7 +46,7 @@ export default function CreativeLayout({
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Creative & Sales Dashboard"
-          user={{ name: 'Alex Rivera', role: 'Creative Manager' }}
+          user={{ name: name ?? '...', role: role ?? '' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

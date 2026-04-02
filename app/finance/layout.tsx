@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
+import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
-  { label: 'Finance Dashboard', href: '/', icon: 'LayoutDashboard' },
+  { label: 'Finance Dashboard', href: '/finance', icon: 'LayoutDashboard' },
   { label: 'Cashflow', href: '/finance/cashflow', icon: 'ChartCandlestick' },
   { label: 'Payroll', href: '/finance/payroll', icon: 'Banknote' },
   { label: 'Reimburse', href: '/finance/reimburse', icon: 'ReceiptText' },
@@ -17,6 +18,7 @@ export default function FinanceLayout({
   children: React.ReactNode;
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const { name, role } = useProfile();
 
   return (
     <div className="flex min-h-screen bg-background-light font-display">
@@ -40,7 +42,7 @@ export default function FinanceLayout({
       <main className="flex-1 min-w-0 w-full md:ml-0 overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Finance Dashboard"
-          user={{ name: 'Fernando Antonelli', role: 'Finance Team' }}
+          user={{ name: name ?? '...', role: role ?? '' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

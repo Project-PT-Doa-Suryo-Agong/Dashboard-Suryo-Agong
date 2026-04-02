@@ -48,28 +48,60 @@ export default function LoginPage() {
 		}
 
 		// Map role to subdomain
-		const roleMap: Record<string, string> = {
-		  developer: "developer",
-		  ceo: "management",
-		  management: "management",
-		  finance: "finance",
-		  hr: "hr",
-		  "human-resource": "hr",
-		  produksi: "produksi",
-		  production: "produksi",
-		  logistik: "logistik",
-		  logistics: "logistik",
-		  creative: "creative",
-		  sales: "creative",
-		  office: "office",
+		const slugMapToSubdomain = (rawRole: string | null | undefined): string => {
+			if (!rawRole) return "management";
+			const slug = rawRole.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+			const exactMap: Record<string, string> = {
+				"developer":           "developer",
+				"senior-developer":    "developer",
+				"ceo":                 "management",
+				"management":          "management",
+				"manager":             "management",
+				"management-strategy": "management",
+				"management-strategic":"management",
+				"finance":             "finance",
+				"finance-accounting":  "finance",
+				"finance-team":        "finance",
+				"hr":                  "hr",
+				"human-resource":      "hr",
+				"human-resources":     "hr",
+				"human-resource-dept": "hr",
+				"human-resources-dept":"hr",
+				"produksi":            "produksi",
+				"production":          "produksi",
+				"produksi-team":       "produksi",
+				"logistik":            "logistik",
+				"logistics":           "logistik",
+				"logistik-team":       "logistik",
+				"creative":            "creative",
+				"creative-manager":    "creative",
+				"sales":               "creative",
+				"creative-sales":      "creative",
+				"office":              "office",
+				"office-support":      "office",
+			};
+
+			if (exactMap[slug]) return exactMap[slug];
+
+			if (slug.includes("developer"))  return "developer";
+			if (slug.includes("management")) return "management";
+			if (slug.includes("ceo"))        return "management";
+			if (slug.includes("finance"))    return "finance";
+			if (slug.includes("human-resource")) return "hr";
+			if (slug.includes("produksi"))   return "produksi";
+			if (slug.includes("production")) return "produksi";
+			if (slug.includes("logistik"))   return "logistik";
+			if (slug.includes("logistics"))  return "logistik";
+			if (slug.includes("creative"))   return "creative";
+			if (slug.includes("sales"))      return "creative";
+			if (slug.includes("office"))     return "office";
+			if (slug.includes("hr"))         return "hr";
+
+			return "management";
 		};
 
-		const normalized = (role ?? "")
-		  .trim().toLowerCase()
-		  .replace(/[^a-z0-9]+/g, "-")
-		  .replace(/^-+|-+$/g, "");
-		
-		const subdomain = roleMap[normalized] ?? "management";
+		const subdomain = slugMapToSubdomain(role);
 		const siteUrl = process.env.NEXT_PUBLIC_SITE_URL 
 		  || "http://lvh.me:3000";
 		const base = new URL(siteUrl);

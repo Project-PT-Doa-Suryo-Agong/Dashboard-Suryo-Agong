@@ -42,23 +42,56 @@ function slugifyRole(role: string) {
 }
 
 function mapRoleToSubdomain(role: string | null | undefined): string {
-  const normalized = slugifyRole(role ?? "");
-  const roleMap: Record<string, string> = {
-    developer: "developer",
-    ceo: "management",
-    management: "management",
-    finance: "finance",
-    hr: "hr",
-    "human-resource": "hr",
-    produksi: "produksi",
-    production: "produksi",
-    logistik: "logistik",
-    logistics: "logistik",
-    creative: "creative",
-    sales: "creative",
-    office: "office",
+  if (!role) return "management";
+  const slug = slugifyRole(role);
+
+  const exactMap: Record<string, string> = {
+    "developer":           "developer",
+    "senior-developer":    "developer",
+    "ceo":                 "management",
+    "management":          "management",
+    "manager":             "management",
+    "management-strategy": "management",
+    "management-strategic":"management",
+    "finance":             "finance",
+    "finance-accounting":  "finance",
+    "finance-team":        "finance",
+    "hr":                  "hr",
+    "human-resource":      "hr",
+    "human-resources":     "hr",
+    "human-resource-dept": "hr",
+    "human-resources-dept":"hr",
+    "produksi":            "produksi",
+    "production":          "produksi",
+    "produksi-team":       "produksi",
+    "logistik":            "logistik",
+    "logistics":           "logistik",
+    "logistik-team":       "logistik",
+    "creative":            "creative",
+    "creative-manager":    "creative",
+    "sales":               "creative",
+    "creative-sales":      "creative",
+    "office":              "office",
+    "office-support":      "office",
   };
-  return roleMap[normalized] ?? "management";
+
+  if (exactMap[slug]) return exactMap[slug];
+
+  if (slug.includes("developer"))  return "developer";
+  if (slug.includes("management")) return "management";
+  if (slug.includes("ceo"))        return "management";
+  if (slug.includes("finance"))    return "finance";
+  if (slug.includes("human-resource")) return "hr";
+  if (slug.includes("produksi"))   return "produksi";
+  if (slug.includes("production")) return "produksi";
+  if (slug.includes("logistik"))   return "logistik";
+  if (slug.includes("logistics"))  return "logistik";
+  if (slug.includes("creative"))   return "creative";
+  if (slug.includes("sales"))      return "creative";
+  if (slug.includes("office"))     return "office";
+  if (slug.includes("hr"))         return "hr";
+
+  return "management";
 }
 
 function buildTenantRedirectUrl(subdomain: string): string {

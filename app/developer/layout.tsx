@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
+import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
-  { label: 'Dashboard', href: '/', icon: 'LayoutDashboard' },
+  { label: 'Dashboard', href: '/developer', icon: 'LayoutDashboard' },
   {
     label: 'Master Data',
     href: '/developer/master-data',
@@ -25,6 +26,7 @@ export default function DeveloperLayout({
   children: React.ReactNode;
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const { name, role } = useProfile();
 
   return (
     <div className="flex min-h-screen bg-background-light font-display">
@@ -50,7 +52,7 @@ export default function DeveloperLayout({
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Developer Dashboard"
-          user={{ name: 'Soebardjo Djojokoesoemo', role: 'Developer' }}
+          user={{ name: name ?? '...', role: role ?? '' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 
