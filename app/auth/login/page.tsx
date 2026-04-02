@@ -121,8 +121,8 @@ export default function LoginPage() {
 			<div className="relative flex w-full flex-col bg-slate-700 justify-center px-4 sm:px-6 md:px-8 lg:w-1/2 lg:px-12 xl:px-24">
 				<div className="absolute top-6 left-6 md:top-8 md:left-8">
 					<Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-300 transition hover:text-[#BC934B]">
-						<ArrowLeft className="h-4 w-4" />
-						Kembali
+						<ArrowLeft className="h-6 w-6" />
+						<p className="text-lg">Kembali</p>
 					</Link>
 				</div>
 				<div className="mx-auto w-full max-w-md space-y-8">
