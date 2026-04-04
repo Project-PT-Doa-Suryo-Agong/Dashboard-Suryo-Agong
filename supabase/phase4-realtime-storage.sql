@@ -103,3 +103,46 @@ USING (
   bucket_id = 'products' AND
   (SELECT core.is_strategic())
 );
+
+-- C. Bucket "returns" (Private)
+
+-- Buat bucket untuk bukti return order (Private)
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('returns', 'returns', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Logistik bisa upload bukti return
+CREATE POLICY "Logistik can upload return proofs"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'returns' AND
+  (SELECT core.get_user_role()) IN ('Developer', 'Management & Strategy', 'Logistics & Packing')
+);
+
+-- Logistik dan Produksi bisa lihat bukti return
+CREATE POLICY "Logistik and Produksi can read return proofs"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (
+  bucket_id = 'returns' AND
+  (SELECT core.get_user_role()) IN ('Developer', 'Management & Strategy', 'Logistics & Packing', 'Produksi & Quality Control')
+);
+
+-- Hanya Logistik/Strategic yang bisa mengupdate
+CREATE POLICY "Logistik can update return proofs"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'returns' AND
+  (SELECT core.get_user_role()) IN ('Developer', 'Management & Strategy', 'Logistics & Packing')
+);
+
+-- Hanya Strategic yang bisa menghapus foto return secara permanen
+CREATE POLICY "Strategic can delete return proofs"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'returns' AND
+  (SELECT core.is_strategic())
+);
