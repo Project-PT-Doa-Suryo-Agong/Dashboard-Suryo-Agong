@@ -4,7 +4,17 @@ import type {
 } from "@/types/profile";
 import type { CoreUserRole } from "@/types/supabase";
 
-const USER_ROLES: CoreUserRole[] = [
+type SystemRoleKey =
+  | "management"
+  | "finance"
+  | "hr"
+  | "produksi"
+  | "logistik"
+  | "creative"
+  | "office"
+  | "developer";
+
+const USER_ROLES: SystemRoleKey[] = [
   'management',
   'finance',
   'hr',
@@ -15,8 +25,19 @@ const USER_ROLES: CoreUserRole[] = [
   'developer'
 ];
 
-function isSystemRoleKey(value: string): value is CoreUserRole {
-  return USER_ROLES.includes(value as CoreUserRole);
+const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
+  management: "Management & Strategy",
+  finance: "Finance & Administration",
+  hr: "HR & Operation Manager",
+  produksi: "Produksi & Quality Control",
+  logistik: "Logistics & Packing",
+  creative: "Creative & Sales",
+  office: "Office Support",
+  developer: "Developer",
+};
+
+function isSystemRoleKey(value: string): value is SystemRoleKey {
+  return USER_ROLES.includes(value as SystemRoleKey);
 }
 
 function validateOptionalString(
@@ -81,7 +102,7 @@ export function parseCreateProfileInput(payload: unknown):
       email: body.email.trim(),
       password: body.password,
       nama: body.nama.trim(),
-      role: role as CoreUserRole,
+      role: SYSTEM_ROLE_TO_CORE_ROLE[role],
       phone: phone.value ?? null,
     },
   };
@@ -108,7 +129,7 @@ export function parseUpdateProfileByIdInput(payload: unknown):
     if (!isSystemRoleKey(systemRole)) {
       return { ok: false, message: "role tidak valid." };
     }
-    parsed.role = systemRole as CoreUserRole;
+    parsed.role = SYSTEM_ROLE_TO_CORE_ROLE[systemRole];
   }
 
   const phone = validateOptionalString("phone", body.phone, 50);
