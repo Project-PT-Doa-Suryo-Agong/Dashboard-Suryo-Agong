@@ -159,7 +159,7 @@ Saat ini, migrasi arsitektur *Hybrid* (Fase 1 hingga Fase 4) di sisi server/back
 
 ### 3. Standarisasi Tipe Role Backend (Cleanup Kritis)
 **Konteks Audit Akhir**: RLS dan sistem keamanan telah dirampingkan. Role CEO, Human Resource, Management & Strategy, dsb. sudah tidak dikenali oleh guard JWT di Backend.
-**Tindakan Frontend**: Pastikan state UI anda hanya merujuk pada standar baku 8 lowercase ini: developer, management, inance, hr, produksi, logistik, creative, office. Ubah seluruh kode kondisi seperti if (role === 'CEO') menjadi if (role === 'management').
+**Tindakan Frontend**: Pastikan state UI anda hanya merujuk pada standar baku 8 lowercase ini: developer, management, inance, hr, produksi, logistik, creative, office. Ubah seluruh kode kondisi seperti if (role === 'CEO') menjadi if (role === 'Management & Strategy').
 
 ### 4. Instalasi Supabase Realtime (Fitur Fase 4)
 **Konteks Fase 4**: Agar panel dashboard terasa kekinian, Publication Realtime telah diaktifkan di database backend untuk tabel antrean dinamis.

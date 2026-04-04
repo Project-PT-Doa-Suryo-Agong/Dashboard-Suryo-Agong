@@ -58,7 +58,7 @@ USING (
   bucket_id = 'reimbursements' AND
   (
     auth.uid() = owner OR
-    (SELECT core.get_user_role()) IN ('developer', 'management', 'finance')
+    (SELECT core.get_user_role()) IN ('Developer', 'Management & Strategy', 'Finance & Administration')
   )
 );
 
@@ -83,7 +83,7 @@ ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (
   bucket_id = 'products' AND
-  (SELECT core.get_user_role()) IN ('developer', 'management', 'logistik', 'produksi')
+  (SELECT core.get_user_role()) IN ('Developer', 'Management & Strategy', 'Logistics & Packing', 'Produksi & Quality Control')
 );
 
 -- Update foto produk terbatas untuk role terkait
@@ -92,7 +92,7 @@ ON storage.objects FOR UPDATE
 TO authenticated
 USING (
   bucket_id = 'products' AND
-  (SELECT core.get_user_role()) IN ('developer', 'management', 'logistik', 'produksi')
+  (SELECT core.get_user_role()) IN ('Developer', 'Management & Strategy', 'Logistics & Packing', 'Produksi & Quality Control')
 );
 
 -- Hanya Strategic yang bisa menghapus foto secara permanen
