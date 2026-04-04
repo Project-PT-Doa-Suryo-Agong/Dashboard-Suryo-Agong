@@ -169,7 +169,8 @@ Saat ini, migrasi arsitektur *Hybrid* (Fase 1 hingga Fase 4) di sisi server/back
    - production.t_produksi_order
 
 ### 5. Adaptasi Direct Upload Storage (Fitur Fase 4)
-**Konteks Fase 4**: File gambar/dokumen tidak perlu transit merepotkan server utama. Bucket storage eimbursements (private) dan products (public) telah dikonfigurasi lengkap dengan perisai RLS-nya.
+**Konteks Fase 4**: File gambar/dokumen tidak perlu transit merepotkan server utama. Bucket storage 
+eimbursements (private) dan products (public) telah dikonfigurasi lengkap dengan perisai RLS-nya.
 **Tindakan Frontend**: Hapus fungsi *form-data api upload* lama, gantikan dengan mengeksekusi langsung wait supabase.storage.from('products').upload(...) dari browser.
 
 ## Getting Started
@@ -199,7 +200,7 @@ supabase/rls-policies.sql
 
 ### Run Development Server
 
-`ash
+`bash
 npm install
 npm run dev
 `
