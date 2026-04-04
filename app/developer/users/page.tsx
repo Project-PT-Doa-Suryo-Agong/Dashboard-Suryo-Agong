@@ -15,60 +15,53 @@ type SystemUser = {
 };
 
 const ROLE_OPTIONS: UserRole[] = [
-	'Developer',
-	'Management & Strategy',
-	'Finance & Administration',
-	'HR & Operation Manager',
-	'Produksi & Quality Control',
-	'Logistics & Packing',
-	'Creative & Sales',
-	'Office Support',
+	'developer',
+	'management',
+	'finance',
+	'hr',
+	'produksi',
+	'logistik',
+	'creative',
+	'office',
 ];
 
 const ROLE_BADGE_MAP: Record<UserRole, string> = {
-	Developer: 'bg-purple-100 text-purple-700 border-purple-200',
-	'Management & Strategy': 'bg-slate-900 text-white border-slate-900',
-	'Finance & Administration': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-	'HR & Operation Manager': 'bg-sky-100 text-sky-700 border-sky-200',
-	'Produksi & Quality Control': 'bg-amber-100 text-amber-700 border-amber-200',
-	'Logistics & Packing': 'bg-orange-100 text-orange-700 border-orange-200',
-	'Creative & Sales': 'bg-pink-100 text-pink-700 border-pink-200',
-	'Office Support': 'bg-indigo-100 text-indigo-700 border-indigo-200',
-	CEO: 'bg-slate-800 text-white border-slate-800',
-	Finance: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-	HR: 'bg-sky-50 text-sky-600 border-sky-100',
-	Produksi: 'bg-amber-50 text-amber-600 border-amber-100',
-	Logistik: 'bg-orange-50 text-orange-600 border-orange-100',
-	Creative: 'bg-pink-50 text-pink-600 border-pink-100',
-	Office: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+	developer: 'bg-purple-100 text-purple-700 border-purple-200',
+	management: 'bg-slate-900 text-white border-slate-900',
+	finance: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+	hr: 'bg-sky-100 text-sky-700 border-sky-200',
+	produksi: 'bg-amber-100 text-amber-700 border-amber-200',
+	logistik: 'bg-orange-100 text-orange-700 border-orange-200',
+	creative: 'bg-pink-100 text-pink-700 border-pink-200',
+	office: 'bg-indigo-100 text-indigo-700 border-indigo-200',
 };
 
 const DUMMY_USERS: SystemUser[] = [
 	{
 		id: 'DEVS-001',
 		nama: 'Rama Pratama',
-		role: 'Developer',
+		role: 'developer',
 		phone: '0812-3456-7890',
 		created_at: '2026-01-04T08:14:00Z',
 	},
 	{
 		id: 'CEO-001',
 		nama: 'Nadia Kusuma',
-		role: 'Management & Strategy',
+		role: 'management',
 		phone: '0813-2244-9988',
 		created_at: '2026-01-12T09:30:00Z',
 	},
 	{
 		id: 'FINA-001',
 		nama: 'Dimas Saputra',
-		role: 'Finance & Administration',
+		role: 'finance',
 		phone: '0821-7700-5544',
 		created_at: '2026-02-09T13:00:00Z',
 	},
 	{
 		id: 'CREA-001',
 		nama: 'Putri Amalia',
-		role: 'Creative & Sales',
+		role: 'creative',
 		phone: '0857-6001-2211',
 		created_at: '2026-02-17T07:42:00Z',
 	},
@@ -79,7 +72,7 @@ export default function DeveloperUsersPage() {
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [nama, setNama] = useState('');
 	const [phone, setPhone] = useState('');
-	const [role, setRole] = useState<UserRole>('Developer');
+	const [role, setRole] = useState<UserRole>('developer');
 
 	const submitLabel = editingId ? 'Update User' : 'Tambah User';
 
@@ -92,7 +85,7 @@ export default function DeveloperUsersPage() {
 		setEditingId(null);
 		setNama('');
 		setPhone('');
-		setRole('Developer');
+		setRole('developer');
 	};
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {

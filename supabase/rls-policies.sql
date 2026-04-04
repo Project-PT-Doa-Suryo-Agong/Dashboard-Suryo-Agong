@@ -29,7 +29,7 @@ RETURNS BOOLEAN AS $$
   SELECT EXISTS (
     SELECT 1 FROM core.profiles 
     WHERE id = auth.uid() 
-    AND role IN ('Developer', 'CEO')
+    AND role IN ('developer', 'management')
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
@@ -58,7 +58,7 @@ USING (core.is_strategic());
 CREATE POLICY "HR can read all profiles"
 ON core.profiles FOR SELECT
 TO authenticated
-USING (core.get_user_role() = 'HR');
+USING (core.get_user_role() = 'hr');
 
 -- User bisa update profile sendiri (nama, phone saja — role diproteksi di backend)
 CREATE POLICY "Users can update own profile"
@@ -83,14 +83,14 @@ CREATE POLICY "Authorized roles can insert products"
 ON core.m_produk FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'logistik', 'produksi')
 );
 
 CREATE POLICY "Authorized roles can update products"
 ON core.m_produk FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'logistik', 'produksi')
 );
 
 CREATE POLICY "Strategic can delete products"
@@ -111,14 +111,14 @@ CREATE POLICY "Authorized roles can insert variants"
 ON core.m_varian FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'logistik', 'produksi')
 );
 
 CREATE POLICY "Authorized roles can update variants"
 ON core.m_varian FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'logistik', 'produksi')
 );
 
 CREATE POLICY "Strategic can delete variants"
@@ -139,14 +139,14 @@ CREATE POLICY "Authorized roles can insert vendors"
 ON core.m_vendor FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'logistik', 'produksi')
 );
 
 CREATE POLICY "Authorized roles can update vendors"
 ON core.m_vendor FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'logistik', 'produksi')
 );
 
 CREATE POLICY "Strategic can delete vendors"
@@ -168,7 +168,7 @@ CREATE POLICY "HR and strategic can read all employees"
 ON hr.m_karyawan FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'hr')
 );
 
 -- Karyawan bisa baca data sendiri (via profile_id)
@@ -181,14 +181,14 @@ CREATE POLICY "HR and strategic can insert employees"
 ON hr.m_karyawan FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'hr')
 );
 
 CREATE POLICY "HR and strategic can update employees"
 ON hr.m_karyawan FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'hr')
 );
 
 CREATE POLICY "Strategic can delete employees"
@@ -204,7 +204,7 @@ CREATE POLICY "HR and strategic can read all attendance"
 ON hr.t_attendance FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'hr')
 );
 
 -- Karyawan bisa lihat attendance sendiri
@@ -221,14 +221,14 @@ CREATE POLICY "HR and strategic can insert attendance"
 ON hr.t_attendance FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'hr')
 );
 
 CREATE POLICY "HR and strategic can update attendance"
 ON hr.t_attendance FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'hr')
 );
 
 CREATE POLICY "Strategic can delete attendance"
@@ -244,21 +244,21 @@ CREATE POLICY "HR and strategic can read warnings"
 ON hr.t_employee_warning FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'hr')
 );
 
 CREATE POLICY "HR and strategic can insert warnings"
 ON hr.t_employee_warning FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'hr')
 );
 
 CREATE POLICY "HR and strategic can update warnings"
 ON hr.t_employee_warning FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'hr')
 );
 
 CREATE POLICY "Strategic can delete warnings"
@@ -279,21 +279,21 @@ CREATE POLICY "Finance and strategic can read cashflow"
 ON finance.t_cashflow FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Finance')
+  core.get_user_role() IN ('developer', 'management', 'finance')
 );
 
 CREATE POLICY "Finance and strategic can insert cashflow"
 ON finance.t_cashflow FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Finance')
+  core.get_user_role() IN ('developer', 'management', 'finance')
 );
 
 CREATE POLICY "Finance and strategic can update cashflow"
 ON finance.t_cashflow FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Finance')
+  core.get_user_role() IN ('developer', 'management', 'finance')
 );
 
 CREATE POLICY "Strategic can delete cashflow"
@@ -310,7 +310,7 @@ CREATE POLICY "Finance and strategic can read payroll"
 ON finance.t_payroll_history FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Finance', 'HR')
+  core.get_user_role() IN ('developer', 'management', 'finance', 'hr')
 );
 
 -- INSERT/UPDATE/DELETE tetap via API (calculation logic)
@@ -328,7 +328,7 @@ CREATE POLICY "Finance and strategic can read all reimbursements"
 ON finance.t_reimbursement FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Finance')
+  core.get_user_role() IN ('developer', 'management', 'finance')
 );
 
 -- Employee bisa lihat reimbursement sendiri
@@ -352,7 +352,7 @@ CREATE POLICY "Finance can update reimbursements"
 ON finance.t_reimbursement FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Finance')
+  core.get_user_role() IN ('developer', 'management', 'finance')
 );
 
 CREATE POLICY "Strategic can delete reimbursements"
@@ -373,21 +373,21 @@ CREATE POLICY "Produksi and strategic can read production orders"
 ON production.t_produksi_order FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'produksi', 'logistik')
 );
 
 CREATE POLICY "Produksi and strategic can insert production orders"
 ON production.t_produksi_order FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'produksi')
 );
 
 CREATE POLICY "Produksi and strategic can update production orders"
 ON production.t_produksi_order FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'produksi')
 );
 
 CREATE POLICY "Strategic can delete production orders"
@@ -403,21 +403,21 @@ CREATE POLICY "Produksi and strategic can read QC inbound"
 ON production.t_qc_inbound FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'produksi', 'logistik')
 );
 
 CREATE POLICY "Produksi and strategic can insert QC inbound"
 ON production.t_qc_inbound FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'produksi')
 );
 
 CREATE POLICY "Produksi and strategic can update QC inbound"
 ON production.t_qc_inbound FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'produksi')
 );
 
 CREATE POLICY "Strategic can delete QC inbound"
@@ -433,21 +433,21 @@ CREATE POLICY "Produksi and strategic can read QC outbound"
 ON production.t_qc_outbound FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'produksi', 'logistik')
 );
 
 CREATE POLICY "Produksi and strategic can insert QC outbound"
 ON production.t_qc_outbound FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'produksi')
 );
 
 CREATE POLICY "Produksi and strategic can update QC outbound"
 ON production.t_qc_outbound FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'produksi')
 );
 
 CREATE POLICY "Strategic can delete QC outbound"
@@ -468,21 +468,21 @@ CREATE POLICY "Logistik and strategic can read packing"
 ON logistics.t_packing FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'logistik', 'produksi')
 );
 
 CREATE POLICY "Logistik and strategic can insert packing"
 ON logistics.t_packing FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'logistik')
 );
 
 CREATE POLICY "Logistik and strategic can update packing"
 ON logistics.t_packing FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'logistik')
 );
 
 CREATE POLICY "Strategic can delete packing"
@@ -498,21 +498,21 @@ CREATE POLICY "Logistik and strategic can read manifests"
 ON logistics.t_logistik_manifest FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Finance')
+  core.get_user_role() IN ('developer', 'management', 'logistik', 'finance')
 );
 
 CREATE POLICY "Logistik and strategic can insert manifests"
 ON logistics.t_logistik_manifest FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'logistik')
 );
 
 CREATE POLICY "Logistik and strategic can update manifests"
 ON logistics.t_logistik_manifest FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'logistik')
 );
 
 CREATE POLICY "Strategic can delete manifests"
@@ -528,21 +528,21 @@ CREATE POLICY "Logistik and strategic can read returns"
 ON logistics.t_return_order FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
+  core.get_user_role() IN ('developer', 'management', 'logistik', 'produksi')
 );
 
 CREATE POLICY "Logistik and strategic can insert returns"
 ON logistics.t_return_order FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'logistik')
 );
 
 CREATE POLICY "Logistik and strategic can update returns"
 ON logistics.t_return_order FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'logistik')
 );
 
 CREATE POLICY "Strategic can delete returns"
@@ -563,21 +563,21 @@ CREATE POLICY "Creative and strategic can read affiliators"
 ON sales.m_affiliator FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Creative and strategic can insert affiliators"
 ON sales.m_affiliator FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Creative and strategic can update affiliators"
 ON sales.m_affiliator FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Strategic can delete affiliators"
@@ -593,21 +593,21 @@ CREATE POLICY "Creative and strategic can read content"
 ON sales.t_content_planner FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Creative and strategic can insert content"
 ON sales.t_content_planner FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Creative and strategic can update content"
 ON sales.t_content_planner FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Strategic can delete content"
@@ -623,21 +623,21 @@ CREATE POLICY "Creative and strategic can read live performance"
 ON sales.t_live_performance FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Creative and strategic can insert live performance"
 ON sales.t_live_performance FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Creative and strategic can update live performance"
 ON sales.t_live_performance FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Strategic can delete live performance"
@@ -653,21 +653,21 @@ CREATE POLICY "Sales-related roles can read orders"
 ON sales.t_sales_order FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative', 'Finance', 'Logistik')
+  core.get_user_role() IN ('developer', 'management', 'creative', 'finance', 'logistik')
 );
 
 CREATE POLICY "Creative and strategic can insert orders"
 ON sales.t_sales_order FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Creative and strategic can update orders"
 ON sales.t_sales_order FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Creative')
+  core.get_user_role() IN ('developer', 'management', 'creative')
 );
 
 CREATE POLICY "Strategic can delete orders"
@@ -688,7 +688,7 @@ CREATE POLICY "Strategic and finance can read budget requests"
 ON management.t_budget_request FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Finance')
+  core.get_user_role() IN ('developer', 'management', 'finance')
 );
 
 -- Semua divisi bisa submit budget request

@@ -12,21 +12,14 @@ type Tables<S extends keyof Database, T extends keyof Database[S]["Tables"]> =
   Database[S]["Tables"][T];
 
 export type CoreUserRole =
-  | "Developer"
-  | "Management & Strategy"
-  | "Finance & Administration"
-  | "HR & Operation Manager"
-  | "Produksi & Quality Control"
-  | "Logistics & Packing"
-  | "Creative & Sales"
-  | "Office Support"
-  | "CEO"
-  | "Finance"
-  | "HR"
-  | "Produksi"
-  | "Logistik"
-  | "Creative"
-  | "Office";
+  | "developer"
+  | "management"
+  | "finance"
+  | "hr"
+  | "produksi"
+  | "logistik"
+  | "creative"
+  | "office";
 
 export type HrEmployeeStatus = "aktif" | "nonaktif";
 export type HrAttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";

@@ -38,7 +38,7 @@ export function inferAccessLevel(role: string | null): AccessLevel {
   // 1. Strategic level
   if (
     normalized === "developer" ||
-    normalized.includes("senior-developer") ||
+    normalized === "management" ||
     normalized.includes("ceo") ||
     normalized.includes("director") ||
     normalized.includes("strategic") ||
@@ -49,9 +49,8 @@ export function inferAccessLevel(role: string | null): AccessLevel {
     return "strategic";
   }
 
-  // 2. Managerial level
+  // 2. Managerial level (fallback untuk roles manager lainnya jika ada di masa depan)
   if (
-    normalized.includes("management") ||
     normalized.includes("manager") ||
     normalized.includes("managerial") ||
     normalized.includes("head") ||

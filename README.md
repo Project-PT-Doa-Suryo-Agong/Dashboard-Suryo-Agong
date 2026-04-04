@@ -138,25 +138,39 @@ types/
 └── supabase.ts           # Auto-generated database types
 ```
 
-## Migration Note: Phase 2 Hybrid Backend (April 2026)
 
-Sebuah inisiatif sedang berlangsung untuk memigrasikan endpoint CRUD konvensional yang membebani Next.js server (`/api/*`) menuju komunikasi akses langsung **Supabase Hooks** lewat folder `lib/supabase/hooks/` untuk meningkatkan skalabilitas dan mengurangi beban server.
+## Catatan Migrasi Hybrid Backend (Menunggu Penyesuaian Frontend)
 
-### Status hooks:
-Hook internal telah dibuat untuk domain logika berikut: `finance`, `logistics`, `management`, `production`, `sales`. 
-File service server-side di folder `lib/services/*.ts` telah ditandai `@deprecated`.
+Saat ini, migrasi arsitektur *Hybrid* (Fase 1 hingga Fase 4) di sisi server/backend telah **mencapai 100%**. Namun untuk mewujudkan perampingan ini sepenuhnya, pihak Frontend wajib menyelesaikan transisi pemanggilan data dengan rincian berikut:
 
-### Menunggu Refactor UI/Frontend:
-Untuk menyelesaikan migrasi ini, halaman-halaman _frontend_ berikut harus direfactor agar berhenti memanggil fungsi `fetch('/api/...')` dan menggantinya dengan memanggil custom hooks yang telah dibuat.
-**Daftar halaman yang perlu disesuaikan (untuk CRUD langsung):**
-1. **Core / HR:** `app/hr/attendance/page.tsx`, `app/hr/warnings/page.tsx`, dsb (sudah dibuat sebagian).
-2. **Logistik:** `app/logistik/manifest/page.tsx`, `app/logistik/packing/page.tsx`, `app/logistik/returns/page.tsx` 
-3. **Sales/Creative:** `app/creative/content/page.tsx`, jadwal live, affiliator (**CATATAN: Sales Order tetap via Next.js API**)
-4. **Finance:** `app/finance/cashflow/page.tsx` (**CATATAN: Payroll & Reimburse tetap via Next.js API**)
-5. **Management:** `app/management/kpi/page.tsx` (**CATATAN: Budget request tetap via Next.js API**)
-6. **Produksi:** **Semua operasi produksi (QC, Pesanan) tetap via Next.js API untuk orkestrasi.**
+### 1. Refactor API Call (Migrasi ke supabase.schema().from())
+**Konteks Fase 2 & 3**: Hampir seluruh endpoint pp/api/... konvensional (untuk operasi CRUD sederhana) dan layer service-nya telah **dihapus**. 
+**Tindakan Frontend**: Gantikan etch('/api/...') dengan memanggil langsung via client Supabase. Modul-modul UI yang harus disesuaikan:
+- **Core / HR:** pp/hr/attendance/page.tsx, pp/hr/warnings/page.tsx
+- **Logistik:** pp/logistik/manifest/page.tsx, pp/logistik/packing/page.tsx, pp/logistik/returns/page.tsx
+- **Sales/Creative:** Halaman content, jadwal live, affiliator. *(Catatan: Sales Order tetap via Next.js API).*
+- **Finance:** pp/finance/cashflow/page.tsx. *(Catatan: Payroll & Reimburse tetap via Next.js API).*
+- **Management:** pp/management/kpi/page.tsx. *(Catatan: Budget request tetap via Next.js API).*
+- **Produksi:** Semua operasi produksi (QC, Pesanan) tetap via Next.js API untuk orkestrasi workflow.
 
-Setelah semua komponen ini di-refactor menggunakan Supabase hooks (_misal:_ `useManifest()`), maka direktori API rute CRUD murni di `app/api/...` dan file deprecated di `lib/services/...` dapat dihapus seluruhnya.
+### 2. Penyesuaian Auth Endpoints (Migrasi Fase 1)
+**Konteks Fase 1**: Folder pp/api/auth (yang melayani rute login, logout, dan session) dinilai berlebihan dan telah **dihapus**.
+**Tindakan Frontend**: Rute autentikasi mandiri (seperti di page.tsx login) kini wajib langsung berhubungan dengan Supabase API (supabase.auth.signInWithPassword(...)).
+
+### 3. Standarisasi Tipe Role Backend (Cleanup Kritis)
+**Konteks Audit Akhir**: RLS dan sistem keamanan telah dirampingkan. Role CEO, Human Resource, Management & Strategy, dsb. sudah tidak dikenali oleh guard JWT di Backend.
+**Tindakan Frontend**: Pastikan state UI anda hanya merujuk pada standar baku 8 lowercase ini: developer, management, inance, hr, produksi, logistik, creative, office. Ubah seluruh kode kondisi seperti if (role === 'CEO') menjadi if (role === 'management').
+
+### 4. Instalasi Supabase Realtime (Fitur Fase 4)
+**Konteks Fase 4**: Agar panel dashboard terasa kekinian, Publication Realtime telah diaktifkan di database backend untuk tabel antrean dinamis.
+**Tindakan Frontend**: Tim frontend kini bisa menulis *custom hooks* (menggunakan supabase.channel('...').on('postgres_changes', ...).subscribe()) untuk merefleksikan pembaruan *live* di tabel:
+   - logistics.t_packing
+   - inance.t_reimbursement
+   - production.t_produksi_order
+
+### 5. Adaptasi Direct Upload Storage (Fitur Fase 4)
+**Konteks Fase 4**: File gambar/dokumen tidak perlu transit merepotkan server utama. Bucket storage eimbursements (private) dan products (public) telah dikonfigurasi lengkap dengan perisai RLS-nya.
+**Tindakan Frontend**: Hapus fungsi *form-data api upload* lama, gantikan dengan mengeksekusi langsung wait supabase.storage.from('products').upload(...) dari browser.
 
 ## Getting Started
 
@@ -167,33 +181,33 @@ Setelah semua komponen ini di-refactor menggunakan Supabase hooks (_misal:_ `use
 
 ### Environment Variables
 
-Buat file `.env` di root project:
+Buat file .env di root project:
 
-```env
+`env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
+`
 
 ### Setup RLS
 
-Jalankan script RLS di Supabase Dashboard → SQL Editor:
+Jalankan script RLS di Supabase Dashboard ? SQL Editor:
 
-```
+`
 supabase/rls-policies.sql
-```
+`
 
 ### Run Development Server
 
-```bash
+`ash
 npm install
 npm run dev
-```
+`
 
 Buka [http://localhost:3000](http://localhost:3000).
 
 Setiap divisi diakses melalui subdomain:
-- `http://finance.localhost:3000`
-- `http://hr.localhost:3000`
-- `http://produksi.localhost:3000`
+- http://finance.localhost:3000
+- http://hr.localhost:3000
+- http://produksi.localhost:3000
 - dst.
