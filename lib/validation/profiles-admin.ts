@@ -25,7 +25,7 @@ const USER_ROLES: SystemRoleKey[] = [
   'developer'
 ];
 
-const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
+export const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
   management: "Management & Strategy",
   finance: "Finance & Administration",
   hr: "HR & Operation Manager",
@@ -36,7 +36,7 @@ const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
   developer: "Developer",
 };
 
-function isSystemRoleKey(value: string): value is SystemRoleKey {
+export function isSystemRoleKey(value: string): value is SystemRoleKey {
   return USER_ROLES.includes(value as SystemRoleKey);
 }
 

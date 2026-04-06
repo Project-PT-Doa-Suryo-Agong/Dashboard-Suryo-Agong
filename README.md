@@ -144,34 +144,33 @@ types/
 Saat ini, migrasi arsitektur *Hybrid* (Fase 1 hingga Fase 4) di sisi server/backend telah **mencapai 100%**. Namun untuk mewujudkan perampingan ini sepenuhnya, pihak Frontend wajib menyelesaikan transisi pemanggilan data dengan rincian berikut:
 
 ### 1. Refactor API Call (Migrasi ke supabase.schema().from())
-**Konteks Fase 2 & 3**: Hampir seluruh endpoint pp/api/... konvensional (untuk operasi CRUD sederhana) dan layer service-nya telah **dihapus**. 
-**Tindakan Frontend**: Gantikan etch('/api/...') dengan memanggil langsung via client Supabase. Modul-modul UI yang harus disesuaikan:
-- **Core / HR:** pp/hr/attendance/page.tsx, pp/hr/warnings/page.tsx
-- **Logistik:** pp/logistik/manifest/page.tsx, pp/logistik/packing/page.tsx, pp/logistik/returns/page.tsx
+**Konteks Fase 2 & 3**: Hampir seluruh endpoint app/api/... konvensional (untuk operasi CRUD sederhana) dan layer service-nya telah **dihapus**. 
+**Tindakan Frontend**: Gantikan fetch('/api/...') dengan memanggil langsung via client Supabase. Modul-modul UI yang harus disesuaikan:
+- **Core / HR:** app/hr/attendance/page.tsx, app/hr/warnings/page.tsx
+- **Logistik:** app/logistik/manifest/page.tsx, app/logistik/packing/page.tsx, app/logistik/returns/page.tsx
 - **Sales/Creative:** Halaman content, jadwal live, affiliator. *(Catatan: Sales Order tetap via Next.js API).*
-- **Finance:** pp/finance/cashflow/page.tsx. *(Catatan: Payroll & Reimburse tetap via Next.js API).*
-- **Management:** pp/management/kpi/page.tsx. *(Catatan: Budget request tetap via Next.js API).*
+- **Finance:** app/finance/cashflow/page.tsx. *(Catatan: Payroll & Reimburse tetap via Next.js API).*
+- **Management:** app/management/kpi/page.tsx. *(Catatan: Budget request tetap via Next.js API).*
 - **Produksi:** Semua operasi produksi (QC, Pesanan) tetap via Next.js API untuk orkestrasi workflow.
 
 ### 2. Penyesuaian Auth Endpoints (Migrasi Fase 1)
-**Konteks Fase 1**: Folder pp/api/auth (yang melayani rute login, logout, dan session) dinilai berlebihan dan telah **dihapus**.
+**Konteks Fase 1**: Folder app/api/auth (yang melayani rute login, logout, dan session) dinilai berlebihan dan telah **dihapus**.
 **Tindakan Frontend**: Rute autentikasi mandiri (seperti di page.tsx login) kini wajib langsung berhubungan dengan Supabase API (supabase.auth.signInWithPassword(...)).
 
 ### 3. Standarisasi Tipe Role Backend (Cleanup Kritis)
 **Konteks Audit Akhir**: RLS dan sistem keamanan telah dirampingkan. Role CEO, Human Resource, Management & Strategy, dsb. sudah tidak dikenali oleh guard JWT di Backend.
-**Tindakan Frontend**: Pastikan state UI anda hanya merujuk pada standar baku 8 lowercase ini: developer, management, inance, hr, produksi, logistik, creative, office. Ubah seluruh kode kondisi seperti if (role === 'CEO') menjadi if (role === 'Management & Strategy').
+**Tindakan Frontend**: Pastikan state UI anda hanya merujuk pada standar baku 8 lowercase ini: developer, management, finance, hr, produksi, logistik, creative, office. Ubah seluruh kode kondisi seperti if (role === 'CEO') menjadi if (role === 'Management & Strategy').
 
 ### 4. Instalasi Supabase Realtime (Fitur Fase 4)
 **Konteks Fase 4**: Agar panel dashboard terasa kekinian, Publication Realtime telah diaktifkan di database backend untuk tabel antrean dinamis.
 **Tindakan Frontend**: Tim frontend kini bisa menulis *custom hooks* (menggunakan supabase.channel('...').on('postgres_changes', ...).subscribe()) untuk merefleksikan pembaruan *live* di tabel:
    - logistics.t_packing
-   - inance.t_reimbursement
+   - finance.t_reimbursement
    - production.t_produksi_order
 
 ### 5. Adaptasi Direct Upload Storage (Fitur Fase 4)
-**Konteks Fase 4**: File gambar/dokumen tidak perlu transit merepotkan server utama. Bucket storage 
-eimbursements (private) dan products (public) telah dikonfigurasi lengkap dengan perisai RLS-nya.
-**Tindakan Frontend**: Hapus fungsi *form-data api upload* lama, gantikan dengan mengeksekusi langsung wait supabase.storage.from('products').upload(...) dari browser.
+**Konteks Fase 4**: File gambar/dokumen tidak perlu transit merepotkan server utama. Bucket storage reimbursements (private) dan products (public) telah dikonfigurasi lengkap dengan perisai RLS-nya.
+**Tindakan Frontend**: Hapus fungsi *form-data api upload* lama, gantikan dengan mengeksekusi langsung await supabase.storage.from('products').upload(...) dari browser.
 
 ## Getting Started
 
