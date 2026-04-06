@@ -21,6 +21,14 @@ type LivePayload = {
   live: TLivePerformance | null;
 };
 
+const STREAMING_PLATFORM_OPTIONS = [
+  'Twitch',
+  'YouTube Live',
+  'TikTok Live',
+  'Instagram Live',
+  'Shopee Live',
+] as const;
+
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const raw = await response.text();
   let payload: ApiSuccess<T> | ApiError;
@@ -221,11 +229,9 @@ export default function LivePerformancePage() {
               className="w-full bg-slate-200 text-slate-500  border border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer transition-all"
             >
               <option value="" disabled>Select Platform</option>
-              <option value="Twitch">Twitch</option>
-              <option value="YouTube Live">YouTube Live</option>
-              <option value="TikTok Live">TikTok Live</option>
-              <option value="Instagram Live">Instagram Live</option>
-              <option value="Shopee Live">Shopee Live</option>
+              {STREAMING_PLATFORM_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
             </select>
           </div>
           
@@ -335,14 +341,18 @@ export default function LivePerformancePage() {
           <form onSubmit={handleUpdateRecord} className="space-y-4">
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600">Streaming Platform</label>
-              <input
+              <select
                 required
-                type="text"
                 value={platform}
                 onChange={(event) => setPlatform(event.target.value)}
                 disabled={isSubmitting}
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
-              />
+              >
+                <option value="" disabled>Select Platform</option>
+                {STREAMING_PLATFORM_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Revenue Generated</label>

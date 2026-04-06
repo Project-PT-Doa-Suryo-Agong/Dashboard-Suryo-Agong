@@ -106,6 +106,35 @@ export default function SalesOrderPage() {
     [variants],
   );
 
+  const resolveCalculatedTotal = useCallback(
+    (variantId: string, quantity: string) => {
+      const qty = Number(quantity);
+      if (!variantId || Number.isNaN(qty) || qty <= 0) return "";
+
+      const variant = variantMap.get(variantId);
+      if (!variant || variant.harga == null) return "";
+
+      return String(variant.harga * qty);
+    },
+    [variantMap],
+  );
+
+  const handleVariantChange = (variantId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      varian_id: variantId,
+      total_price: resolveCalculatedTotal(variantId, prev.quantity),
+    }));
+  };
+
+  const handleQuantityChange = (quantity: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      quantity,
+      total_price: resolveCalculatedTotal(prev.varian_id, quantity),
+    }));
+  };
+
   const affiliatorMap = useMemo(
     () => new Map<string, MAfiliator>(affiliators.map((item) => [item.id, item])),
     [affiliators],
@@ -162,11 +191,13 @@ export default function SalesOrderPage() {
 
   const openEditModal = (item: TSalesOrder) => {
     setEditData(item);
+    const initialQuantity = String(item.quantity);
+    const initialVariantId = item.varian_id ?? "";
     setFormData({
-      varian_id: item.varian_id ?? "",
+      varian_id: initialVariantId,
       affiliator_id: item.affiliator_id ?? "",
-      quantity: String(item.quantity),
-      total_price: String(item.total_price),
+      quantity: initialQuantity,
+      total_price: resolveCalculatedTotal(initialVariantId, initialQuantity) || String(item.total_price),
     });
     setIsEditModalOpen(true);
   };
@@ -296,7 +327,7 @@ export default function SalesOrderPage() {
             <select
               required
               value={formData.varian_id}
-              onChange={(event) => setFormData((prev) => ({ ...prev, varian_id: event.target.value }))}
+              onChange={(event) => handleVariantChange(event.target.value)}
               className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               disabled={isSubmitting}
             >
@@ -335,7 +366,7 @@ export default function SalesOrderPage() {
               type="number"
               min={1}
               value={formData.quantity}
-              onChange={(event) => setFormData((prev) => ({ ...prev, quantity: event.target.value }))}
+              onChange={(event) => handleQuantityChange(event.target.value)}
               className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="Qty"
               disabled={isSubmitting}
@@ -349,8 +380,8 @@ export default function SalesOrderPage() {
               type="number"
               min={0}
               value={formData.total_price}
-              onChange={(event) => setFormData((prev) => ({ ...prev, total_price: event.target.value }))}
-              className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              readOnly
+              className="w-full bg-slate-100 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm cursor-not-allowed"
               placeholder="0"
               disabled={isSubmitting}
             />
@@ -457,7 +488,7 @@ export default function SalesOrderPage() {
               <select
                 required
                 value={formData.varian_id}
-                onChange={(event) => setFormData((prev) => ({ ...prev, varian_id: event.target.value }))}
+                onChange={(event) => handleVariantChange(event.target.value)}
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
                 disabled={isSubmitting}
               >
@@ -495,7 +526,7 @@ export default function SalesOrderPage() {
                 type="number"
                 min={1}
                 value={formData.quantity}
-                onChange={(event) => setFormData((prev) => ({ ...prev, quantity: event.target.value }))}
+                onChange={(event) => handleQuantityChange(event.target.value)}
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
                 placeholder="Quantity"
                 disabled={isSubmitting}
@@ -505,8 +536,8 @@ export default function SalesOrderPage() {
                 type="number"
                 min={0}
                 value={formData.total_price}
-                onChange={(event) => setFormData((prev) => ({ ...prev, total_price: event.target.value }))}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
+                readOnly
+                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 cursor-not-allowed"
                 placeholder="Total Price"
                 disabled={isSubmitting}
               />

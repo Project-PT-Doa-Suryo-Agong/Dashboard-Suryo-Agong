@@ -15,7 +15,7 @@ import type { ApiError, ApiSuccess } from '@/types/api';
 import type { TContentPlanner } from '@/types/supabase';
 import { apiFetch } from "@/lib/utils/api-fetch";
 
-type Platform = 'TikTok' | 'Instagram' | 'YouTube Shorts' | 'LinkedIn' | 'Twitter / X';
+type Platform = 'TikTok' | 'Instagram' | 'YouTube Shorts' | 'LinkedIn' | 'Twitter / X' | 'Lainnya';
 
 type ContentListPayload = {
   content: TContentPlanner[];
@@ -30,7 +30,7 @@ type ContentPayload = {
   content: TContentPlanner | null;
 };
 
-const PLATFORM_OPTIONS: Platform[] = ['TikTok', 'Instagram', 'YouTube Shorts', 'LinkedIn', 'Twitter / X'];
+const PLATFORM_OPTIONS: Platform[] = ['TikTok', 'Instagram', 'YouTube Shorts', 'LinkedIn', 'Twitter / X', 'Lainnya'];
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const raw = await response.text();
@@ -54,6 +54,7 @@ const PLATFORM_BADGE: Record<Platform, string> = {
   'YouTube Shorts': 'bg-red-50 text-red-700 before:bg-red-500',
   LinkedIn: 'bg-sky-50 text-sky-700 before:bg-sky-500',
   'Twitter / X': 'bg-zinc-100 text-zinc-700 before:bg-zinc-900',
+  Lainnya: 'bg-violet-50 text-violet-700 before:bg-violet-500',
 };
 
 type ContentFormProps = {
