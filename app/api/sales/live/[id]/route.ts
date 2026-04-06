@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
-import { updateLivePerformance, deleteLivePerformance } from "@/lib/services/sales.service";
+import { deleteLivePerformance, updateLivePerformance } from "@/lib/services/sales.service";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -14,19 +14,32 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return fail("BAD_REQUEST", "Body harus JSON valid.", 400);
   }
 
-  const { data, error } = await updateLivePerformance(auth.ctx.supabase, id, body as Record<string, unknown>);
+  const input = body as Record<string, unknown>;
+  if (input.platform !== undefined && (typeof input.platform !== "string" || !input.platform.trim())) {
+    return fail("VALIDATION_ERROR", "platform tidak boleh kosong.", 400);
+  }
+  if (input.revenue !== undefined && typeof input.revenue !== "number") {
+    return fail("VALIDATION_ERROR", "revenue harus angka.", 400);
+  }
+
+  const payload = {
+    ...input,
+    ...(typeof input.platform === "string" ? { platform: input.platform.trim() } : {}),
+  };
+
+  const { data, error } = await updateLivePerformance(auth.ctx.supabase, id, payload);
   if (error) return fail("DB_ERROR", "Gagal update live performance.", 500, error.message);
-  if (!data) return fail("NOT_FOUND", "Live performance tidak ditemukan.", 404);
+  if (!data) return fail("NOT_FOUND", "Data live performance tidak ditemukan.", 404);
   return ok({ live: data });
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireLevel("strategic", "managerial");
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
   const { id } = await params;
 
   const { error, deleted } = await deleteLivePerformance(auth.ctx.supabase, id);
-  if (error) return fail("DB_ERROR", "Gagal hapus live performance.", 500, error.message);
-  if (!deleted) return fail("NOT_FOUND", "Live performance tidak ditemukan.", 404);
-  return ok(null, "Live performance berhasil dihapus.");
+  if (error) return fail("DB_ERROR", "Gagal menghapus live performance.", 500, error.message);
+  if (!deleted) return fail("NOT_FOUND", "Data live performance tidak ditemukan.", 404);
+  return ok(null, "Data live performance berhasil dihapus.");
 }

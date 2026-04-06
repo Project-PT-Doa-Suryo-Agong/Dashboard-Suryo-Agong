@@ -7,6 +7,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MProduk, TLogistikManifest, TProduksiOrder } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
 type ManifestListPayload = {
   manifest: TLogistikManifest[];
@@ -25,8 +26,36 @@ type ProductsListPayload = {
   meta: { page: number; limit: number; total: number };
 };
 
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function pickOrders(data: unknown): TProduksiOrder[] {
+  if (!data || typeof data !== "object") return [];
+  const source = data as Record<string, unknown>;
+  return asArray<TProduksiOrder>(source.orders ?? source.order ?? source.data);
+}
+
+function pickProducts(data: unknown): MProduk[] {
+  if (!data || typeof data !== "object") return [];
+  const source = data as Record<string, unknown>;
+  return asArray<MProduk>(source.produk ?? source.products ?? source.data);
+}
+
+function shortId(id: string | null | undefined) {
+  if (!id) return "-";
+  return id.slice(0, 8).toUpperCase();
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  const raw = await response.text();
+  let payload: ApiSuccess<T> | ApiError;
+  try {
+    payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
+  } catch {
+    const fallback = response.ok ? "Respons server tidak valid (bukan JSON)." : raw.slice(0, 200);
+    throw new Error(fallback || "Respons server tidak valid.");
+  }
   if (!response.ok || !payload.success) {
     const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
     throw new Error(message);
@@ -65,7 +94,7 @@ export default function ManifestPage() {
 
   const fetchManifest = async () => {
     try {
-      const response = await fetch("/api/logistics/manifest?page=1&limit=200", {
+      const response = await apiFetch("/api/logistics/manifest?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -80,13 +109,13 @@ export default function ManifestPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch("/api/production/orders?page=1&limit=200", {
+      const response = await apiFetch("/api/production/orders?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });
       const payload = await parseJsonResponse<OrdersListPayload>(response);
-      const list = payload.data.orders ?? [];
+      const list = pickOrders(payload.data);
       setOrders(list);
       setFormData((prev) => ({ ...prev, order_id: prev.order_id || list[0]?.id || "" }));
     } catch (error) {
@@ -97,13 +126,13 @@ export default function ManifestPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("/api/core/products?page=1&limit=200", {
+      const response = await apiFetch("/api/core/products?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });
       const payload = await parseJsonResponse<ProductsListPayload>(response);
-      setProducts(payload.data.produk ?? []);
+      setProducts(pickProducts(payload.data));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
       alert(message);
@@ -124,7 +153,7 @@ export default function ManifestPage() {
   }, []);
 
   const orderById = useMemo(
-    () => Object.fromEntries(orders.map((order) => [order.id, order])) as Record<string, TProduksiOrder>,
+    () => Object.fromEntries(orders.filter((order) => !!order.id).map((order) => [order.id, order])) as Record<string, TProduksiOrder>,
     [orders],
   );
 
@@ -184,14 +213,14 @@ export default function ManifestPage() {
       const payload = { order_id: formData.order_id, resi: formData.resi.trim() };
 
       if (editData) {
-        const response = await fetch(`/api/logistics/manifest/${editData.id}`, {
+        const response = await apiFetch(`/api/logistics/manifest/${editData.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         await parseJsonResponse<ManifestPayload>(response);
       } else {
-        const response = await fetch("/api/logistics/manifest", {
+        const response = await apiFetch("/api/logistics/manifest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -224,7 +253,7 @@ export default function ManifestPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/logistics/manifest/${deleteId}`, {
+      const response = await apiFetch(`/api/logistics/manifest/${deleteId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -320,8 +349,8 @@ export default function ManifestPage() {
                 const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
                 return (
                   <tr key={item.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{item.id.slice(0, 8).toUpperCase()}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{order?.id ?? "Order tidak ditemukan"}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{shortId(item.id)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{order?.id ?? item.order_id ?? "Order tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{productName}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.resi ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateTimeFormatter.format(new Date(item.created_at)) : "-"}</td>
@@ -331,7 +360,7 @@ export default function ManifestPage() {
                           type="button"
                           onClick={() => openFormModal(item)}
                           disabled={isSubmitting}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-yellow-400 bg-yellow-400/70 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-yellow-500 disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
                         >
                           <Truck size={15} />
                           Edit
@@ -340,7 +369,7 @@ export default function ManifestPage() {
                           type="button"
                           onClick={() => openDeleteModal(item.id)}
                           disabled={isSubmitting}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border bg-red-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                         >
                           <Trash2 size={15} />
                           Hapus
@@ -366,6 +395,9 @@ export default function ManifestPage() {
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
               <option value="" disabled>Pilih order</option>
+              {formData.order_id && !orders.some((order) => order.id === formData.order_id) ? (
+                <option value={formData.order_id}>{formData.order_id} - Order tersimpan</option>
+              ) : null}
               {orders.map((order) => {
                 const productName = productById[order.product_id ?? ""] ?? "Produk";
                 return <option key={order.id} value={order.id}>{order.id} - {productName}</option>;

@@ -4,7 +4,7 @@ import { createProfile, listProfiles } from "@/lib/services/profile.service";
 import { parseCreateProfileInput } from "@/lib/validation/profiles-admin";
 
 export async function GET(request: Request) {
-  const auth = await requireLevel("strategic", "managerial");
+  const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);

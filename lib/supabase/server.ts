@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies, headers } from "next/headers";
 import { env } from "@/lib/env";
-import { getCookieDomain } from "@/lib/cookie-domain";
+
 import type { Database } from "@/types/supabase";
 
 function resolveCookiePolicy(hostHeader: string | null) {
@@ -28,11 +28,7 @@ function resolveCookiePolicy(hostHeader: string | null) {
 export async function createSupabaseServerClient() {
   const headerStore = await headers();
   const cookieStore = await cookies();
-<<<<<<< HEAD
-  const cookieDomain = getCookieDomain();
-=======
   const cookiePolicy = resolveCookiePolicy(headerStore.get("host"));
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
 
   return createServerClient<Database>(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
@@ -40,12 +36,6 @@ export async function createSupabaseServerClient() {
         return cookieStore.get(name)?.value;
       },
       set(name: string, value: string, options: Record<string, unknown>) {
-<<<<<<< HEAD
-        cookieStore.set({ name, value, ...(options as object), domain: cookieDomain });
-      },
-      remove(name: string, options: Record<string, unknown>) {
-        cookieStore.set({ name, value: "", ...(options as object), domain: cookieDomain, maxAge: 0 });
-=======
         cookieStore.set({
           name,
           value,
@@ -65,7 +55,6 @@ export async function createSupabaseServerClient() {
           secure: cookiePolicy.secure,
           maxAge: 0,
         });
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
       },
     },
   });

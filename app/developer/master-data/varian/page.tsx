@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Tag,
@@ -12,37 +12,14 @@ import {
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
-import type { MProduk, MVarian } from "@/types/supabase";
-import type { ApiError, ApiSuccess } from "@/types/api";
-
-type VarianItem = MVarian;
-type ProdukItem = MProduk;
-
-type VariantsListPayload = {
-  varian: VarianItem[];
-};
-
-type VariantPayload = {
-  varian: VarianItem | null;
-};
-
-type ProductsListPayload = {
-  produk: ProdukItem[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-};
-
-async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
-  if (!response.ok || !payload.success) {
-    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
-    throw new Error(message);
-  }
-  return payload;
-}
+import type { MVarian } from "@/types/supabase";
+import {
+  useVariants,
+  useInsertVariant,
+  useUpdateVariant,
+  useDeleteVariant,
+} from "@/lib/supabase/hooks/index";
+import { useProducts } from "@/lib/supabase/hooks/use-products";
 
 const formatRupiah = (value: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -56,12 +33,16 @@ export default function VarianPage() {
   const [namaVarian, setNamaVarian] = useState("");
   const [sku, setSku] = useState("");
   const [harga, setHarga] = useState("");
-  const [varianList, setVarianList] = useState<VarianItem[]>([]);
-  const [produkList, setProdukList] = useState<ProdukItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Supabase Direct ──
+  const { data: varianList, loading: isLoading, error: variantReadError, refresh: refreshVariants } = useVariants();
+  const { data: produkList, error: productReadError } = useProducts();
+  const { insert } = useInsertVariant();
+  const { update } = useUpdateVariant();
+  const { remove } = useDeleteVariant();
 
   const productNameById = useMemo(
     () => new Map(produkList.map((produk) => [produk.id, produk.nama_produk])),
@@ -76,43 +57,6 @@ export default function VarianPage() {
     setEditingId(null);
   };
 
-  const fetchVarian = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/core/variants", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<VariantsListPayload>(response);
-      setVarianList(payload.data.varian ?? []);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat data varian.";
-      alert(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchProduk = async () => {
-    try {
-      const response = await fetch("/api/core/products?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<ProductsListPayload>(response);
-      setProdukList(payload.data.produk ?? []);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
-      alert(message);
-    }
-  };
-
-  useEffect(() => {
-    void Promise.all([fetchVarian(), fetchProduk()]);
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -125,32 +69,24 @@ export default function VarianPage() {
       }
 
       if (editingId) {
-        const response = await fetch(`/api/core/variants/${editingId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            product_id: productId,
-            nama_varian: namaVarian,
-            sku,
-            harga: hargaNumber,
-          }),
+        const result = await update(editingId, {
+          product_id: productId,
+          nama_varian: namaVarian,
+          sku,
+          harga: hargaNumber,
         });
-        await parseJsonResponse<VariantPayload>(response);
+        if (!result) throw new Error("Gagal update varian.");
       } else {
-        const response = await fetch("/api/core/variants", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            product_id: productId,
-            nama_varian: namaVarian,
-            sku,
-            harga: hargaNumber,
-          }),
+        const result = await insert({
+          product_id: productId,
+          nama_varian: namaVarian,
+          sku,
+          harga: hargaNumber,
         });
-        await parseJsonResponse<VariantPayload>(response);
+        if (!result) throw new Error("Gagal membuat varian.");
       }
 
-      await fetchVarian();
+      refreshVariants();
       resetForm();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Operasi simpan varian gagal.";
@@ -160,7 +96,7 @@ export default function VarianPage() {
     }
   };
 
-  const handleEdit = (variant: VarianItem) => {
+  const handleEdit = (variant: MVarian) => {
     setEditingId(variant.id);
     setProductId(variant.product_id ?? "");
     setNamaVarian(variant.nama_varian ?? "");
@@ -174,12 +110,9 @@ export default function VarianPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/core/variants/${id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-      await parseJsonResponse<null>(response);
-      await fetchVarian();
+      const success = await remove(id);
+      if (!success) throw new Error("Gagal menghapus varian.");
+      refreshVariants();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal menghapus varian.";
       alert(message);
@@ -204,7 +137,7 @@ export default function VarianPage() {
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
 
-      {/* â”€â”€ PAGE HEADER â”€â”€ */}
+      {/* ── PAGE HEADER ── */}
       <div>
         <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
           <Link href="/developer" className="hover:text-slate-300 text-slate-100 transition-colors">Developer</Link>
@@ -224,7 +157,7 @@ export default function VarianPage() {
         </div>
       </div>
 
-      {/* â”€â”€ FORM CARD â”€â”€ */}
+      {/* ── FORM CARD ── */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-6">
           <Tag size={18} className="text-orange-500" />
@@ -329,8 +262,13 @@ export default function VarianPage() {
         </form>
       </section>
 
-      {/* â”€â”€ TABLE CARD â”€â”€ */}
+      {/* ── TABLE CARD ── */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {variantReadError || productReadError ? (
+          <p className="px-5 pt-5 text-sm text-rose-600">
+            Gagal memuat data varian: {variantReadError ?? productReadError}
+          </p>
+        ) : null}
 
         {/* Table Header Bar */}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -431,4 +369,3 @@ export default function VarianPage() {
     </div>
   );
 }
-

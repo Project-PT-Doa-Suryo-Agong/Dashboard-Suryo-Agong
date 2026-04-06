@@ -8,6 +8,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MKaryawan, TPayrollHistory } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
 type EmployeeOption = {
   id: string;
@@ -102,7 +103,7 @@ export default function FinancePayrollPage() {
 
   const fetchPayroll = async () => {
     try {
-      const response = await fetch("/api/finance/payroll?page=1&limit=200", {
+      const response = await apiFetch("/api/finance/payroll?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -117,7 +118,7 @@ export default function FinancePayrollPage() {
 
   const fetchKaryawan = async () => {
     try {
-      const response = await fetch("/api/hr/employees?page=1&limit=200", {
+      const response = await apiFetch("/api/hr/employees?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -236,14 +237,14 @@ export default function FinancePayrollPage() {
       };
 
       if (editData) {
-        const response = await fetch(`/api/finance/payroll/${editData.id}`, {
+        const response = await apiFetch(`/api/finance/payroll/${editData.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         await parseJsonResponse<PayrollPayload>(response);
       } else {
-        const response = await fetch("/api/finance/payroll", {
+        const response = await apiFetch("/api/finance/payroll", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -266,7 +267,7 @@ export default function FinancePayrollPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/finance/payroll/${deleteId}`, {
+      const response = await apiFetch(`/api/finance/payroll/${deleteId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });

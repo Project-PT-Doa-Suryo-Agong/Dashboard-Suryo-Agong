@@ -1,15 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-<<<<<<< HEAD
-import { createServerClient } from "@supabase/ssr";
 import { env } from "@/lib/env";
-import { getCookieDomain } from "@/lib/cookie-domain";
-import type { Database } from "@/types/supabase";
-
-type AppSubdomain =
-=======
 
 type AppRole =
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
   | "developer"
   | "management"
   | "finance"
@@ -19,9 +11,6 @@ type AppRole =
   | "creative"
   | "office";
 
-<<<<<<< HEAD
-const SUBDOMAINS: AppSubdomain[] = [
-=======
 type ProtectedRoute = {
   prefix: string;
   allowed: AppRole[];
@@ -31,7 +20,6 @@ const LOGIN_PATH = "/auth/login";
 const DEV_ROOT_HOST = "lvh.me";
 
 const VALID_SUBDOMAINS: AppRole[] = [
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
   "creative",
   "developer",
   "finance",
@@ -42,129 +30,6 @@ const VALID_SUBDOMAINS: AppRole[] = [
   "office",
 ];
 
-<<<<<<< HEAD
-const ROLE_TO_SUBDOMAIN: Record<string, AppSubdomain> = {
-  developer: "developer",
-  ceo: "management",
-  management: "management",
-  finance: "finance",
-  hr: "hr",
-  "human-resource": "hr",
-  produksi: "produksi",
-  production: "produksi",
-  logistik: "logistik",
-  logistics: "logistik",
-  creative: "creative",
-  sales: "creative",
-  office: "office",
-};
-
-function slugifyRole(value: string | null | undefined) {
-  return (value ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
-
-function mapRoleToSubdomain(role: string | null | undefined): AppSubdomain | null {
-  const normalized = slugifyRole(role);
-  return ROLE_TO_SUBDOMAIN[normalized] ?? null;
-}
-
-function extractSubdomain(hostWithPort: string): string | null {
-  const host = hostWithPort.split(":")[0]?.toLowerCase() ?? "";
-  if (!host || host === "localhost" || host === "lvh.me") return null;
-
-  if (host.endsWith(".localhost") || host.endsWith(".lvh.me")) {
-    const parts = host.split(".");
-    return parts.length >= 2 ? parts[0] : null;
-  }
-
-  const parts = host.split(".");
-  return parts.length > 2 ? parts[0] : null;
-}
-
-function shouldBypass(pathname: string) {
-  return (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/favicon") ||
-    pathname.startsWith("/icon") ||
-    pathname.startsWith("/logo") ||
-    pathname.startsWith("/assets") ||
-    pathname.includes(".")
-  );
-}
-
-export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  if (shouldBypass(pathname)) {
-    return NextResponse.next();
-  }
-
-  const subdomain = extractSubdomain(request.headers.get("host") ?? request.nextUrl.host);
-  const isKnownSubdomain = !!subdomain && SUBDOMAINS.includes(subdomain as AppSubdomain);
-
-  const response = NextResponse.next();
-  const cookieDomain = getCookieDomain();
-
-  const supabase = createServerClient<Database>(env.supabaseUrl, env.supabaseAnonKey, {
-    cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value;
-      },
-      set(name: string, value: string, options: Record<string, unknown>) {
-        response.cookies.set({ name, value, ...(options as object), domain: cookieDomain, sameSite: "lax" as const });
-      },
-      remove(name: string, options: Record<string, unknown>) {
-        response.cookies.set({ name, value: "", ...(options as object), domain: cookieDomain, sameSite: "lax" as const, maxAge: 0 });
-      },
-    },
-  });
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const user = session?.user ?? null;
-
-  const isAuthRoute = pathname.startsWith("/auth");
-  const isUnauthorizedRoute = pathname.startsWith("/unauthorized");
-
-  if (isKnownSubdomain && !user && !isAuthRoute) {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const loginUrl = new URL("/auth/login", baseUrl);
-    loginUrl.searchParams.set("message", "Silakan login terlebih dahulu.");
-    return NextResponse.redirect(loginUrl.toString());
-  }
-
-  if (user && isKnownSubdomain && !isAuthRoute && !isUnauthorizedRoute) {
-    const roleCandidate =
-      (typeof user.user_metadata?.role === "string" ? user.user_metadata.role : null) ??
-      (typeof user.app_metadata?.role === "string" ? user.app_metadata.role : null) ??
-      request.cookies.get("role")?.value ??
-      null;
-
-    const allowedSubdomain = mapRoleToSubdomain(roleCandidate);
-
-    if (!allowedSubdomain || allowedSubdomain !== subdomain) {
-      const unauthorizedUrl = request.nextUrl.clone();
-      unauthorizedUrl.pathname = "/unauthorized";
-      return NextResponse.redirect(unauthorizedUrl);
-    }
-  }
-
-  if (isKnownSubdomain && !isAuthRoute && !isUnauthorizedRoute) {
-    if (!pathname.startsWith(`/${subdomain}`)) {
-      return NextResponse.rewrite(new URL(`/${subdomain}${pathname}`, request.url));
-    }
-  }
-
-  return response;
-}
-
-export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|logo.svg|style.css).*)"],
-};
-=======
 const ACCESS_CONTROL_LIST: ProtectedRoute[] = [
   { prefix: "/finance", allowed: ["finance", "management"] },
   { prefix: "/logistik", allowed: ["logistik", "management"] },
@@ -189,78 +54,136 @@ const ROLE_DASHBOARD: Record<AppRole, string> = {
 
 function normalizeRole(input: string | null | undefined): AppRole | null {
   if (!input) return null;
-  const value = input.trim().toLowerCase();
 
-  if (value === "developer") return "developer";
-  if (value === "ceo" || value === "management") return "management";
-  if (value === "finance") return "finance";
-  if (value === "hr" || value === "human resource") return "hr";
-  if (value === "produksi" || value === "production") return "produksi";
-  if (value === "logistik" || value === "logistics") return "logistik";
-  if (value === "creative" || value === "sales") return "creative";
-  if (value === "office") return "office";
+  // Slugify: lowercase, collapse non-alphanumeric runs to "-", trim dashes
+  const slug = input.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+  // ── Pass 1: exact slug match ──────────────────────────────────────────────
+  const exactMap: Record<string, AppRole> = {
+    "developer":           "developer",
+    "senior-developer":    "developer",
+    "ceo":                 "management",
+    "management":          "management",
+    "manager":             "management",
+    "management-strategy": "management",
+    "management-strategic":"management",
+    "finance":             "finance",
+    "finance-accounting":  "finance",
+    "finance-team":        "finance",
+    "hr":                  "hr",
+    "human-resource":      "hr",
+    "human-resources":     "hr",
+    "human-resource-dept": "hr",
+    "human-resources-dept":"hr",
+    "produksi":            "produksi",
+    "production":          "produksi",
+    "produksi-team":       "produksi",
+    "logistik":            "logistik",
+    "logistics":           "logistik",
+    "logistik-team":       "logistik",
+    "creative":            "creative",
+    "creative-manager":    "creative",
+    "sales":               "creative",
+    "creative-sales":      "creative",
+    "office":              "office",
+    "office-support":      "office",
+  };
+
+  if (exactMap[slug]) return exactMap[slug];
+
+  // ── Pass 2: substring keyword fallback (handles arbitrary compound names) ─
+  if (slug.includes("developer"))  return "developer";
+  if (slug.includes("management")) return "management";
+  if (slug.includes("ceo"))        return "management";
+  if (slug.includes("finance"))    return "finance";
+  if (slug.includes("human-resource")) return "hr";
+  if (slug.includes("produksi"))   return "produksi";
+  if (slug.includes("production")) return "produksi";
+  if (slug.includes("logistik"))   return "logistik";
+  if (slug.includes("logistics"))  return "logistik";
+  if (slug.includes("creative"))   return "creative";
+  if (slug.includes("sales"))      return "creative";
+  if (slug.includes("office"))     return "office";
+  if (slug.includes("hr"))         return "hr";
 
   return null;
 }
+import { createServerClient } from "@supabase/ssr";
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const parts = token.split(".");
-  if (parts.length < 2) return null;
+async function readRoleFromSupabaseSession(request: NextRequest, response: NextResponse): Promise<AppRole | null> {
+  const cookieDomain = DEV_ROOT_HOST;
 
-  try {
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json = atob(base64);
-    return JSON.parse(json) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function readRoleFromSupabaseCookies(request: NextRequest): AppRole | null {
-  const authCookie = request.cookies
-    .getAll()
-    .find((cookie) => cookie.name.includes("auth-token"));
-
-  if (!authCookie) return null;
-
-  const parseCandidates = [authCookie.value, decodeURIComponent(authCookie.value)];
-
-  for (const candidate of parseCandidates) {
-    try {
-      const parsed = JSON.parse(candidate) as unknown;
-
-      const accessToken =
-        (Array.isArray(parsed) ? parsed[0] : null) ??
-        (typeof parsed === "object" && parsed !== null && "access_token" in parsed
-          ? (parsed as { access_token?: string }).access_token
-          : null);
-
-      if (typeof accessToken === "string" && accessToken.length > 0) {
-        const payload = decodeJwtPayload(accessToken);
-        if (!payload) continue;
-
-        const appMeta =
-          typeof payload.app_metadata === "object" && payload.app_metadata !== null
-            ? (payload.app_metadata as Record<string, unknown>)
-            : null;
-        const userMeta =
-          typeof payload.user_metadata === "object" && payload.user_metadata !== null
-            ? (payload.user_metadata as Record<string, unknown>)
-            : null;
-
-        const role =
-          normalizeRole(typeof payload.role === "string" ? payload.role : null) ??
-          normalizeRole(typeof appMeta?.role === "string" ? appMeta.role : null) ??
-          normalizeRole(typeof userMeta?.role === "string" ? userMeta.role : null);
-
-        if (role) return role;
-      }
-    } catch {
-      continue;
+  const supabase = createServerClient(
+    env.supabaseUrl, 
+    env.supabaseAnonKey,
+    {
+      cookies: {
+        get(name: string) {
+          const raw = request.cookies.get(name)?.value;
+          if (!raw) return undefined;
+          
+          // Handle base64- prefix set by browser client
+          if (raw.startsWith("base64-")) {
+            try {
+              return atob(raw.slice(7));
+            } catch {
+              return raw;
+            }
+          }
+          return raw;
+        },
+        set(name: string, value: string, options: Record<string, unknown>) {
+          response.cookies.set({ 
+            name, value, 
+            ...(options as object), 
+            domain: `.${cookieDomain}` 
+          });
+        },
+        remove(name: string, options: Record<string, unknown>) {
+          response.cookies.set({ 
+            name, value: "", 
+            ...(options as object), 
+            domain: `.${cookieDomain}`, 
+            maxAge: 0 
+          });
+        },
+      },
     }
+  );
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    console.log("[PROXY] getUser error:", userError.message);
   }
 
-  return null;
+  console.log("[PROXY] session user:", user?.email ?? "(no session)");
+  if (!user) return null;
+
+  const metaRole = typeof user.user_metadata?.role === "string" ? user.user_metadata.role : null;
+  const appRole  = typeof user.app_metadata?.role  === "string" ? user.app_metadata.role  : null;
+  console.log("[PROXY] role from user_metadata:", metaRole);
+  console.log("[PROXY] role from app_metadata:",  appRole);
+
+  let role = normalizeRole(metaRole) ?? normalizeRole(appRole);
+
+  if (!role && user.id) {
+    const { data: profile, error: profileError } = await supabase
+      .schema("core")
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    console.log("[PROXY] role from DB profile:", profile?.role ?? "(none)", profileError ? `| error: ${profileError.message}` : "");
+    role = normalizeRole(typeof profile?.role === "string" ? profile.role : null);
+  }
+
+  console.log("[PROXY] resolved role:", role ?? "(null — no match)");
+  return role;
 }
 
 function readRoleFromSimpleCookies(request: NextRequest): AppRole | null {
@@ -274,8 +197,8 @@ function readRoleFromSimpleCookies(request: NextRequest): AppRole | null {
   return null;
 }
 
-function resolveCurrentRole(request: NextRequest): AppRole | null {
-  return readRoleFromSimpleCookies(request) ?? readRoleFromSupabaseCookies(request);
+async function resolveCurrentRole(request: NextRequest, response: NextResponse): Promise<AppRole | null> {
+  return readRoleFromSimpleCookies(request) ?? (await readRoleFromSupabaseSession(request, response));
 }
 
 function findRouteRule(pathname: string): ProtectedRoute | null {
@@ -310,12 +233,15 @@ function isLocalhostSubdomain(hostHeader: string) {
   return false;
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const url = request.nextUrl;
   const hostHeader = request.headers.get("host") ?? "";
+  let response = NextResponse.next();
+
+  console.log("[PROXY] incoming:", hostHeader, request.method, url.pathname);
 
   if (url.pathname.includes(".")) {
-    return NextResponse.next();
+    return response;
   }
 
   if (url.pathname.startsWith("/auth")) {
@@ -324,36 +250,60 @@ export function proxy(request: NextRequest) {
       authUrl.hostname = DEV_ROOT_HOST;
       return NextResponse.redirect(authUrl);
     }
-
-    return NextResponse.next();
+    return response;
   }
 
   const effectivePathname = resolveRewrittenPath(url.pathname, hostHeader);
   const routeRule = findRouteRule(effectivePathname);
 
+  console.log("[PROXY] host:", hostHeader);
+  console.log("[PROXY] pathname (original):", url.pathname);
+  console.log("[PROXY] effectivePathname:", effectivePathname);
+  console.log("[PROXY] routeRule matched:", routeRule ? `${routeRule.prefix} (allowed: ${routeRule.allowed.join(",")})` : "(none — unprotected)");
+
   if (routeRule) {
-    const role = resolveCurrentRole(request);
+    const role = await resolveCurrentRole(request, response);
+
+    console.log("[PROXY] role resolved:", role ?? "(null)");
+    console.log("[PROXY] session exists:", !!role);
+
     if (!role) {
+      console.log("[PROXY] BRANCH → redirecting to login (no role)");
       const loginUrl = request.nextUrl.clone();
       loginUrl.hostname = DEV_ROOT_HOST;
       loginUrl.pathname = LOGIN_PATH;
       loginUrl.searchParams.set("next", effectivePathname);
-      return NextResponse.redirect(loginUrl);
+      const redirect = NextResponse.redirect(loginUrl);
+      response.cookies.getAll().forEach(c => redirect.cookies.set(c.name, c.value));
+      return redirect;
     }
 
-    if (!routeRule.allowed.includes(role)) {
+    const isAllowed = routeRule.allowed.includes(role);
+    console.log("[PROXY] role allowed for this route:", isAllowed);
+
+    if (!isAllowed) {
+      const dashboardPath = ROLE_DASHBOARD[role] ?? LOGIN_PATH;
+      console.log("[PROXY] BRANCH → role denied, redirecting to:", dashboardPath);
       const deniedUrl = request.nextUrl.clone();
-      deniedUrl.pathname = ROLE_DASHBOARD[role] ?? LOGIN_PATH;
+      deniedUrl.pathname = dashboardPath;
       deniedUrl.searchParams.set("denied", "1");
-      return NextResponse.redirect(deniedUrl);
+      const redirect = NextResponse.redirect(deniedUrl);
+      response.cookies.getAll().forEach(c => redirect.cookies.set(c.name, c.value));
+      return redirect;
     }
+
+    console.log("[PROXY] BRANCH → access granted, continuing");
   }
 
   if (effectivePathname !== url.pathname) {
-    return NextResponse.rewrite(new URL(effectivePathname, request.url));
+    console.log("[PROXY] BRANCH → rewriting", url.pathname, "→", effectivePathname);
+    const rewrite = NextResponse.rewrite(new URL(effectivePathname, request.url));
+    response.cookies.getAll().forEach(c => rewrite.cookies.set(c.name, c.value));
+    return rewrite;
   }
 
-  return NextResponse.next();
+  console.log("[PROXY] BRANCH → passthrough (no rewrite needed)");
+  return response;
 }
 
 export const middleware = proxy;
@@ -361,4 +311,3 @@ export const middleware = proxy;
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.png|logo.svg|style.css).*)"],
 };
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8

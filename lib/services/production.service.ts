@@ -1,11 +1,19 @@
-﻿import type { TProduksiOrder, TQCInbound, TQCOutbound } from "@/types/supabase";
+/**
+ * @deprecated — FASE 2 MIGRASI HYBRID BACKEND
+ *
+ * File ini sudah di-deprecated per April 2026.
+ * Segera migrasikan endpoint yang menggunakan service ini menuju direct Supabase hooks.
+ * 
+ * @see lib/supabase/hooks/use-production.ts
+ */
+import type { TProduksiOrder, TQCInbound, TQCOutbound } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("production");
 
-// â”€â”€â”€ t_produksi_order â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_produksi_order 
 
 export async function listProduksiOrder(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -42,7 +50,7 @@ export async function deleteProduksiOrder(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_qc_inbound â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_qc_inbound 
 
 export async function listQCInbound(client: DbClient, page = 1, limit = 50, produksiOrderId?: string) {
   const from = (page - 1) * limit;
@@ -76,7 +84,7 @@ export async function deleteQCInbound(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_qc_outbound â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_qc_outbound 
 
 export async function listQCOutbound(client: DbClient, page = 1, limit = 100) {
   const from = (page - 1) * limit;

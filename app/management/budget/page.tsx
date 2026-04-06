@@ -6,6 +6,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { ManagementBudgetStatus, TBudgetRequest } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
 type BudgetRequestFilterStatus = "all" | ManagementBudgetStatus;
 
@@ -33,6 +34,17 @@ const initialFormState: FormState = {
   amount: "",
   status: "pending",
 };
+
+const divisionOptions = [
+  "Management & Strategy",
+  "Finance & Administration",
+  "HR & Operation Manager",
+  "Produksi & Quality Control",
+  "Logistics & Packing",
+  "Creative & Sales",
+  "Office Support",
+  "Developer",
+] as const;
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "2-digit",
@@ -89,7 +101,7 @@ export default function ManagementBudgetPage() {
   const fetchBudgetRequests = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/management/budget?page=1&limit=500", {
+      const response = await apiFetch("/api/management/budget?page=1&limit=500", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -166,14 +178,14 @@ export default function ManagementBudgetPage() {
       };
 
       if (editData) {
-        const response = await fetch(`/api/management/budget/${editData.id}`, {
+        const response = await apiFetch(`/api/management/budget/${editData.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         await parseJsonResponse<BudgetPayload>(response);
       } else {
-        const response = await fetch("/api/management/budget", {
+        const response = await apiFetch("/api/management/budget", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -206,7 +218,7 @@ export default function ManagementBudgetPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/management/budget/${selectedRequest.id}`, {
+      const response = await apiFetch(`/api/management/budget/${selectedRequest.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -237,7 +249,7 @@ export default function ManagementBudgetPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/management/budget/${deleteId}`, {
+      const response = await apiFetch(`/api/management/budget/${deleteId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -373,15 +385,25 @@ export default function ManagementBudgetPage() {
 
       <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editData ? "Edit Pengajuan Anggaran" : "Tambah Pengajuan Anggaran"} maxWidth="max-w-lg">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
+          <select
             required
-            type="text"
             value={formData.divisi}
             onChange={(event) => setFormData((prev) => ({ ...prev, divisi: event.target.value }))}
             className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
-            placeholder="Divisi"
             disabled={isSubmitting}
-          />
+          >
+            <option value="" disabled>
+              Pilih Divisi
+            </option>
+            {formData.divisi && !divisionOptions.includes(formData.divisi as (typeof divisionOptions)[number]) ? (
+              <option value={formData.divisi}>{formData.divisi}</option>
+            ) : null}
+            {divisionOptions.map((division) => (
+              <option key={division} value={division}>
+                {division}
+              </option>
+            ))}
+          </select>
           <input
             required
             type="number"

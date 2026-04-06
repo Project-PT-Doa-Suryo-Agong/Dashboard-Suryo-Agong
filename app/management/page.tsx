@@ -1,91 +1,51 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Landmark, Target, Users } from "lucide-react";
-<<<<<<< HEAD
-import ManagementPerformanceChart from '@/components/charts/ManagementPerformanceChart';
-=======
 import { PerformanceBarChart, type PerformancePoint } from "@/components/ui/DashboardCharts";
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type { TBudgetRequest, TKPIWeekly } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
-type BudgetStatus = "pending" | "approved" | "rejected";
-type EmployeeStatus = "aktif" | "nonaktif";
+type BudgetStatus = "pending" | "approved" | "rejected" | null;
 
-type ManagementBudgetRequestItem = {
-  id: string;
-  divisi: string;
-  amount: number;
-  status: BudgetStatus;
-  created_at: string;
+type BudgetListPayload = {
+  budget_requests: TBudgetRequest[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 };
 
-type ManagementKpiWeeklyItem = {
-  id: string;
-  minggu: string;
-  divisi: string;
-  target: number;
-  realisasi: number;
-  created_at: string;
+type KpiListPayload = {
+  kpi: TKPIWeekly[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 };
 
-type HrEmployeeItem = {
-  id: string;
-  nama: string;
+type DivisionScore = {
   divisi: string;
-  status: EmployeeStatus;
+  score: number;
 };
 
-type KpiPerformerItem = {
-  nama_karyawan: string;
-  divisi: string;
-  skor_kpi: number;
-};
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
 
-const management_t_budget_request_rows: ManagementBudgetRequestItem[] = [
-  { id: "bgt-001", divisi: "Finance", amount: 580000000, status: "approved", created_at: "2026-03-02T09:30:00+07:00" },
-  { id: "bgt-002", divisi: "HR", amount: 320000000, status: "approved", created_at: "2026-03-05T11:10:00+07:00" },
-  { id: "bgt-003", divisi: "Produksi", amount: 790000000, status: "pending", created_at: "2026-03-08T14:05:00+07:00" },
-  { id: "bgt-004", divisi: "Logistik", amount: 410000000, status: "approved", created_at: "2026-03-09T08:45:00+07:00" },
-  { id: "bgt-005", divisi: "Creative", amount: 220000000, status: "pending", created_at: "2026-03-10T16:20:00+07:00" },
-  { id: "bgt-006", divisi: "Management", amount: 180000000, status: "approved", created_at: "2026-03-12T10:15:00+07:00" },
-];
-
-const management_t_kpi_weekly_rows: ManagementKpiWeeklyItem[] = [
-  { id: "kpi-001", minggu: "2026-03-02", divisi: "Finance", target: 100, realisasi: 88, created_at: "2026-03-07T17:00:00+07:00" },
-  { id: "kpi-002", minggu: "2026-03-02", divisi: "HR", target: 100, realisasi: 90, created_at: "2026-03-07T17:05:00+07:00" },
-  { id: "kpi-003", minggu: "2026-03-02", divisi: "Produksi", target: 100, realisasi: 86, created_at: "2026-03-07T17:10:00+07:00" },
-  { id: "kpi-004", minggu: "2026-03-02", divisi: "Logistik", target: 100, realisasi: 89, created_at: "2026-03-07T17:15:00+07:00" },
-  { id: "kpi-005", minggu: "2026-03-02", divisi: "Sales", target: 100, realisasi: 85, created_at: "2026-03-07T17:20:00+07:00" },
-];
-
-const hr_m_karyawan_rows: HrEmployeeItem[] = [
-  { id: "emp-001", nama: "Anisa Putri", divisi: "Finance", status: "aktif" },
-  { id: "emp-002", nama: "Rizal Mahendra", divisi: "HR", status: "aktif" },
-  { id: "emp-003", nama: "Nadia Kurnia", divisi: "Produksi", status: "aktif" },
-  { id: "emp-004", nama: "Fajar Hidayat", divisi: "Logistik", status: "aktif" },
-  { id: "emp-005", nama: "Gita Mardiani", divisi: "Creative", status: "aktif" },
-  { id: "emp-006", nama: "Dio Pratama", divisi: "Office", status: "aktif" },
-  { id: "emp-007", nama: "Meylani Sari", divisi: "Management", status: "aktif" },
-  { id: "emp-008", nama: "Tono Ardiansyah", divisi: "Sales", status: "nonaktif" },
-];
-
-const management_top_kpi_performers: KpiPerformerItem[] = [
-  { nama_karyawan: "Anisa Putri", divisi: "Finance", skor_kpi: 95.5 },
-  { nama_karyawan: "Nadia Kurnia", divisi: "Produksi", skor_kpi: 93.8 },
-  { nama_karyawan: "Fajar Hidayat", divisi: "Logistik", skor_kpi: 92.6 },
-  { nama_karyawan: "Gita Mardiani", divisi: "Creative", skor_kpi: 91.9 },
-];
-
-const budgetSerapanPersen = 65;
-
-const MANAGEMENT_PERFORMANCE_PREVIEW: PerformancePoint[] = [
-  { label: "Finance", value: 88 },
-  { label: "HR", value: 90 },
-  { label: "Produksi", value: 86 },
-  { label: "Logistik", value: 89 },
-  { label: "Creative", value: 84 },
-  { label: "Management", value: 92 },
-];
+function getKpiScore(item: TKPIWeekly): number {
+  if (!item.target) return 0;
+  return Math.round((item.realisasi / item.target) * 100);
+}
 
 function formatRupiah(value: number): string {
   return new Intl.NumberFormat("id-ID", {
@@ -108,22 +68,108 @@ function budgetStatusLabel(status: BudgetStatus): string {
 }
 
 export default function ManagementDashboardPage() {
-  const totalBudgetTahunIni = management_t_budget_request_rows.reduce(
-    (sum, item) => sum + item.amount,
-    0,
+  const [budgetItems, setBudgetItems] = useState<TBudgetRequest[]>([]);
+  const [kpiItems, setKpiItems] = useState<TKPIWeekly[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchOverview = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        const [budgetResponse, kpiResponse] = await Promise.all([
+          apiFetch("/api/management/budget?page=1&limit=500", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          }),
+          apiFetch("/api/management/kpi?page=1&limit=500", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          }),
+        ]);
+
+        const budgetPayload = await parseJsonResponse<BudgetListPayload>(budgetResponse);
+        const kpiPayload = await parseJsonResponse<KpiListPayload>(kpiResponse);
+        setBudgetItems(budgetPayload.data.budget_requests ?? []);
+        setKpiItems(kpiPayload.data.kpi ?? []);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Gagal memuat ringkasan management.";
+        setErrorMessage(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchOverview();
+  }, []);
+
+  const totalBudgetTahunIni = useMemo(
+    () => budgetItems.reduce((sum, item) => sum + item.amount, 0),
+    [budgetItems],
   );
 
-  const rataRataSkorKpi =
-    management_t_kpi_weekly_rows.reduce((sum, item) => sum + item.realisasi, 0) /
-    management_t_kpi_weekly_rows.length;
+  const approvedAmount = useMemo(
+    () => budgetItems.filter((item) => item.status === "approved").reduce((sum, item) => sum + item.amount, 0),
+    [budgetItems],
+  );
 
-  const totalKaryawanAktif = hr_m_karyawan_rows.filter(
-    (employee) => employee.status === "aktif",
-  ).length;
+  const budgetSerapanPersen = useMemo(
+    () => (totalBudgetTahunIni > 0 ? Math.round((approvedAmount / totalBudgetTahunIni) * 100) : 0),
+    [approvedAmount, totalBudgetTahunIni],
+  );
 
-  const recentBudgetApprovals = [...management_t_budget_request_rows]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 4);
+  const rataRataSkorKpi = useMemo(() => {
+    if (kpiItems.length === 0) return 0;
+    const totalScore = kpiItems.reduce((sum, item) => sum + getKpiScore(item), 0);
+    return totalScore / kpiItems.length;
+  }, [kpiItems]);
+
+  const totalDivisiAktif = useMemo(() => {
+    const divisions = new Set<string>();
+    for (const item of budgetItems) {
+      if (item.divisi?.trim()) divisions.add(item.divisi.trim());
+    }
+    for (const item of kpiItems) {
+      if (item.divisi?.trim()) divisions.add(item.divisi.trim());
+    }
+    return divisions.size;
+  }, [budgetItems, kpiItems]);
+
+  const recentBudgetApprovals = useMemo(
+    () => [...budgetItems]
+      .sort((a, b) => {
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        return bTime - aTime;
+      })
+      .slice(0, 4),
+    [budgetItems],
+  );
+
+  const kpiPerDivisi = useMemo(() => {
+    const map = new Map<string, { total: number; count: number }>();
+    for (const item of kpiItems) {
+      const divisi = item.divisi?.trim();
+      if (!divisi) continue;
+      const current = map.get(divisi) ?? { total: 0, count: 0 };
+      map.set(divisi, { total: current.total + getKpiScore(item), count: current.count + 1 });
+    }
+
+    const result: DivisionScore[] = [];
+    for (const [divisi, value] of map.entries()) {
+      result.push({ divisi, score: value.count > 0 ? value.total / value.count : 0 });
+    }
+
+    return result.sort((a, b) => b.score - a.score);
+  }, [kpiItems]);
+
+  const managementPerformancePreview: PerformancePoint[] = useMemo(
+    () => kpiPerDivisi.slice(0, 6).map((item) => ({ label: item.divisi, value: Math.round(item.score) })),
+    [kpiPerDivisi],
+  );
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 md:space-y-6 lg:space-y-8">
@@ -157,7 +203,7 @@ export default function ManagementDashboardPage() {
             <div className="min-w-0 space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rata-Rata Skor KPI</p>
               <p className="text-base md:text-2xl font-bold text-slate-900">{rataRataSkorKpi.toFixed(1)} / 100</p>
-              <p className="text-xs md:text-sm text-slate-600">Kinerja Perusahaan: Sangat Baik</p>
+              <p className="text-xs md:text-sm text-slate-600">Berdasarkan data KPI mingguan terbaru</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
               <Target className="h-5 w-5" />
@@ -169,9 +215,9 @@ export default function ManagementDashboardPage() {
           <div className="absolute -top-10 -left-10 h-28 w-28 rounded-full bg-emerald-100/70" aria-hidden="true" />
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Karyawan Aktif</p>
-              <p className="text-base md:text-2xl font-bold text-slate-900">{totalKaryawanAktif}</p>
-              <p className="text-xs md:text-sm text-slate-600">Tersebar di 7 Divisi</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Divisi Aktif</p>
+              <p className="text-base md:text-2xl font-bold text-slate-900">{totalDivisiAktif}</p>
+              <p className="text-xs md:text-sm text-slate-600">Divisi unik dari data budget dan KPI</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
               <Users className="h-5 w-5" />
@@ -208,17 +254,17 @@ export default function ManagementDashboardPage() {
         </Link>
       </section>
 
-<<<<<<< HEAD
-      <ManagementPerformanceChart />
-=======
       <section className="rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
         <div className="mb-3 md:mb-4">
           <h2 className="text-sm md:text-base font-bold text-slate-900">KPI Divisi</h2>
           <p className="mt-1 text-xs md:text-sm text-slate-500">Visualisasi target KPI lintas divisi untuk evaluasi cepat manajemen.</p>
         </div>
-        <PerformanceBarChart data={MANAGEMENT_PERFORMANCE_PREVIEW} barLabel="Target KPI" />
+        {managementPerformancePreview.length > 0 ? (
+          <PerformanceBarChart data={managementPerformancePreview} barLabel="Skor KPI" />
+        ) : (
+          <p className="text-sm text-slate-500">Belum ada data KPI.</p>
+        )}
       </section>
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <article className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -255,27 +301,34 @@ export default function ManagementDashboardPage() {
 
         <article className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-4 md:px-6 py-4 border-b border-slate-100">
-            <h2 className="text-base font-bold text-slate-900">Top KPI Performers</h2>
-            <p className="mt-1 text-xs md:text-sm text-slate-500">Performa karyawan tertinggi bulan ini</p>
+            <h2 className="text-base font-bold text-slate-900">Top KPI Divisi</h2>
+            <p className="mt-1 text-xs md:text-sm text-slate-500">Rata-rata performa KPI tertinggi per divisi</p>
           </div>
 
           <ul className="p-4 md:p-6 space-y-3">
-            {management_top_kpi_performers.map((item, index) => (
-              <li key={`${item.nama_karyawan}-${item.divisi}`} className="rounded-lg border border-slate-100 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 break-words">{index + 1}. {item.nama_karyawan}</p>
-                    <p className="text-xs md:text-sm text-slate-600">{item.divisi}</p>
+            {kpiPerDivisi.length > 0 ? (
+              kpiPerDivisi.slice(0, 4).map((item, index) => (
+                <li key={`${item.divisi}-${index}`} className="rounded-lg border border-slate-100 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 break-words">{index + 1}. {item.divisi}</p>
+                      <p className="text-xs md:text-sm text-slate-600">Skor rata-rata dari catatan KPI</p>
+                    </div>
+                    <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 whitespace-nowrap">
+                      {item.score.toFixed(1)}
+                    </span>
                   </div>
-                  <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 whitespace-nowrap">
-                    {item.skor_kpi.toFixed(1)}
-                  </span>
-                </div>
-              </li>
-            ))}
+                </li>
+              ))
+            ) : (
+              <li className="rounded-lg border border-slate-100 p-3 text-sm text-slate-500">Belum ada data KPI.</li>
+            )}
           </ul>
         </article>
       </section>
+
+      {isLoading ? <p className="text-sm text-slate-200">Memuat data dashboard management...</p> : null}
+      {errorMessage ? <p className="text-sm text-rose-200">{errorMessage}</p> : null}
     </div>
   );
 }

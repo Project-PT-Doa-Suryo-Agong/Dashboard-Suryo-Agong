@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
-import { listPacking, createPacking } from "@/lib/services/logistics.service";
+import { createPacking, listPacking } from "@/lib/services/logistics.service";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -20,14 +20,21 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response;
 
   let body: unknown;
-  try { body = await request.json(); } catch { return fail("BAD_REQUEST", "Body harus JSON valid.", 400); }
+  try {
+    body = await request.json();
+  } catch {
+    return fail("BAD_REQUEST", "Body harus JSON valid.", 400);
+  }
 
   const input = body as Record<string, unknown>;
-  if (!input.order_id || typeof input.order_id !== "string") {
+  if (!input.order_id) {
     return fail("VALIDATION_ERROR", "order_id wajib diisi.", 400);
+  }
+  if (input.status && !["pending", "packed", "shipped"].includes(String(input.status))) {
+    return fail("VALIDATION_ERROR", "status harus pending, packed, atau shipped.", 400);
   }
 
   const { data, error } = await createPacking(auth.ctx.supabase, input);
-  if (error) return fail("DB_ERROR", "Gagal mencatat packing.", 500, error.message);
-  return ok({ packing: data }, "Data packing berhasil dicatat.", 201);
+  if (error) return fail("DB_ERROR", "Gagal membuat data packing.", 500, error.message);
+  return ok({ packing: data }, "Data packing berhasil dibuat.", 201);
 }

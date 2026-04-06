@@ -1,11 +1,19 @@
-﻿import type { TBudgetRequest, TKPIWeekly } from "@/types/supabase";
+/**
+ * @deprecated — FASE 2 MIGRASI HYBRID BACKEND
+ *
+ * File ini sudah di-deprecated per April 2026.
+ * Segera migrasikan endpoint yang menggunakan service ini menuju direct Supabase hooks.
+ * 
+ * @see lib/supabase/hooks/use-management.ts
+ */
+import type { TBudgetRequest, TKPIWeekly } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("management");
 
-// â”€â”€â”€ t_budget_request â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_budget_request 
 
 export async function listBudgetRequest(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -42,7 +50,7 @@ export async function deleteBudgetRequest(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_kpi_weekly â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_kpi_weekly 
 
 export async function listKPIWeekly(client: DbClient, page = 1, limit = 50, divisi?: string) {
   const from = (page - 1) * limit;

@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Truck,
@@ -12,68 +12,31 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { MVendor } from "@/types/supabase";
-import type { ApiError, ApiSuccess } from "@/types/api";
-
-type VendorItem = MVendor;
-
-type VendorsListPayload = {
-  vendor: VendorItem[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-};
-
-type VendorPayload = {
-  vendor: VendorItem | null;
-};
-
-async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
-  if (!response.ok || !payload.success) {
-    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
-    throw new Error(message);
-  }
-  return payload;
-}
+import {
+  useVendors,
+  useInsertVendor,
+  useUpdateVendor,
+  useDeleteVendor,
+} from "@/lib/supabase/hooks/index";
 
 export default function VendorPage() {
   const [namaVendor, setNamaVendor] = useState("");
   const [kontak, setKontak] = useState("");
-  const [vendorList, setVendorList] = useState<VendorItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Supabase Direct ──
+  const { data: vendorList, loading: isLoading, error: readError, refresh } = useVendors();
+  const { insert } = useInsertVendor();
+  const { update } = useUpdateVendor();
+  const { remove } = useDeleteVendor();
 
   const resetForm = () => {
     setNamaVendor("");
     setKontak("");
     setEditingId(null);
   };
-
-  const fetchVendor = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/core/vendors?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<VendorsListPayload>(response);
-      setVendorList(payload.data.vendor ?? []);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat data vendor.";
-      alert(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void fetchVendor();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,22 +45,14 @@ export default function VendorPage() {
     setIsSubmitting(true);
     try {
       if (editingId) {
-        const response = await fetch(`/api/core/vendors/${editingId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nama_vendor: namaVendor, kontak }),
-        });
-        await parseJsonResponse<VendorPayload>(response);
+        const result = await update(editingId, { nama_vendor: namaVendor, kontak });
+        if (!result) throw new Error("Gagal update vendor.");
       } else {
-        const response = await fetch("/api/core/vendors", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nama_vendor: namaVendor, kontak }),
-        });
-        await parseJsonResponse<VendorPayload>(response);
+        const result = await insert({ nama_vendor: namaVendor, kontak });
+        if (!result) throw new Error("Gagal membuat vendor.");
       }
 
-      await fetchVendor();
+      refresh();
       resetForm();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Operasi simpan vendor gagal.";
@@ -107,7 +62,7 @@ export default function VendorPage() {
     }
   };
 
-  const handleEdit = (vendor: VendorItem) => {
+  const handleEdit = (vendor: MVendor) => {
     setEditingId(vendor.id);
     setNamaVendor(vendor.nama_vendor ?? "");
     setKontak(vendor.kontak ?? "");
@@ -119,12 +74,9 @@ export default function VendorPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/core/vendors/${id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-      await parseJsonResponse<null>(response);
-      await fetchVendor();
+      const success = await remove(id);
+      if (!success) throw new Error("Gagal menghapus vendor.");
+      refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal menghapus vendor.";
       alert(message);
@@ -227,6 +179,9 @@ export default function VendorPage() {
 
       {/* Table Card */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {readError ? (
+          <p className="px-5 pt-5 text-sm text-rose-600">Gagal memuat data vendor: {readError}</p>
+        ) : null}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Truck size={18} className="text-slate-400" />

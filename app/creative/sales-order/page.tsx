@@ -6,6 +6,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MAfiliator, MVarian, TSalesOrder } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
 type SalesOrderListPayload = {
   orders: TSalesOrder[];
@@ -48,7 +49,14 @@ const initialFormState: FormState = {
 };
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  const raw = await response.text();
+  let payload: ApiSuccess<T> | ApiError;
+  try {
+    payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
+  } catch {
+    const fallback = response.ok ? "Respons server tidak valid (bukan JSON)." : raw.slice(0, 200);
+    throw new Error(fallback || "Respons server tidak valid.");
+  }
   if (!response.ok || !payload.success) {
     const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
     throw new Error(message);
@@ -98,6 +106,35 @@ export default function SalesOrderPage() {
     [variants],
   );
 
+  const resolveCalculatedTotal = useCallback(
+    (variantId: string, quantity: string) => {
+      const qty = Number(quantity);
+      if (!variantId || Number.isNaN(qty) || qty <= 0) return "";
+
+      const variant = variantMap.get(variantId);
+      if (!variant || variant.harga == null) return "";
+
+      return String(variant.harga * qty);
+    },
+    [variantMap],
+  );
+
+  const handleVariantChange = (variantId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      varian_id: variantId,
+      total_price: resolveCalculatedTotal(variantId, prev.quantity),
+    }));
+  };
+
+  const handleQuantityChange = (quantity: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      quantity,
+      total_price: resolveCalculatedTotal(prev.varian_id, quantity),
+    }));
+  };
+
   const affiliatorMap = useMemo(
     () => new Map<string, MAfiliator>(affiliators.map((item) => [item.id, item])),
     [affiliators],
@@ -110,17 +147,17 @@ export default function SalesOrderPage() {
 
   const fetchDependencies = useCallback(async () => {
     const [ordersResponse, variantsResponse, affiliatorsResponse] = await Promise.all([
-      fetch("/api/sales/orders?page=1&limit=500", {
+      apiFetch("/api/sales/orders?page=1&limit=500", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       }),
-      fetch("/api/core/variants", {
+      apiFetch("/api/core/variants", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       }),
-      fetch("/api/sales/affiliates?page=1&limit=500", {
+      apiFetch("/api/sales/affiliates?page=1&limit=500", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -154,11 +191,13 @@ export default function SalesOrderPage() {
 
   const openEditModal = (item: TSalesOrder) => {
     setEditData(item);
+    const initialQuantity = String(item.quantity);
+    const initialVariantId = item.varian_id ?? "";
     setFormData({
-      varian_id: item.varian_id ?? "",
+      varian_id: initialVariantId,
       affiliator_id: item.affiliator_id ?? "",
-      quantity: String(item.quantity),
-      total_price: String(item.total_price),
+      quantity: initialQuantity,
+      total_price: resolveCalculatedTotal(initialVariantId, initialQuantity) || String(item.total_price),
     });
     setIsEditModalOpen(true);
   };
@@ -185,7 +224,7 @@ export default function SalesOrderPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/sales/orders", {
+      const response = await apiFetch("/api/sales/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -223,7 +262,7 @@ export default function SalesOrderPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/sales/orders/${editData.id}`, {
+      const response = await apiFetch(`/api/sales/orders/${editData.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -259,7 +298,7 @@ export default function SalesOrderPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/sales/orders/${deleteId}`, {
+      const response = await apiFetch(`/api/sales/orders/${deleteId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -288,7 +327,7 @@ export default function SalesOrderPage() {
             <select
               required
               value={formData.varian_id}
-              onChange={(event) => setFormData((prev) => ({ ...prev, varian_id: event.target.value }))}
+              onChange={(event) => handleVariantChange(event.target.value)}
               className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               disabled={isSubmitting}
             >
@@ -327,7 +366,7 @@ export default function SalesOrderPage() {
               type="number"
               min={1}
               value={formData.quantity}
-              onChange={(event) => setFormData((prev) => ({ ...prev, quantity: event.target.value }))}
+              onChange={(event) => handleQuantityChange(event.target.value)}
               className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               placeholder="Qty"
               disabled={isSubmitting}
@@ -341,8 +380,8 @@ export default function SalesOrderPage() {
               type="number"
               min={0}
               value={formData.total_price}
-              onChange={(event) => setFormData((prev) => ({ ...prev, total_price: event.target.value }))}
-              className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              readOnly
+              className="w-full bg-slate-100 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm cursor-not-allowed"
               placeholder="0"
               disabled={isSubmitting}
             />
@@ -449,7 +488,7 @@ export default function SalesOrderPage() {
               <select
                 required
                 value={formData.varian_id}
-                onChange={(event) => setFormData((prev) => ({ ...prev, varian_id: event.target.value }))}
+                onChange={(event) => handleVariantChange(event.target.value)}
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
                 disabled={isSubmitting}
               >
@@ -487,7 +526,7 @@ export default function SalesOrderPage() {
                 type="number"
                 min={1}
                 value={formData.quantity}
-                onChange={(event) => setFormData((prev) => ({ ...prev, quantity: event.target.value }))}
+                onChange={(event) => handleQuantityChange(event.target.value)}
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
                 placeholder="Quantity"
                 disabled={isSubmitting}
@@ -497,8 +536,8 @@ export default function SalesOrderPage() {
                 type="number"
                 min={0}
                 value={formData.total_price}
-                onChange={(event) => setFormData((prev) => ({ ...prev, total_price: event.target.value }))}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
+                readOnly
+                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 cursor-not-allowed"
                 placeholder="Total Price"
                 disabled={isSubmitting}
               />

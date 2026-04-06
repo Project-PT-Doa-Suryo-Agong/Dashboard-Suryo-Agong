@@ -1,11 +1,19 @@
-﻿import type { MAfiliator, TContentPlanner, TLivePerformance, TSalesOrder } from "@/types/supabase";
+/**
+ * @deprecated — FASE 2 MIGRASI HYBRID BACKEND
+ *
+ * File ini sudah di-deprecated per April 2026.
+ * Segera migrasikan endpoint yang menggunakan service ini menuju direct Supabase hooks.
+ * 
+ * @see lib/supabase/hooks/use-sales.ts
+ */
+import type { MAfiliator, TContentPlanner, TLivePerformance, TSalesOrder } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("sales");
 
-// â”€â”€â”€ m_affiliator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  m_affiliator 
 
 export async function listAfiliator(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -42,7 +50,7 @@ export async function deleteAfiliator(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_content_planner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_content_planner 
 
 export async function listContentPlanner(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -77,7 +85,7 @@ export async function deleteContentPlanner(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_live_performance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_live_performance 
 
 export async function listLivePerformance(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -112,7 +120,7 @@ export async function deleteLivePerformance(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_sales_order â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_sales_order 
 
 export async function listSalesOrder(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;

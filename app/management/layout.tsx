@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
+import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
-  { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
+  { label: 'Dashboard Overview', href: '/management', icon: 'LayoutDashboard' },
   { label: 'Budget', href: '/budget', icon: 'Banknote' },
   { label: 'KPI', href: '/kpi', icon: 'TrendingUp' },
 ];
@@ -16,6 +17,7 @@ export default function CreativeLayout({
   children: React.ReactNode;
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const { name, role } = useProfile();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light font-display">
@@ -41,8 +43,8 @@ export default function CreativeLayout({
       {/* Kanan: Area Utama */}
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
-          title="Creative & Sales Dashboard"
-          user={{ name: 'Andi Kusumo', role: 'Management' }}
+          title="Management Dashboard"
+          user={{ name: name ?? '...', role: role ?? '' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

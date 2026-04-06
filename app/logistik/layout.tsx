@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
+import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
-  { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
+  { label: 'Dashboard Overview', href: '/logistik', icon: 'LayoutDashboard' },
   { label: 'Manifest', href: '/manifest', icon: 'Truck' },
   { label: 'Packing', href: '/packing', icon: 'Package' },
   { label: 'Returns', href: '/returns', icon: 'Undo2' },
@@ -17,6 +18,7 @@ export default function CreativeLayout({
   children: React.ReactNode;
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const { name, role } = useProfile();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light font-display">
@@ -43,7 +45,7 @@ export default function CreativeLayout({
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Logistics Dashboard"
-          user={{ name: 'I Made Trikusumo', role: 'Logistics Team' }}
+          user={{ name: name ?? '...', role: role ?? '' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

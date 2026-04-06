@@ -5,6 +5,7 @@ import { CheckCircle, Edit, PlusCircle, Trash2, XCircle } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
+import { apiFetch } from "@/lib/utils/api-fetch";
 import type {
   FinanceReimburseStatus,
   MKaryawan,
@@ -89,7 +90,7 @@ export default function FinanceReimbursePage() {
 
   const fetchReimburse = async () => {
     try {
-      const response = await fetch("/api/finance/reimburse?page=1&limit=200", {
+      const response = await apiFetch("/api/finance/reimburse?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -104,7 +105,7 @@ export default function FinanceReimbursePage() {
 
   const fetchKaryawan = async () => {
     try {
-      const response = await fetch("/api/hr/employees?page=1&limit=200", {
+      const response = await apiFetch("/api/hr/employees?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -218,14 +219,14 @@ export default function FinanceReimbursePage() {
       };
 
       if (editData) {
-        const response = await fetch(`/api/finance/reimburse/${editData.id}`, {
+        const response = await apiFetch(`/api/finance/reimburse/${editData.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         await parseJsonResponse<ReimbursePayload>(response);
       } else {
-        const response = await fetch("/api/finance/reimburse", {
+        const response = await apiFetch("/api/finance/reimburse", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -248,7 +249,7 @@ export default function FinanceReimbursePage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/finance/reimburse/${id}`, {
+      const response = await apiFetch(`/api/finance/reimburse/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -269,7 +270,7 @@ export default function FinanceReimbursePage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/finance/reimburse/${deleteId}`, {
+      const response = await apiFetch(`/api/finance/reimburse/${deleteId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });

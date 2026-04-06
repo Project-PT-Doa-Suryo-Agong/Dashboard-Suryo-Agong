@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -131,66 +132,71 @@ export default function Sidebar(props: SidebarProps) {
   const mobileIsOpen = isOpen ?? isMobileOpen;
   const handleClose = onClose ?? onCloseMobile;
 
-<<<<<<< HEAD
-  const resolveRootHost = () => {
-    const { hostname } = window.location;
-    if (hostname.endsWith(".localhost")) return "localhost";
-    if (hostname.endsWith(".lvh.me")) return "lvh.me";
-    return hostname;
-=======
   const resolveLoginUrl = () => {
-    if (typeof window === "undefined") return "/auth/login";
-    const host = window.location.hostname.toLowerCase();
-    const port = window.location.port || "3000";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://lvh.me:3000";
+    return `${siteUrl.replace(/\/$/, "")}/auth/login`;
+  };
 
-    if (host.endsWith(".lvh.me") || host === "lvh.me") {
-      return `http://lvh.me:${port}/auth/login`;
+  const resolveSupabaseProjectRef = () => {
+    const fromEnv = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF?.trim();
+    if (fromEnv) return fromEnv;
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) return null;
+
+    try {
+      const hostname = new URL(supabaseUrl).hostname;
+      const subdomain = hostname.split(".")[0];
+      return subdomain || null;
+    } catch {
+      return null;
     }
+  };
 
-    if (host.endsWith(".localhost") || host === "localhost") {
-      return `http://localhost:${port}/auth/login`;
-    }
-
-    return "/auth/login";
+  const expireCookie = (name: string, domain?: string) => {
+    const domainPart = domain ? `domain=${domain}; ` : "";
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; ${domainPart}SameSite=Lax`;
   };
 
   const clearRoleCookies = () => {
-    document.cookie = "role=; Path=/; Max-Age=0; SameSite=Lax";
-    document.cookie = "role=; Path=/; domain=localhost; Max-Age=0; SameSite=Lax";
-    document.cookie = "role=; Path=/; domain=.localhost; Max-Age=0; SameSite=Lax";
-    document.cookie = "role=; Path=/; domain=lvh.me; Max-Age=0; SameSite=Lax";
-    document.cookie = "role=; Path=/; domain=.lvh.me; Max-Age=0; SameSite=Lax";
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
+    expireCookie("role");
+    expireCookie("role", "localhost");
+    expireCookie("role", ".localhost");
+    expireCookie("role", "lvh.me");
+    expireCookie("role", ".lvh.me");
   };
 
-  const handleLogout = async () => {
+  const clearSupabaseAuthCookie = () => {
+    const projectRef = resolveSupabaseProjectRef();
+    if (!projectRef) return;
+
+    const cookieName = `sb-${projectRef}-auth-token`;
+    expireCookie(cookieName);
+    expireCookie(cookieName, "localhost");
+    expireCookie(cookieName, ".localhost");
+    expireCookie(cookieName, "lvh.me");
+    expireCookie(cookieName, ".lvh.me");
+  };
+
+  const handleLogout = () => {
     if (isLoggingOut) return;
 
     setIsLoggingOut(true);
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch {
-<<<<<<< HEAD
-      // Tetap lanjutkan cleanup lokal agar user tidak terjebak di halaman saat ini.
-    } finally {
-      document.cookie = "role=; Path=/; Max-Age=0; SameSite=Lax";
-      document.cookie = "role=; Path=/; Domain=.localhost; Max-Age=0; SameSite=Lax";
-      document.cookie = "role=; Path=/; Domain=.lvh.me; Max-Age=0; SameSite=Lax";
+    setShowLogoutConfirm(false);
 
-      const rootHost = resolveRootHost();
-      const { protocol, port } = window.location;
-      const portPart = port ? `:${port}` : "";
-      window.location.href = `${protocol}//${rootHost}${portPart}/auth`;
-=======
-      // Redirect tetap dipaksa agar sesi lokal dibersihkan meski request gagal.
-    } finally {
-      clearRoleCookies();
-      window.location.href = resolveLoginUrl();
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
-    }
+    // Optimistic logout: clear local cookies first, then redirect immediately.
+    clearRoleCookies();
+    clearSupabaseAuthCookie();
+
+    const supabase = createSupabaseBrowserClient();
+    void supabase.auth.signOut().catch(() => undefined);
+    void fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+    }).catch(() => undefined);
+
+    window.location.replace(resolveLoginUrl());
   };
 
   const isPathActive = (href: string) =>
@@ -362,14 +368,7 @@ export default function Sidebar(props: SidebarProps) {
                 Batal
               </button>
               <button
-<<<<<<< HEAD
-                onClick={() => {
-                  setShowLogoutConfirm(false);
-                  void handleLogout();
-                }}
-=======
                 onClick={handleLogout}
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
                 disabled={isLoggingOut}
                 className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors"
               >

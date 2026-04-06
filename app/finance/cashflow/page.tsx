@@ -6,6 +6,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { FinanceCashflowType, TCashflow } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
 type CashflowFilter = "all" | FinanceCashflowType;
 
@@ -71,7 +72,7 @@ export default function FinanceCashflowPage() {
   const fetchCashflow = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/finance/cashflow?page=1&limit=500", {
+      const response = await apiFetch("/api/finance/cashflow?page=1&limit=500", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -167,14 +168,14 @@ export default function FinanceCashflowPage() {
       };
 
       if (editData) {
-        const response = await fetch(`/api/finance/cashflow/${editData.id}`, {
+        const response = await apiFetch(`/api/finance/cashflow/${editData.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         await parseJsonResponse<CashflowPayload>(response);
       } else {
-        const response = await fetch("/api/finance/cashflow", {
+        const response = await apiFetch("/api/finance/cashflow", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -197,7 +198,7 @@ export default function FinanceCashflowPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/finance/cashflow/${deleteId}`, {
+      const response = await apiFetch(`/api/finance/cashflow/${deleteId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });

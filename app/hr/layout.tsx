@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
+import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
-  { label: 'Dashboard Overview', href: '/', icon: 'LayoutDashboard' },
+  { label: 'Dashboard Overview', href: '/hr', icon: 'LayoutDashboard' },
   { label: 'Kehadiran', href: '/attendance', icon: 'CalendarDays' },
   { label: 'Karyawan', href: '/karyawan', icon: 'Users' },
   { label: 'Perigatan', href: '/warnings', icon: 'BookAlert' },
@@ -17,6 +18,7 @@ export default function CreativeLayout({
   children: React.ReactNode;
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const { name, role } = useProfile();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light font-display">
@@ -43,7 +45,7 @@ export default function CreativeLayout({
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Human Resource Dashboard"
-          user={{ name: 'Alex Morgan', role: 'Human Resource' }}
+          user={{ name: name ?? '...', role: role ?? '' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

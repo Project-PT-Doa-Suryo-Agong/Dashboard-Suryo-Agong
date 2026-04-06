@@ -1,11 +1,9 @@
-﻿import type { TLogistikManifest, TPacking, TReturnOrder } from "@/types/supabase";
+import type { TLogistikManifest, TPacking, TReturnOrder } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("logistics");
-
-// â”€â”€â”€ t_logistik_manifest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function listManifest(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
@@ -37,8 +35,6 @@ export async function deleteManifest(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_packing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 export async function listPacking(client: DbClient, page = 1, limit = 100) {
   const from = (page - 1) * limit;
   const { data, error, count } = await db(client)
@@ -69,8 +65,6 @@ export async function deletePacking(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_return_order â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 export async function listReturnOrder(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
   const { data, error, count } = await db(client)
@@ -100,4 +94,3 @@ export async function deleteReturnOrder(client: DbClient, id: string) {
   const { error, count } = await db(client).from("t_return_order").delete({ count: "exact" }).eq("id", id);
   return { error, deleted: (count ?? 0) > 0 };
 }
-

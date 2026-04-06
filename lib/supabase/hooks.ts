@@ -33,7 +33,7 @@ type MutationResult = {
   error: string | null;
 };
 
-type UseTableOptions = {
+export type UseTableOptions = {
   /** Page number (1-indexed) */
   page?: number;
   /** Items per page */
@@ -269,7 +269,7 @@ export function useUpdate<T extends Record<string, unknown>>(
         const db = (supabase as unknown as { schema: (s: string) => typeof supabase }).schema(schema);
         const { data, error: updateError } = await db
           .from(table)
-          .update({ ...input, updated_at: new Date().toISOString() } as never)
+          .update(input as never)
           .eq(idColumn, id)
           .select("*")
           .maybeSingle();

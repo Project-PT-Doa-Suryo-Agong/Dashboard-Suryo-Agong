@@ -1,11 +1,19 @@
-﻿import type { TCashflow, TPayrollHistory, TReimbursement } from "@/types/supabase";
+/**
+ * @deprecated — FASE 2 MIGRASI HYBRID BACKEND
+ *
+ * File ini sudah di-deprecated per April 2026.
+ * Segera migrasikan endpoint yang menggunakan service ini menuju direct Supabase hooks.
+ * 
+ * @see lib/supabase/hooks/use-finance.ts
+ */
+import type { TCashflow, TPayrollHistory, TReimbursement } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("finance");
 
-// â”€â”€â”€ t_cashflow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_cashflow 
 
 export async function listCashflow(client: DbClient, page = 1, limit = 100) {
   const from = (page - 1) * limit;
@@ -37,7 +45,7 @@ export async function deleteCashflow(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_payroll_history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_payroll_history 
 
 export async function listPayroll(client: DbClient, page = 1, limit = 50, employeeId?: string) {
   const from = (page - 1) * limit;
@@ -71,7 +79,7 @@ export async function deletePayroll(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-// â”€â”€â”€ t_reimbursement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  t_reimbursement 
 
 export async function listReimbursement(client: DbClient, page = 1, limit = 50, employeeId?: string) {
   const from = (page - 1) * limit;

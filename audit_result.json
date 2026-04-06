@@ -1,0 +1,839 @@
+[
+  {
+    "file": "/core/products/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational",
+      "support"
+    ]
+  },
+  {
+    "file": "/core/products/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/core/products/[id]/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational",
+      "support"
+    ]
+  },
+  {
+    "file": "/core/products/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/core/products/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/core/variants/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational",
+      "support"
+    ]
+  },
+  {
+    "file": "/core/variants/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/core/variants/[id]/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational",
+      "support"
+    ]
+  },
+  {
+    "file": "/core/variants/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/core/variants/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/core/vendors/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/core/vendors/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/core/vendors/[id]/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/core/vendors/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/core/vendors/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/finance/cashflow/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/finance/cashflow/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/finance/cashflow/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/finance/cashflow/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/finance/payroll/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/finance/payroll/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/finance/payroll/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/finance/payroll/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/finance/reimburse/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/finance/reimburse/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/finance/reimburse/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/finance/reimburse/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/finance/reimbursement/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/finance/reimbursement/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/hr/attendance/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/hr/attendance/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/hr/attendance/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/hr/attendance/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/hr/employees/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/hr/employees/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/hr/employees/[id]/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/hr/employees/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/hr/employees/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/hr/karyawan/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/hr/karyawan/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/hr/karyawan/[id]/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/hr/karyawan/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/hr/karyawan/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/hr/warnings/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/hr/warnings/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/logistics/manifest/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/logistics/manifest/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/logistics/manifest/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/logistics/manifest/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/logistics/packing/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/logistics/packing/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/logistics/packing/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/logistics/packing/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/logistics/returns/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/logistics/returns/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/logistics/returns/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/logistics/returns/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/management/budget/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/management/budget/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/management/budget/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/management/budget/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/management/kpi/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/management/kpi/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/management/kpi/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/management/kpi/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/production/orders/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/production/orders/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/production/orders/[id]/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/production/orders/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/production/orders/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/production/qc-inbound/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/production/qc-inbound/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/production/qc-inbound/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/production/qc-inbound/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/production/qc-outbound/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/production/qc-outbound/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/production/qc-outbound/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/production/qc-outbound/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/profiles/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/profiles/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/profiles/[id]/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/profiles/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/profiles/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic"
+    ]
+  },
+  {
+    "file": "/sales/affiliates/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/affiliates/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/sales/affiliates/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/affiliates/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/sales/content/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/content/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/content/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/content/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/sales/live/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/live/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/live/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/live/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  },
+  {
+    "file": "/sales/orders/route.ts",
+    "method": "GET",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/orders/route.ts",
+    "method": "POST",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/orders/[id]/route.ts",
+    "method": "PATCH",
+    "levels": [
+      "strategic",
+      "managerial",
+      "operational"
+    ]
+  },
+  {
+    "file": "/sales/orders/[id]/route.ts",
+    "method": "DELETE",
+    "levels": [
+      "strategic",
+      "managerial"
+    ]
+  }
+]

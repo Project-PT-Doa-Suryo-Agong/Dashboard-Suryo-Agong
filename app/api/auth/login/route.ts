@@ -42,23 +42,56 @@ function slugifyRole(role: string) {
 }
 
 function mapRoleToSubdomain(role: string | null | undefined): string {
-  const normalized = slugifyRole(role ?? "");
-  const roleMap: Record<string, string> = {
-    developer: "developer",
-    ceo: "management",
-    management: "management",
-    finance: "finance",
-    hr: "hr",
-    "human-resource": "hr",
-    produksi: "produksi",
-    production: "produksi",
-    logistik: "logistik",
-    logistics: "logistik",
-    creative: "creative",
-    sales: "creative",
-    office: "office",
+  if (!role) return "management";
+  const slug = slugifyRole(role);
+
+  const exactMap: Record<string, string> = {
+    "developer":           "developer",
+    "senior-developer":    "developer",
+    "ceo":                 "management",
+    "management":          "management",
+    "manager":             "management",
+    "management-strategy": "management",
+    "management-strategic":"management",
+    "finance":             "finance",
+    "finance-accounting":  "finance",
+    "finance-team":        "finance",
+    "hr":                  "hr",
+    "human-resource":      "hr",
+    "human-resources":     "hr",
+    "human-resource-dept": "hr",
+    "human-resources-dept":"hr",
+    "produksi":            "produksi",
+    "production":          "produksi",
+    "produksi-team":       "produksi",
+    "logistik":            "logistik",
+    "logistics":           "logistik",
+    "logistik-team":       "logistik",
+    "creative":            "creative",
+    "creative-manager":    "creative",
+    "sales":               "creative",
+    "creative-sales":      "creative",
+    "office":              "office",
+    "office-support":      "office",
   };
-  return roleMap[normalized] ?? "management";
+
+  if (exactMap[slug]) return exactMap[slug];
+
+  if (slug.includes("developer"))  return "developer";
+  if (slug.includes("management")) return "management";
+  if (slug.includes("ceo"))        return "management";
+  if (slug.includes("finance"))    return "finance";
+  if (slug.includes("human-resource")) return "hr";
+  if (slug.includes("produksi"))   return "produksi";
+  if (slug.includes("production")) return "produksi";
+  if (slug.includes("logistik"))   return "logistik";
+  if (slug.includes("logistics"))  return "logistik";
+  if (slug.includes("creative"))   return "creative";
+  if (slug.includes("sales"))      return "creative";
+  if (slug.includes("office"))     return "office";
+  if (slug.includes("hr"))         return "hr";
+
+  return "management";
 }
 
 function buildTenantRedirectUrl(subdomain: string): string {
@@ -98,12 +131,12 @@ export async function POST(request: NextRequest) {
   }
 
   const cookieDomain = getCookieDomain();
-
-  // Create response with CORS headers first
-  const jsonResponse = NextResponse.json(
-    { ok: true }, // placeholder, will be replaced
-    { headers: corsHeaders }
-  );
+  
+  // Use a cookies map to collect ALL chunks Supabase sets
+  const cookieMap = new Map<string, { 
+    value: string; 
+    options: Record<string, unknown> 
+  }>();
 
   const supabase = createServerClient<Database>(
     env.supabaseUrl,
@@ -114,24 +147,14 @@ export async function POST(request: NextRequest) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: Record<string, unknown>) {
-          jsonResponse.cookies.set({
-            name,
-            value,
-            ...options,
-            domain: cookieDomain,
-            sameSite: "lax",
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-          });
+          // Collect ALL cookies Supabase wants to set
+          // (including chunks: .0, .1, .2, etc.)
+          cookieMap.set(name, { value, options });
         },
         remove(name: string, options: Record<string, unknown>) {
-          jsonResponse.cookies.set({
-            name,
-            value: "",
-            ...options,
-            domain: cookieDomain,
-            maxAge: 0,
-          });
+          cookieMap.set(name, { value: "", options: { 
+            ...options, maxAge: 0 
+          }});
         },
       },
     }
@@ -151,33 +174,53 @@ export async function POST(request: NextRequest) {
 
   let role =
     (typeof data.user?.user_metadata?.role === "string"
-      ? data.user.user_metadata.role
-      : null) ??
+      ? data.user.user_metadata.role : null) ??
     (typeof data.user?.app_metadata?.role === "string"
-      ? data.user.app_metadata.role
-      : null);
+      ? data.user.app_metadata.role : null);
 
+  let profile = null;
   if (!role && data.user?.id) {
-    const { data: profile } = await supabase
+    const res = await supabase
       .schema("core")
       .from("profiles")
       .select("role")
       .eq("id", data.user.id)
       .maybeSingle();
+    profile = res.data;
     role = typeof profile?.role === "string" ? profile.role : null;
   }
 
   const subdomain = mapRoleToSubdomain(role);
   const redirectUrl = buildTenantRedirectUrl(subdomain);
 
-  // Return the SAME jsonResponse object that has cookies set on it
-  // Override the body by creating new response but keeping the cookies
+  console.log("[ROUTE] user_metadata:", data.user?.user_metadata);
+  console.log("[ROUTE] app_metadata:", data.user?.app_metadata);
+  console.log("[ROUTE] profile from DB:", profile);
+  console.log("[ROUTE] final role:", role);
+  console.log("[ROUTE] redirecting to:", subdomain);
+
+  // Build final response with ALL cookie chunks
   const finalResponse = NextResponse.json(
     { redirectUrl },
-    { headers: jsonResponse.headers }
+    { headers: corsHeaders }
   );
 
-  console.log("[ROUTE] cookies set:", Array.from(jsonResponse.headers.entries()).filter(([k]) => k === 'set-cookie'));
+  // Apply ALL cookies Supabase collected (chunks included)
+  for (const [name, { value, options }] of cookieMap.entries()) {
+    finalResponse.cookies.set({
+      name,
+      value,
+      ...(options as object),
+      domain: cookieDomain,
+      sameSite: "lax",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    });
+  }
+
+  // Debug: log all cookies being set
+  console.log("[ROUTE] setting cookies:", 
+    Array.from(cookieMap.keys()));
 
   return finalResponse;
 }

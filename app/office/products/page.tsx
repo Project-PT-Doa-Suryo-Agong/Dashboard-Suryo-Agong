@@ -1,52 +1,46 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ChevronDown, Plus, Search } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Plus, Search } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type { MProduk, MVarian } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
-type ProdukItem = {
-  id: string;
-  nama_produk: string;
-  kategori: string;
+type ProductsListPayload = {
+  produk: MProduk[];
+  meta: { page: number; limit: number; total: number };
 };
 
-type VarianItem = {
-  id: string;
-  product_id: string;
-  nama_varian: string;
-  sku: string;
-  harga: number;
+type VariantsListPayload = {
+  varian: MVarian[];
 };
 
-type KategoriFilter = "Semua" | "Minuman" | "Powder" | "Syrup";
+type ProductPayload = {
+  produk: MProduk | null;
+};
 
-const core_m_produk_rows_seed: ProdukItem[] = [
-  { id: "prd-001", nama_produk: "Coffee Beans Arabica", kategori: "Minuman" },
-  { id: "prd-002", nama_produk: "Coffee Beans Robusta", kategori: "Minuman" },
-  { id: "prd-003", nama_produk: "Chocolate Blend", kategori: "Powder" },
-  { id: "prd-004", nama_produk: "Matcha Mix", kategori: "Powder" },
-  { id: "prd-005", nama_produk: "Vanilla Cream", kategori: "Powder" },
-  { id: "prd-006", nama_produk: "Hazelnut Syrup", kategori: "Syrup" },
-  { id: "prd-007", nama_produk: "Caramel Syrup", kategori: "Syrup" },
-  { id: "prd-008", nama_produk: "Milk Tea Base", kategori: "Minuman" },
-  { id: "prd-009", nama_produk: "Signature Latte Base", kategori: "Minuman" },
-  { id: "prd-010", nama_produk: "Mocha Premix", kategori: "Powder" },
-  { id: "prd-011", nama_produk: "Fresh Tea Concentrate", kategori: "Concentrate" },
-  { id: "prd-012", nama_produk: "Fruit Syrup Series", kategori: "Syrup" },
-];
+type VariantPayload = {
+  varian: MVarian | null;
+};
 
-const core_m_varian_rows_seed: VarianItem[] = Array.from({ length: 42 }, (_, index) => {
-  const product = core_m_produk_rows_seed[index % core_m_produk_rows_seed.length];
-  const varianNo = Math.floor(index / core_m_produk_rows_seed.length) + 1;
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const raw = await response.text();
+  let payload: ApiSuccess<T> | ApiError;
+  try {
+    payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
+  } catch {
+    const fallback = response.ok ? "Respons server tidak valid (bukan JSON)." : raw.slice(0, 200);
+    throw new Error(fallback || "Respons server tidak valid.");
+  }
 
-  return {
-    id: `var-${String(index + 1).padStart(3, "0")}`,
-    product_id: product.id,
-    nama_varian: `${product.nama_produk} Varian ${varianNo}`,
-    sku: `${product.id.toUpperCase()}-V${String(varianNo).padStart(2, "0")}`,
-    harga: 45000 + (index % 6) * 5000,
-  };
-});
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+
+  return payload;
+}
 
 function formatRupiah(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
@@ -57,40 +51,86 @@ function formatRupiah(amount: number): string {
 }
 
 export default function OfficeProductsPage() {
-  const [produkItems] = useState<ProdukItem[]>(core_m_produk_rows_seed);
-  const [varianItems, setVarianItems] = useState<VarianItem[]>(core_m_varian_rows_seed);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedKategori, setSelectedKategori] = useState<KategoriFilter>("Semua");
-  const [isVarianModalOpen, setIsVarianModalOpen] = useState(false);
-  const [selectedProduk, setSelectedProduk] = useState<ProdukItem | null>(null);
+  const [produkItems, setProdukItems] = useState<MProduk[]>([]);
+  const [varianItems, setVarianItems] = useState<MVarian[]>([]);
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedKategori, setSelectedKategori] = useState("Semua");
+
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [formNamaProduk, setFormNamaProduk] = useState("");
+  const [formKategoriProduk, setFormKategoriProduk] = useState("");
+
+  const [isVarianModalOpen, setIsVarianModalOpen] = useState(false);
+  const [selectedProduk, setSelectedProduk] = useState<MProduk | null>(null);
   const [formNamaVarian, setFormNamaVarian] = useState("");
   const [formSku, setFormSku] = useState("");
   const [formHarga, setFormHarga] = useState("");
+
+  const fetchAll = async () => {
+    setIsLoading(true);
+    try {
+      const [productsRes, variantsRes] = await Promise.all([
+        apiFetch("/api/core/products?page=1&limit=500", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        }),
+        apiFetch("/api/core/variants", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        }),
+      ]);
+
+      const productsPayload = await parseJsonResponse<ProductsListPayload>(productsRes);
+      const variantsPayload = await parseJsonResponse<VariantsListPayload>(variantsRes);
+
+      setProdukItems(productsPayload.data.produk ?? []);
+      setVarianItems(variantsPayload.data.varian ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data produk.";
+      alert(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchAll();
+  }, []);
+
+  const kategoriOptions = useMemo(() => {
+    const fromData = Array.from(
+      new Set(produkItems.map((item) => (item.kategori ?? "Tanpa Kategori").trim() || "Tanpa Kategori")),
+    );
+    return ["Semua", ...fromData];
+  }, [produkItems]);
 
   const filteredProdukCards = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     return produkItems
       .map((produk) => {
-        const relatedVarian = varianItems.filter(
-          (varian) => varian.product_id === produk.id,
-        );
+        const relatedVarian = varianItems.filter((varian) => varian.product_id === produk.id);
+        const kategoriLabel = (produk.kategori ?? "Tanpa Kategori").trim() || "Tanpa Kategori";
 
-        const matchesKategori =
-          selectedKategori === "Semua" || produk.kategori === selectedKategori;
-
+        const matchesKategori = selectedKategori === "Semua" || kategoriLabel === selectedKategori;
         const matchesSearch =
           normalizedSearch.length === 0 ||
           produk.nama_produk.toLowerCase().includes(normalizedSearch) ||
           relatedVarian.some(
             (varian) =>
-              varian.nama_varian.toLowerCase().includes(normalizedSearch) ||
-              varian.sku.toLowerCase().includes(normalizedSearch),
+              (varian.nama_varian ?? "").toLowerCase().includes(normalizedSearch) ||
+              (varian.sku ?? "").toLowerCase().includes(normalizedSearch),
           );
 
         return {
           ...produk,
+          kategoriLabel,
           relatedVarian,
           isVisible: matchesKategori && matchesSearch,
         };
@@ -98,7 +138,50 @@ export default function OfficeProductsPage() {
       .filter((item) => item.isVisible);
   }, [produkItems, varianItems, searchTerm, selectedKategori]);
 
-  const handleOpenVarianModal = (produk: ProdukItem) => {
+  const openProductModal = () => {
+    setFormNamaProduk("");
+    setFormKategoriProduk("");
+    setIsProductModalOpen(true);
+  };
+
+  const closeProductModal = () => {
+    setIsProductModalOpen(false);
+    setFormNamaProduk("");
+    setFormKategoriProduk("");
+  };
+
+  const handleSaveProduct = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const namaProduk = formNamaProduk.trim();
+    if (!namaProduk) {
+      alert("Nama produk wajib diisi.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await apiFetch("/api/core/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nama_produk: namaProduk,
+          kategori: formKategoriProduk.trim() || null,
+        }),
+      });
+      await parseJsonResponse<ProductPayload>(response);
+      await fetchAll();
+      closeProductModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menambah produk.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openVarianModal = (produk: MProduk) => {
     setSelectedProduk(produk);
     setFormNamaVarian("");
     setFormSku("");
@@ -106,7 +189,7 @@ export default function OfficeProductsPage() {
     setIsVarianModalOpen(true);
   };
 
-  const handleCloseVarianModal = () => {
+  const closeVarianModal = () => {
     setIsVarianModalOpen(false);
     setSelectedProduk(null);
     setFormNamaVarian("");
@@ -114,34 +197,44 @@ export default function OfficeProductsPage() {
     setFormHarga("");
   };
 
-  const handleSaveVarian = () => {
-    if (!selectedProduk) return;
+  const handleSaveVarian = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedProduk || isSubmitting) return;
 
-    const namaVarian = formNamaVarian.trim();
-    const sku = formSku.trim().toUpperCase();
     const harga = Number(formHarga);
+    if (Number.isNaN(harga) || harga < 0) {
+      alert("Harga varian harus angka valid.");
+      return;
+    }
 
-    if (!namaVarian || !sku || Number.isNaN(harga) || harga <= 0) return;
-
-    const newVarian: VarianItem = {
-      id: `var-${String(Date.now()).slice(-6)}`,
-      product_id: selectedProduk.id,
-      nama_varian: namaVarian,
-      sku,
-      harga,
-    };
-
-    setVarianItems((currentItems) => [newVarian, ...currentItems]);
-    handleCloseVarianModal();
+    setIsSubmitting(true);
+    try {
+      const response = await apiFetch("/api/core/variants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: selectedProduk.id,
+          nama_varian: formNamaVarian.trim() || null,
+          sku: formSku.trim() || null,
+          harga,
+        }),
+      });
+      await parseJsonResponse<VariantPayload>(response);
+      await fetchAll();
+      closeVarianModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menambah varian.";
+      alert(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Katalog Produk &amp; Varian</h1>
-        <p className="text-sm md:text-base text-slate-300">
-          Kelola master data produk dan varian SKU yang terdaftar di sistem.
-        </p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Katalog Produk dan Varian</h1>
+        <p className="text-sm md:text-base text-slate-300">Kelola master data produk dan varian SKU dari database core.</p>
       </section>
 
       <section className="flex flex-col gap-3 md:gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -159,18 +252,18 @@ export default function OfficeProductsPage() {
 
           <select
             value={selectedKategori}
-            onChange={(event) => setSelectedKategori(event.target.value as KategoriFilter)}
+            onChange={(event) => setSelectedKategori(event.target.value)}
             className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
           >
-            <option value="Semua">Semua</option>
-            <option value="Minuman">Minuman</option>
-            <option value="Powder">Powder</option>
-            <option value="Syrup">Syrup</option>
+            {kategoriOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
           </select>
         </div>
 
         <button
           type="button"
+          onClick={openProductModal}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" />
@@ -179,47 +272,37 @@ export default function OfficeProductsPage() {
       </section>
 
       <section className="space-y-4">
-        {filteredProdukCards.length === 0 ? (
+        {isLoading ? (
+          <article className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm">
+            Memuat data produk...
+          </article>
+        ) : filteredProdukCards.length === 0 ? (
           <article className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm">
             Tidak ada produk yang sesuai dengan filter pencarian.
           </article>
         ) : (
           filteredProdukCards.map((produk) => (
-            <details
-              key={produk.id}
-              open
-              className="group rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
-            >
+            <details key={produk.id} open className="group rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               <summary className="list-none cursor-pointer p-4 md:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
-                    <p className="text-sm md:text-base font-bold text-slate-900 break-words">
-                      {produk.nama_produk}
-                    </p>
-                    <div>
-                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                        {produk.kategori}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="hidden sm:inline text-xs text-slate-500">
-                      {produk.relatedVarian.length} varian
+                    <p className="text-sm md:text-base font-bold text-slate-900 break-words">{produk.nama_produk}</p>
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                      {produk.kategoriLabel}
                     </span>
-                    <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180" />
                   </div>
+                  <span className="hidden sm:inline text-xs text-slate-500">{produk.relatedVarian.length} varian</span>
                 </div>
               </summary>
 
               <div className="border-t border-slate-100 p-4 md:p-5 space-y-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs md:text-sm font-semibold text-slate-600">
-                    Daftar Varian SKU
-                  </p>
+                  <p className="text-xs md:text-sm font-semibold text-slate-600">Daftar Varian SKU</p>
                   <button
                     type="button"
-                    onClick={() => handleOpenVarianModal(produk)}
-                    className="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-blue-500 hover:text-sky-700 transition whitespace-nowrap"
+                    onClick={() => openVarianModal(produk)}
+                    disabled={isSubmitting}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
                   >
                     <Plus className="h-4 w-4" />
                     Tambah Varian
@@ -230,35 +313,23 @@ export default function OfficeProductsPage() {
                   <table className="w-full min-w-[520px]">
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-3 md:px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                          Nama Varian
-                        </th>
-                        <th className="px-3 md:px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                          SKU
-                        </th>
-                        <th className="px-3 md:px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                          Harga
-                        </th>
+                        <th className="px-3 md:px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Nama Varian</th>
+                        <th className="px-3 md:px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">SKU</th>
+                        <th className="px-3 md:px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Harga</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {produk.relatedVarian.length === 0 ? (
                         <tr>
-                          <td className="px-3 md:px-4 py-3 text-sm text-slate-500" colSpan={3}>
-                            Belum ada varian untuk produk ini.
-                          </td>
+                          <td className="px-3 md:px-4 py-3 text-sm text-slate-500" colSpan={3}>Belum ada varian untuk produk ini.</td>
                         </tr>
                       ) : (
                         produk.relatedVarian.map((varian) => (
                           <tr key={varian.id} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="px-3 md:px-4 py-3 text-sm text-slate-800 break-words">
-                              {varian.nama_varian}
-                            </td>
-                            <td className="px-3 md:px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                              {varian.sku}
-                            </td>
+                            <td className="px-3 md:px-4 py-3 text-sm text-slate-800 break-words">{varian.nama_varian ?? "-"}</td>
+                            <td className="px-3 md:px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{varian.sku ?? "-"}</td>
                             <td className="px-3 md:px-4 py-3 text-sm font-semibold text-slate-700 whitespace-nowrap">
-                              {formatRupiah(varian.harga)}
+                              {formatRupiah(varian.harga ?? 0)}
                             </td>
                           </tr>
                         ))
@@ -272,23 +343,43 @@ export default function OfficeProductsPage() {
         )}
       </section>
 
-      <Modal
-        isOpen={isVarianModalOpen}
-        onClose={handleCloseVarianModal}
-        title={`Tambah Varian - ${selectedProduk?.nama_produk ?? ""}`}
-        maxWidth="max-w-lg"
-      >
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleSaveVarian();
-          }}
-          className="space-y-4"
-        >
+      <Modal isOpen={isProductModalOpen} onClose={closeProductModal} title="Tambah Produk" maxWidth="max-w-lg">
+        <form onSubmit={handleSaveProduct} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="nama-varian" className="text-sm font-semibold text-slate-700">
-              Nama Varian
-            </label>
+            <label htmlFor="nama-produk" className="text-sm font-semibold text-slate-700">Nama Produk</label>
+            <input
+              id="nama-produk"
+              type="text"
+              value={formNamaProduk}
+              onChange={(event) => setFormNamaProduk(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              placeholder="Masukkan nama produk"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="kategori-produk" className="text-sm font-semibold text-slate-700">Kategori</label>
+            <input
+              id="kategori-produk"
+              type="text"
+              value={formKategoriProduk}
+              onChange={(event) => setFormKategoriProduk(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              placeholder="Contoh: Minuman"
+            />
+          </div>
+
+          <div className="pt-2 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button type="button" onClick={closeProductModal} className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Batal</button>
+            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isVarianModalOpen} onClose={closeVarianModal} title={`Tambah Varian - ${selectedProduk?.nama_produk ?? ""}`} maxWidth="max-w-lg">
+        <form onSubmit={handleSaveVarian} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="nama-varian" className="text-sm font-semibold text-slate-700">Nama Varian</label>
             <input
               id="nama-varian"
               type="text"
@@ -300,9 +391,7 @@ export default function OfficeProductsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="sku-varian" className="text-sm font-semibold text-slate-700">
-              SKU
-            </label>
+            <label htmlFor="sku-varian" className="text-sm font-semibold text-slate-700">SKU</label>
             <input
               id="sku-varian"
               type="text"
@@ -314,9 +403,7 @@ export default function OfficeProductsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="harga-varian" className="text-sm font-semibold text-slate-700">
-              Harga (Rp)
-            </label>
+            <label htmlFor="harga-varian" className="text-sm font-semibold text-slate-700">Harga (Rp)</label>
             <input
               id="harga-varian"
               type="number"
@@ -329,19 +416,8 @@ export default function OfficeProductsPage() {
           </div>
 
           <div className="pt-2 flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={handleCloseVarianModal}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444]"
-            >
-              Simpan
-            </button>
+            <button type="button" onClick={closeVarianModal} className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Batal</button>
+            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
           </div>
         </form>
       </Modal>

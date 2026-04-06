@@ -6,6 +6,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { TKPIWeekly } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
 type KpiListPayload = {
   kpi: TKPIWeekly[];
@@ -33,6 +34,17 @@ const initialFormState: FormState = {
   target: "",
   realisasi: "",
 };
+
+const divisionOptions = [
+  "Management & Strategy",
+  "Finance & Administration",
+  "HR & Operation Manager",
+  "Produksi & Quality Control",
+  "Logistics & Packing",
+  "Creative & Sales",
+  "Office Support",
+  "Developer",
+] as const;
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const payload = (await response.json()) as ApiSuccess<T> | ApiError;
@@ -76,7 +88,7 @@ export default function ManagementKpiPage() {
   const fetchKpi = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/management/kpi?page=1&limit=500", {
+      const response = await apiFetch("/api/management/kpi?page=1&limit=500", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -130,7 +142,7 @@ export default function ManagementKpiPage() {
   const openEditModal = (item: TKPIWeekly) => {
     setEditData(item);
     setFormData({
-      minggu: item.minggu,
+      minggu: item.minggu.split("T")[0],
       divisi: item.divisi ?? "",
       target: String(item.target),
       realisasi: String(item.realisasi),
@@ -169,14 +181,14 @@ export default function ManagementKpiPage() {
       };
 
       if (editData) {
-        const response = await fetch(`/api/management/kpi/${editData.id}`, {
+        const response = await apiFetch(`/api/management/kpi/${editData.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         await parseJsonResponse<KpiPayload>(response);
       } else {
-        const response = await fetch("/api/management/kpi", {
+        const response = await apiFetch("/api/management/kpi", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -209,7 +221,7 @@ export default function ManagementKpiPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/management/kpi/${deleteId}`, {
+      const response = await apiFetch(`/api/management/kpi/${deleteId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -296,7 +308,7 @@ export default function ManagementKpiPage() {
           <table className="min-w-max w-full">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Minggu</th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Divisi</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Target</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Realisasi</th>
@@ -314,9 +326,14 @@ export default function ManagementKpiPage() {
               ) : filteredItems.length > 0 ? (
                 filteredItems.map((item) => {
                   const score = getScore(item);
+                  const formattedDate = new Date(item.minggu).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  });
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.minggu}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{formattedDate}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-800">{item.divisi ?? "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.target}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.realisasi}</td>
@@ -365,22 +382,31 @@ export default function ManagementKpiPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             required
-            type="text"
+            type="date"
             value={formData.minggu}
             onChange={(event) => setFormData((prev) => ({ ...prev, minggu: event.target.value }))}
             className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
-            placeholder="Minggu (contoh: Week 1 - Mar 2026)"
             disabled={isSubmitting}
           />
-          <input
+          <select
             required
-            type="text"
             value={formData.divisi}
             onChange={(event) => setFormData((prev) => ({ ...prev, divisi: event.target.value }))}
             className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
-            placeholder="Divisi"
             disabled={isSubmitting}
-          />
+          >
+            <option value="" disabled>
+              Pilih divisi
+            </option>
+            {formData.divisi && !divisionOptions.includes(formData.divisi as (typeof divisionOptions)[number]) ? (
+              <option value={formData.divisi}>{formData.divisi}</option>
+            ) : null}
+            {divisionOptions.map((division) => (
+              <option key={division} value={division}>
+                {division}
+              </option>
+            ))}
+          </select>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               required

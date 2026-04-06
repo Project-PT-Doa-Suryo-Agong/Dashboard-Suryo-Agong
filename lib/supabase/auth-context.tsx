@@ -53,6 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const resolveLoginUrl = useCallback(() => {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://lvh.me:3000";
+    return `${siteUrl.replace(/\/$/, "")}/auth/login`;
+  }, []);
+
   // ── fetch profile from core.profiles ──
 
   const fetchProfile = useCallback(
@@ -125,6 +130,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
 
+      if (event === "TOKEN_REFRESHED") {
+        console.log("Session refreshed successfully");
+      }
+
+      if (
+        event === "SIGNED_OUT" &&
+        !newSession &&
+        typeof window !== "undefined" &&
+        !window.location.pathname.startsWith("/auth/login")
+      ) {
+        window.location.replace(resolveLoginUrl());
+        return;
+      }
+
       setSession(newSession);
 
       if (newSession?.user) {
@@ -144,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase, buildAuthUser]);
+  }, [supabase, buildAuthUser, resolveLoginUrl]);
 
   // ── signIn: direct Supabase Auth ──
 

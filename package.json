@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
+    "dev:turbo": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -20,12 +21,8 @@
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-<<<<<<< HEAD
-    "recharts": "^3.8.1"
-=======
     "recharts": "^3.8.1",
     "xlsx": "^0.18.5"
->>>>>>> 96c62d162db93d3b45c5759c1fbe315b6f095bf8
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

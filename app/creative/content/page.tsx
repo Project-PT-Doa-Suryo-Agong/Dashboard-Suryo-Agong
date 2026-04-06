@@ -13,8 +13,9 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Modal from '@/components/ui/Modal';
 import type { ApiError, ApiSuccess } from '@/types/api';
 import type { TContentPlanner } from '@/types/supabase';
+import { apiFetch } from "@/lib/utils/api-fetch";
 
-type Platform = 'TikTok' | 'Instagram' | 'YouTube Shorts' | 'LinkedIn' | 'Twitter / X';
+type Platform = 'TikTok' | 'Instagram' | 'YouTube Shorts' | 'LinkedIn' | 'Twitter / X' | 'Lainnya';
 
 type ContentListPayload = {
   content: TContentPlanner[];
@@ -29,10 +30,17 @@ type ContentPayload = {
   content: TContentPlanner | null;
 };
 
-const PLATFORM_OPTIONS: Platform[] = ['TikTok', 'Instagram', 'YouTube Shorts', 'LinkedIn', 'Twitter / X'];
+const PLATFORM_OPTIONS: Platform[] = ['TikTok', 'Instagram', 'YouTube Shorts', 'LinkedIn', 'Twitter / X', 'Lainnya'];
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  const raw = await response.text();
+  let payload: ApiSuccess<T> | ApiError;
+  try {
+    payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
+  } catch {
+    const fallback = response.ok ? 'Respons server tidak valid (bukan JSON).' : raw.slice(0, 200);
+    throw new Error(fallback || 'Respons server tidak valid.');
+  }
   if (!response.ok || !payload.success) {
     const message = payload.success ? 'Terjadi kesalahan.' : payload.error.message;
     throw new Error(message);
@@ -46,6 +54,7 @@ const PLATFORM_BADGE: Record<Platform, string> = {
   'YouTube Shorts': 'bg-red-50 text-red-700 before:bg-red-500',
   LinkedIn: 'bg-sky-50 text-sky-700 before:bg-sky-500',
   'Twitter / X': 'bg-zinc-100 text-zinc-700 before:bg-zinc-900',
+  Lainnya: 'bg-violet-50 text-violet-700 before:bg-violet-500',
 };
 
 type ContentFormProps = {
@@ -153,7 +162,7 @@ export default function ContentPlannerPage() {
   const fetchContent = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/sales/content?page=1&limit=500', {
+      const response = await apiFetch('/api/sales/content?page=1&limit=500', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
@@ -183,7 +192,7 @@ export default function ContentPlannerPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/sales/content', {
+      const response = await apiFetch('/api/sales/content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -217,7 +226,7 @@ export default function ContentPlannerPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/sales/content/${editData.id}`, {
+      const response = await apiFetch(`/api/sales/content/${editData.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -247,7 +256,7 @@ export default function ContentPlannerPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/sales/content/${deleteId}`, {
+      const response = await apiFetch(`/api/sales/content/${deleteId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -348,7 +357,7 @@ export default function ContentPlannerPage() {
                         type="button"
                         onClick={() => handleOpenEdit(item)}
                         disabled={isSubmitting}
-                        className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-[#BC934B] transition-all hover:-translate-y-0.5 hover:bg-amber-100"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
                         title="Edit Content"
                       >
                         <Pencil size={14} />
@@ -358,7 +367,7 @@ export default function ContentPlannerPage() {
                         type="button"
                         onClick={() => handleOpenDelete(item.id)}
                         disabled={isSubmitting}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 transition-all hover:-translate-y-0.5 hover:bg-red-100"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                         title="Delete Content"
                       >
                         <Trash2 size={14} />

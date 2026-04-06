@@ -5,6 +5,7 @@ import { Edit3, Plus, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
+import { apiFetch } from "@/lib/utils/api-fetch";
 import type {
   MProduk,
   MVendor,
@@ -44,7 +45,14 @@ type VendorsListPayload = {
 };
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  const raw = await response.text();
+  let payload: ApiSuccess<T> | ApiError;
+  try {
+    payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
+  } catch {
+    const fallback = response.ok ? "Respons server tidak valid (bukan JSON)." : raw.slice(0, 200);
+    throw new Error(fallback || "Respons server tidak valid.");
+  }
   if (!response.ok || !payload.success) {
     const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
     throw new Error(message);
@@ -103,7 +111,7 @@ export default function ProductionOrdersPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch("/api/production/orders?page=1&limit=200", {
+      const response = await apiFetch("/api/production/orders?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -118,7 +126,7 @@ export default function ProductionOrdersPage() {
 
   const fetchProduk = async () => {
     try {
-      const response = await fetch("/api/core/products?page=1&limit=200", {
+      const response = await apiFetch("/api/core/products?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -137,7 +145,7 @@ export default function ProductionOrdersPage() {
 
   const fetchVendor = async () => {
     try {
-      const response = await fetch("/api/core/vendors?page=1&limit=200", {
+      const response = await apiFetch("/api/core/vendors?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -257,14 +265,14 @@ export default function ProductionOrdersPage() {
       };
 
       if (editData) {
-        const response = await fetch(`/api/production/orders/${editData.id}`, {
+        const response = await apiFetch(`/api/production/orders/${editData.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         await parseJsonResponse<OrderPayload>(response);
       } else {
-        const response = await fetch("/api/production/orders", {
+        const response = await apiFetch("/api/production/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -287,7 +295,7 @@ export default function ProductionOrdersPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/production/orders/${deleteId}`, {
+      const response = await apiFetch(`/api/production/orders/${deleteId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -395,7 +403,7 @@ export default function ProductionOrdersPage() {
                           type="button"
                           onClick={() => openEditModal(item)}
                           disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#BC934B] transition hover:text-[#a88444] whitespace-nowrap disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
                         >
                           <Edit3 className="h-4 w-4" />
                           Edit
@@ -404,7 +412,7 @@ export default function ProductionOrdersPage() {
                           type="button"
                           onClick={() => openDeleteModal(item.id)}
                           disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 transition hover:text-red-700 whitespace-nowrap disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                         >
                           <Trash2 className="h-4 w-4" />
                           Hapus

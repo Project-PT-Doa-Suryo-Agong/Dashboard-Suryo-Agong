@@ -1,14 +1,22 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useEffect } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Pencil, PlusCircle, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { HrEmployeeStatus, MKaryawan } from "@/types/supabase";
+import type { HrEmployeeStatus, MKaryawan, Profile } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
+import {
+  useKaryawan,
+  useInsertKaryawan,
+  useUpdateKaryawan,
+  useDeleteKaryawan,
+} from "@/lib/supabase/hooks/index";
 
 type KaryawanItem = {
   id: string;
+  profile_id: string | null;
   nama: string;
   posisi: string;
   divisi: string;
@@ -16,27 +24,14 @@ type KaryawanItem = {
   gaji_pokok: number;
 };
 
-type EmployeesListPayload = {
-  karyawan: MKaryawan[];
+type ProfilesListPayload = {
+  profiles: Profile[];
   meta: {
     page: number;
     limit: number;
     total: number;
   };
 };
-
-type EmployeePayload = {
-  karyawan: MKaryawan | null;
-};
-
-async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
-  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
-  if (!response.ok || !payload.success) {
-    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
-    throw new Error(message);
-  }
-  return payload;
-}
 
 const divisiOptions = [
   "HR",
@@ -68,10 +63,18 @@ function Badge({ status }: { status: HrEmployeeStatus }) {
   );
 }
 
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
+
 export default function KaryawanPage() {
-  const [items, setItems] = useState<KaryawanItem[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [profileOptions, setProfileOptions] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<KaryawanItem | null>(null);
@@ -79,6 +82,7 @@ export default function KaryawanPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Omit<KaryawanItem, "id">>({
+    profile_id: null,
     nama: "",
     posisi: "",
     divisi: divisiOptions[0],
@@ -86,35 +90,45 @@ export default function KaryawanPage() {
     gaji_pokok: 0,
   });
 
-  const fetchKaryawan = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/hr/employees?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<EmployeesListPayload>(response);
-      const normalized = (payload.data.karyawan ?? []).map((item) => ({
+  // ── Supabase Direct ──
+  const { data: rawKaryawan, loading: isLoading, refresh } = useKaryawan();
+  const { insert } = useInsertKaryawan();
+  const { update } = useUpdateKaryawan();
+  const { remove } = useDeleteKaryawan();
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        const response = await apiFetch("/api/profiles?page=1&limit=500", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
+        const payload = await parseJsonResponse<ProfilesListPayload>(response);
+        setProfileOptions(payload.data.profiles ?? []);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Gagal memuat daftar profile.";
+        alert(message);
+      }
+    };
+
+    void fetchProfiles();
+  }, []);
+
+  // ── Normalize karyawan data ──
+  const items: KaryawanItem[] = useMemo(
+    () =>
+      rawKaryawan.map((item: MKaryawan) => ({
         id: item.id,
+        profile_id: item.profile_id,
         nama: item.nama,
         posisi: item.posisi ?? "",
         divisi: item.divisi ?? divisiOptions[0],
         status: item.status ?? "aktif",
         gaji_pokok: item.gaji_pokok ?? 0,
-      }));
-      setItems(normalized);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat data karyawan.";
-      alert(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void fetchKaryawan();
-  }, []);
+      })),
+    [rawKaryawan],
+  );
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -124,6 +138,7 @@ export default function KaryawanPage() {
 
   const resetForm = () => {
     setFormData({
+      profile_id: null,
       nama: "",
       posisi: "",
       divisi: divisiOptions[0],
@@ -141,6 +156,7 @@ export default function KaryawanPage() {
   const openEditModal = (item: KaryawanItem) => {
     setEditData(item);
     setFormData({
+      profile_id: item.profile_id ?? null,
       nama: item.nama ?? "",
       posisi: item.posisi ?? "",
       divisi: item.divisi ?? divisiOptions[0],
@@ -162,22 +178,14 @@ export default function KaryawanPage() {
 
     try {
       if (editData) {
-        const response = await fetch(`/api/hr/employees/${editData.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-        await parseJsonResponse<EmployeePayload>(response);
+        const result = await update(editData.id, formData);
+        if (!result) throw new Error("Gagal update karyawan.");
       } else {
-        const response = await fetch("/api/hr/employees", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-        await parseJsonResponse<EmployeePayload>(response);
+        const result = await insert(formData);
+        if (!result) throw new Error("Gagal menambah karyawan.");
       }
 
-      await fetchKaryawan();
+      refresh();
       closeFormModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Operasi simpan karyawan gagal.";
@@ -202,12 +210,9 @@ export default function KaryawanPage() {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/hr/employees/${deleteId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-      await parseJsonResponse<null>(response);
-      await fetchKaryawan();
+      const success = await remove(deleteId);
+      if (!success) throw new Error("Gagal menghapus karyawan.");
+      refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal menghapus karyawan.";
       alert(message);
@@ -345,6 +350,27 @@ export default function KaryawanPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="space-y-1.5 md:col-span-2">
+              <span className="text-sm font-medium text-slate-700">Profile (Opsional)</span>
+              <select
+                value={formData.profile_id ?? ""}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    profile_id: event.target.value || null,
+                  }))
+                }
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              >
+                <option value="">Tanpa profile login</option>
+                {profileOptions.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.nama} ({profile.role})
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <label className="space-y-1.5 md:col-span-2">
               <span className="text-sm font-medium text-slate-700">Nama</span>
               <input
