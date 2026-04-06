@@ -3,7 +3,7 @@ import { requireLevel } from "@/lib/guards/auth.guard";
 import { createVarian, listVarian } from "@/lib/services/core.service";
 
 export async function GET(request: Request) {
-  const auth = await requireLevel("strategic", "managerial", "operational");
+  const auth = await requireLevel("strategic", "managerial", "operational", "support");
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireLevel("strategic", "managerial", "operational");
+  const auth = await requireLevel("strategic", "managerial", "operational", "support");
   if (!auth.ok) return auth.response;
 
   let body: unknown;

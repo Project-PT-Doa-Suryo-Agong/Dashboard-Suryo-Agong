@@ -3,7 +3,7 @@ import { requireLevel } from "@/lib/guards/auth.guard";
 import { deleteProduk, updateProduk } from "@/lib/services/core.service";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireLevel("strategic", "managerial", "operational");
+  const auth = await requireLevel("strategic", "managerial", "operational", "support");
   if (!auth.ok) return auth.response;
   const { id } = await params;
 
@@ -32,7 +32,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireLevel("strategic", "managerial", "operational");
+  const auth = await requireLevel("strategic", "managerial", "operational", "support");
   if (!auth.ok) return auth.response;
   const { id } = await params;
 
