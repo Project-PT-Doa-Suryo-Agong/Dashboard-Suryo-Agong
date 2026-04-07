@@ -1,4 +1,5 @@
 import { ok } from "@/lib/http/response";
+import { requireAuth } from "@/lib/guards/auth.guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -17,7 +18,9 @@ function getMonthBounds(date: Date) {
 
 export async function GET() {
   try {
-    const supabase = await createSupabaseServerClient();
+    const auth = await requireAuth();
+    if (!auth.ok) return auth.response;
+    const supabase = auth.ctx.supabase;
 
     const [{ count: employeeCount }, { count: activeOrderCount }] = await Promise.all([
       db(supabase, "hr").from("m_karyawan").select("id", { count: "exact", head: true }),

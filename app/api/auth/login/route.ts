@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { env } from "@/lib/env";
 import { getCookieDomain } from "@/lib/cookie-domain";
 import type { Database } from "@/types/supabase";
+import { fail, ok } from "@/lib/http/response";
 
 // --------------- helpers ---------------
 
@@ -121,106 +122,108 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
 
-  const { email, password } = await request.json();
-
-  if (!email || !password) {
-    return NextResponse.json(
-      { error: "Email dan password wajib diisi." },
-      { status: 400, headers: corsHeaders }
-    );
-  }
-
-  const cookieDomain = getCookieDomain();
-  
-  // Use a cookies map to collect ALL chunks Supabase sets
-  const cookieMap = new Map<string, { 
-    value: string; 
-    options: Record<string, unknown> 
-  }>();
-
-  const supabase = createServerClient<Database>(
-    env.supabaseUrl,
-    env.supabaseAnonKey,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: Record<string, unknown>) {
-          // Collect ALL cookies Supabase wants to set
-          // (including chunks: .0, .1, .2, etc.)
-          cookieMap.set(name, { value, options });
-        },
-        remove(name: string, options: Record<string, unknown>) {
-          cookieMap.set(name, { value: "", options: { 
-            ...options, maxAge: 0 
-          }});
-        },
-      },
+  try {
+    let body: { email?: string; password?: string };
+    try {
+      body = await request.json();
+    } catch {
+      const response = fail("BAD_REQUEST", "Body request harus JSON valid.", 400);
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+      return response;
     }
-  );
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
 
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 401, headers: corsHeaders }
+    if (!email || !password) {
+      const response = fail("VALIDATION_ERROR", "Email dan password wajib diisi.", 400);
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+      return response;
+    }
+
+    const cookieDomain = getCookieDomain();
+
+    // Collect all cookies Supabase sets, including chunked auth cookies.
+    const cookieMap = new Map<string, {
+      value: string;
+      options: Record<string, unknown>;
+    }>();
+
+    const supabase = createServerClient<Database>(
+      env.supabaseUrl,
+      env.supabaseAnonKey,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value;
+          },
+          set(name: string, value: string, options: Record<string, unknown>) {
+            cookieMap.set(name, { value, options });
+          },
+          remove(name: string, options: Record<string, unknown>) {
+            cookieMap.set(name, {
+              value: "",
+              options: { ...options, maxAge: 0 },
+            });
+          },
+        },
+      }
     );
-  }
 
-  let role =
-    (typeof data.user?.user_metadata?.role === "string"
-      ? data.user.user_metadata.role : null) ??
-    (typeof data.user?.app_metadata?.role === "string"
-      ? data.user.app_metadata.role : null);
-
-  let profile = null;
-  if (!role && data.user?.id) {
-    const res = await supabase
-      .schema("core")
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .maybeSingle();
-    profile = res.data;
-    role = typeof profile?.role === "string" ? profile.role : null;
-  }
-
-  const subdomain = mapRoleToSubdomain(role);
-  const redirectUrl = buildTenantRedirectUrl(subdomain);
-
-  console.log("[ROUTE] user_metadata:", data.user?.user_metadata);
-  console.log("[ROUTE] app_metadata:", data.user?.app_metadata);
-  console.log("[ROUTE] profile from DB:", profile);
-  console.log("[ROUTE] final role:", role);
-  console.log("[ROUTE] redirecting to:", subdomain);
-
-  // Build final response with ALL cookie chunks
-  const finalResponse = NextResponse.json(
-    { redirectUrl },
-    { headers: corsHeaders }
-  );
-
-  // Apply ALL cookies Supabase collected (chunks included)
-  for (const [name, { value, options }] of cookieMap.entries()) {
-    finalResponse.cookies.set({
-      name,
-      value,
-      ...(options as object),
-      domain: cookieDomain,
-      sameSite: "lax",
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
+
+    if (error) {
+      const response = fail("UNAUTHORIZED", error.message, 401);
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+      return response;
+    }
+
+    let role =
+      (typeof data.user?.user_metadata?.role === "string"
+        ? data.user.user_metadata.role
+        : null) ??
+      (typeof data.user?.app_metadata?.role === "string"
+        ? data.user.app_metadata.role
+        : null);
+
+    let profile = null;
+    if (!role && data.user?.id) {
+      const res = await supabase
+        .schema("core")
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      profile = res.data;
+      role = typeof profile?.role === "string" ? profile.role : null;
+    }
+
+    const subdomain = mapRoleToSubdomain(role);
+    const redirectUrl = buildTenantRedirectUrl(subdomain);
+
+    const finalResponse = ok({ redirectUrl }, "Login berhasil.");
+    Object.entries(corsHeaders).forEach(([key, value]) => finalResponse.headers.set(key, value));
+
+    for (const [name, { value, options }] of cookieMap.entries()) {
+      finalResponse.cookies.set({
+        name,
+        value,
+        ...(options as object),
+        domain: cookieDomain,
+        sameSite: "lax",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+
+    return finalResponse;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal Server Error";
+    const response = fail("INTERNAL_ERROR", message, 500);
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+    return response;
   }
-
-  // Debug: log all cookies being set
-  console.log("[ROUTE] setting cookies:", 
-    Array.from(cookieMap.keys()));
-
-  return finalResponse;
 }
