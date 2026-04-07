@@ -1,7 +1,6 @@
--- ============================================================================
 -- SQL: MIGRASI DATA ROLE LAMA KE ROLE BARU (STANDARISASI)
--- ============================================================================
--- 
+
+
 -- INSTRUKSI:
 -- Karena kita telah mengecilkan / menyederhanakan `CoreUserRole` di sistem
 -- menjadi hanya 8 role lowercase (developer, management, finance, hr, 
@@ -10,7 +9,7 @@
 -- HARUS diperbarui secara paksa agar selaras dengan TypeScript dan RLS baru.
 --
 -- Jalankan Query ini di Menu SQL Editor Supabase!
--- ============================================================================
+
 
 UPDATE core.profiles
 SET role = CASE 

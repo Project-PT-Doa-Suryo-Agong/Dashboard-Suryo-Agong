@@ -1,15 +1,14 @@
--- ============================================================================
 -- FASE 4: REALTIME & STORAGE POLICIES
--- ============================================================================
+
 -- 
 -- INSTRUKSI:
 -- 1. Jalankan script ini di Supabase Dashboard → SQL Editor
 -- 2. Pastikan `core.get_user_role()` dan `core.is_strategic()` dari fase 1 sudah ada.
 -- 3. Script ini akan mengaktifkan Supabase Realtime untuk tabel tertentu,
 --    serta membuat bucket Storage dan RLS policy-nya.
--- ============================================================================
 
--- ─── 1. SETUP REALTIME ────────────────────────────────────────────────────────
+
+-- 1. SETUP REALTIME 
 
 -- Aktifkan replikasi realtime untuk tabel yang butuh live update di frontend
 BEGIN;
@@ -25,7 +24,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE production.t_produksi_order;
 
 COMMIT;
 
--- ─── 2. SETUP STORAGE BUCKETS ─────────────────────────────────────────────────
+-- 2. SETUP STORAGE BUCKETS 
 
 -- Buat bucket untuk bukti reimbursement (Private)
 INSERT INTO storage.buckets (id, name, public) 
@@ -37,7 +36,7 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('products', 'products', true)
 ON CONFLICT (id) DO NOTHING;
 
--- ─── 3. STORAGE RLS POLICIES ──────────────────────────────────────────────────
+-- 3. STORAGE RLS POLICIES 
 
 -- Enable RLS (di database Supabase defaultnya RLS aktif untuk tabel storage.objects, 
 -- tapi tidak ada salahnya memastikan policy kita sesuai).

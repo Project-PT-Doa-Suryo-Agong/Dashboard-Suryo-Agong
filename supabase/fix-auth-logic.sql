@@ -1,6 +1,5 @@
--- ============================================================================
 -- FIX: PRIVILEGE ESCALATION VULNERABILITY DI PROFILES
--- ============================================================================
+
 
 -- Karena user bisa update profile-nya sendiri (nama, telepon), ada celah di mana 
 -- user nakal bisa mengupdate kolom `role` mereka menjadi 'management' karena RLS 

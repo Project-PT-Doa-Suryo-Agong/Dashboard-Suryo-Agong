@@ -1,6 +1,5 @@
--- ============================================================================
 -- RLS (Row Level Security) Policies for Dashboard Suryo Agung
--- ============================================================================
+
 -- 
 -- INSTRUKSI:
 -- 1. Jalankan script ini di Supabase Dashboard → SQL Editor
@@ -12,9 +11,9 @@
 -- Finance, HR, Produksi,
 -- Logistik, Creative      → Operational (sesuai divisi)
 -- Office                  → Support (akses terbatas)
--- ============================================================================
 
--- ─── Helper Function: Get Current User's Role ─────────────────────────────────
+
+--  Helper Function: Get Current User's Role 
 -- Supabase RLS sering butuh cek role user. Buat function reusable.
 
 CREATE OR REPLACE FUNCTION core.get_user_role()
@@ -22,7 +21,7 @@ RETURNS TEXT AS $$
   SELECT role::TEXT FROM core.profiles WHERE id = auth.uid();
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- ─── Helper Function: Check if user has strategic access ──────────────────────
+--  Helper Function: Check if user has strategic access 
 
 CREATE OR REPLACE FUNCTION core.is_strategic()
 RETURNS BOOLEAN AS $$
@@ -34,11 +33,9 @@ RETURNS BOOLEAN AS $$
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 
--- ============================================================================
 -- SCHEMA: core
--- ============================================================================
 
--- ─── core.profiles ────────────────────────────────────────────────────────────
+--  core.profiles 
 
 ALTER TABLE core.profiles ENABLE ROW LEVEL SECURITY;
 
@@ -70,7 +67,7 @@ WITH CHECK (id = auth.uid());
 -- INSERT dan DELETE tetap via backend (karena perlu orchestrasi Supabase Admin API)
 -- Tidak perlu RLS policy untuk insert/delete di sisi client
 
--- ─── core.m_produk ────────────────────────────────────────────────────────────
+--  core.m_produk 
 
 ALTER TABLE core.m_produk ENABLE ROW LEVEL SECURITY;
 
@@ -98,7 +95,7 @@ ON core.m_produk FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── core.m_varian ────────────────────────────────────────────────────────────
+--  core.m_varian 
 
 ALTER TABLE core.m_varian ENABLE ROW LEVEL SECURITY;
 
@@ -126,7 +123,7 @@ ON core.m_varian FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── core.m_vendor ────────────────────────────────────────────────────────────
+--  core.m_vendor 
 
 ALTER TABLE core.m_vendor ENABLE ROW LEVEL SECURITY;
 
@@ -155,11 +152,9 @@ TO authenticated
 USING (core.is_strategic());
 
 
--- ============================================================================
 -- SCHEMA: hr
--- ============================================================================
 
--- ─── hr.m_karyawan ────────────────────────────────────────────────────────────
+--  hr.m_karyawan 
 
 ALTER TABLE hr.m_karyawan ENABLE ROW LEVEL SECURITY;
 
@@ -196,7 +191,7 @@ ON hr.m_karyawan FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── hr.t_attendance ──────────────────────────────────────────────────────────
+--  hr.t_attendance 
 
 ALTER TABLE hr.t_attendance ENABLE ROW LEVEL SECURITY;
 
@@ -236,7 +231,7 @@ ON hr.t_attendance FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── hr.t_employee_warning ────────────────────────────────────────────────────
+--  hr.t_employee_warning 
 
 ALTER TABLE hr.t_employee_warning ENABLE ROW LEVEL SECURITY;
 
@@ -267,11 +262,9 @@ TO authenticated
 USING (core.is_strategic());
 
 
--- ============================================================================
 -- SCHEMA: finance
--- ============================================================================
 
--- ─── finance.t_cashflow ───────────────────────────────────────────────────────
+--  finance.t_cashflow 
 
 ALTER TABLE finance.t_cashflow ENABLE ROW LEVEL SECURITY;
 
@@ -301,7 +294,7 @@ ON finance.t_cashflow FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── finance.t_payroll_history ────────────────────────────────────────────────
+--  finance.t_payroll_history 
 -- NOTE: Tetap digunakan oleh API untuk calculation, tapi bisa dibaca via RLS
 
 ALTER TABLE finance.t_payroll_history ENABLE ROW LEVEL SECURITY;
@@ -319,7 +312,7 @@ ON finance.t_payroll_history FOR ALL
 TO authenticated
 USING (core.is_strategic());
 
--- ─── finance.t_reimbursement ──────────────────────────────────────────────────
+--  finance.t_reimbursement 
 -- NOTE: Approval workflow tetap via API, tapi CRUD biasa bisa langsung
 
 ALTER TABLE finance.t_reimbursement ENABLE ROW LEVEL SECURITY;
@@ -361,11 +354,9 @@ TO authenticated
 USING (core.is_strategic());
 
 
--- ============================================================================
--- SCHEMA: production
--- ============================================================================
+--  SCHEMA: production
 
--- ─── production.t_produksi_order ──────────────────────────────────────────────
+--  production.t_produksi_order 
 
 ALTER TABLE production.t_produksi_order ENABLE ROW LEVEL SECURITY;
 
@@ -395,7 +386,7 @@ ON production.t_produksi_order FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── production.t_qc_inbound ─────────────────────────────────────────────────
+--  production.t_qc_inbound 
 
 ALTER TABLE production.t_qc_inbound ENABLE ROW LEVEL SECURITY;
 
@@ -425,7 +416,7 @@ ON production.t_qc_inbound FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── production.t_qc_outbound ─────────────────────────────────────────────────
+--  production.t_qc_outbound 
 
 ALTER TABLE production.t_qc_outbound ENABLE ROW LEVEL SECURITY;
 
@@ -456,11 +447,9 @@ TO authenticated
 USING (core.is_strategic());
 
 
--- ============================================================================
--- SCHEMA: logistics
--- ============================================================================
+--  SCHEMA: logistics
 
--- ─── logistics.t_packing ──────────────────────────────────────────────────────
+--  logistics.t_packing 
 
 ALTER TABLE logistics.t_packing ENABLE ROW LEVEL SECURITY;
 
@@ -490,7 +479,7 @@ ON logistics.t_packing FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── logistics.t_logistik_manifest ────────────────────────────────────────────
+--  logistics.t_logistik_manifest 
 
 ALTER TABLE logistics.t_logistik_manifest ENABLE ROW LEVEL SECURITY;
 
@@ -520,7 +509,7 @@ ON logistics.t_logistik_manifest FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── logistics.t_return_order ─────────────────────────────────────────────────
+--  logistics.t_return_order 
 
 ALTER TABLE logistics.t_return_order ENABLE ROW LEVEL SECURITY;
 
@@ -551,11 +540,9 @@ TO authenticated
 USING (core.is_strategic());
 
 
--- ============================================================================
--- SCHEMA: sales
--- ============================================================================
+--  SCHEMA: sales
 
--- ─── sales.m_affiliator ───────────────────────────────────────────────────────
+--  sales.m_affiliator 
 
 ALTER TABLE sales.m_affiliator ENABLE ROW LEVEL SECURITY;
 
@@ -585,7 +572,7 @@ ON sales.m_affiliator FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── sales.t_content_planner ──────────────────────────────────────────────────
+--  sales.t_content_planner 
 
 ALTER TABLE sales.t_content_planner ENABLE ROW LEVEL SECURITY;
 
@@ -615,7 +602,7 @@ ON sales.t_content_planner FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── sales.t_live_performance ─────────────────────────────────────────────────
+--  sales.t_live_performance 
 
 ALTER TABLE sales.t_live_performance ENABLE ROW LEVEL SECURITY;
 
@@ -645,7 +632,7 @@ ON sales.t_live_performance FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── sales.t_sales_order ──────────────────────────────────────────────────────
+--  sales.t_sales_order 
 
 ALTER TABLE sales.t_sales_order ENABLE ROW LEVEL SECURITY;
 
@@ -676,11 +663,9 @@ TO authenticated
 USING (core.is_strategic());
 
 
--- ============================================================================
--- SCHEMA: management
--- ============================================================================
+--  SCHEMA: management
 
--- ─── management.t_budget_request ──────────────────────────────────────────────
+--  management.t_budget_request 
 
 ALTER TABLE management.t_budget_request ENABLE ROW LEVEL SECURITY;
 
@@ -708,7 +693,7 @@ ON management.t_budget_request FOR DELETE
 TO authenticated
 USING (core.is_strategic());
 
--- ─── management.t_kpi_weekly ──────────────────────────────────────────────────
+--  management.t_kpi_weekly 
 
 ALTER TABLE management.t_kpi_weekly ENABLE ROW LEVEL SECURITY;
 
@@ -739,9 +724,7 @@ TO authenticated
 USING (core.is_strategic());
 
 
--- ============================================================================
--- GRANT schema usage to authenticated users (penting untuk multi-schema!)
--- ============================================================================
+--  GRANT schema usage to authenticated users (penting untuk multi-schema!)
 
 GRANT USAGE ON SCHEMA core TO authenticated, anon;
 GRANT USAGE ON SCHEMA hr TO authenticated, anon;
