@@ -1,6 +1,9 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listReimbursement, createReimbursement } from "@/lib/services/finance.service";
+import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
+import type { TReimbursementInsert } from "@/types/supabase";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -12,7 +15,7 @@ export async function GET(request: Request) {
   const employeeId = url.searchParams.get("employee_id") ?? undefined;
 
   const { data, error, meta } = await listReimbursement(auth.ctx.supabase, page, limit, employeeId);
-  if (error) return fail("DB_ERROR", "Gagal mengambil data reimburse.", 500, error.message);
+  if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data reimburse.", 500, error.message);
   return ok({ reimburse: data, meta });
 }
 
@@ -24,18 +27,32 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return fail("BAD_REQUEST", "Body harus JSON valid.", 400);
+    return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400);
   }
 
   const input = body as Record<string, unknown>;
-  if (!input.employee_id) {
-    return fail("VALIDATION_ERROR", "employee_id wajib diisi.", 400);
-  }
-  if (input.amount === undefined || typeof input.amount !== "number") {
-    return fail("VALIDATION_ERROR", "amount wajib diisi dan harus angka.", 400);
+  const employeeId = requireUUID(input, "employee_id", { optional: true });
+  if (!employeeId.ok) return fail(ErrorCode.VALIDATION_ERROR, employeeId.message, 400);
+  const amount = requireNumber(input, "amount", { min: 0, optional: true });
+  if (!amount.ok) return fail(ErrorCode.VALIDATION_ERROR, amount.message, 400);
+  const status = requireString(input, "status", { optional: true });
+  if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);
+  if (status.data !== null && !["pending", "approved", "rejected"].includes(status.data)) {
+    return fail(ErrorCode.VALIDATION_ERROR, "status harus pending, approved, atau rejected.", 400);
   }
 
-  const { data, error } = await createReimbursement(auth.ctx.supabase, input);
-  if (error) return fail("DB_ERROR", "Gagal mengajukan reimburse.", 500, error.message);
+  if (!("employee_id" in input) && !("amount" in input) && !("status" in input)) {
+    return fail(ErrorCode.VALIDATION_ERROR, "Minimal satu field reimburse harus diisi.", 400);
+  }
+
+  const payload: TReimbursementInsert = {
+    ...input,
+    employee_id: employeeId.data,
+    amount: amount.data,
+    status: status.data as TReimbursementInsert["status"],
+  };
+
+  const { data, error } = await createReimbursement(auth.ctx.supabase, payload);
+  if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengajukan reimburse.", 500, error.message);
   return ok({ reimburse: data }, "Reimburse berhasil diajukan.", 201);
 }

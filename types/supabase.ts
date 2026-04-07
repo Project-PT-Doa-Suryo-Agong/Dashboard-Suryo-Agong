@@ -652,6 +652,9 @@ export type Profile   = Tables<"core", "profiles">["Row"];
 export type MProduk   = Tables<"core", "m_produk">["Row"];
 export type MVarian   = Tables<"core", "m_varian">["Row"];
 export type MVendor   = Tables<"core", "m_vendor">["Row"];
+export type MProdukInsert = Tables<"core", "m_produk">["Insert"];
+export type MVarianInsert = Tables<"core", "m_varian">["Insert"];
+export type MVendorInsert = Tables<"core", "m_vendor">["Insert"];
 
 // hr
 export type MKaryawan        = Tables<"hr", "m_karyawan">["Row"];
@@ -662,23 +665,38 @@ export type TEmployeeWarning = Tables<"hr", "t_employee_warning">["Row"];
 export type TCashflow       = Tables<"finance", "t_cashflow">["Row"];
 export type TPayrollHistory = Tables<"finance", "t_payroll_history">["Row"];
 export type TReimbursement  = Tables<"finance", "t_reimbursement">["Row"];
+export type TCashflowInsert = Tables<"finance", "t_cashflow">["Insert"];
+export type TPayrollHistoryInsert = Tables<"finance", "t_payroll_history">["Insert"];
+export type TReimbursementInsert = Tables<"finance", "t_reimbursement">["Insert"];
 
 // production
 export type TProduksiOrder = Tables<"production", "t_produksi_order">["Row"];
 export type TQCInbound     = Tables<"production", "t_qc_inbound">["Row"];
 export type TQCOutbound    = Tables<"production", "t_qc_outbound">["Row"];
+export type TProduksiOrderInsert = Tables<"production", "t_produksi_order">["Insert"];
+export type TQCInboundInsert = Tables<"production", "t_qc_inbound">["Insert"];
+export type TQCOutboundInsert = Tables<"production", "t_qc_outbound">["Insert"];
 
 // logistics
 export type TLogistikManifest = Tables<"logistics", "t_logistik_manifest">["Row"];
 export type TPacking          = Tables<"logistics", "t_packing">["Row"];
 export type TReturnOrder      = Tables<"logistics", "t_return_order">["Row"];
+export type TLogistikManifestInsert = Tables<"logistics", "t_logistik_manifest">["Insert"];
+export type TPackingInsert = Tables<"logistics", "t_packing">["Insert"];
+export type TReturnOrderInsert = Tables<"logistics", "t_return_order">["Insert"];
 
 // sales
 export type MAfiliator      = Tables<"sales", "m_affiliator">["Row"];
 export type TContentPlanner = Tables<"sales", "t_content_planner">["Row"];
 export type TLivePerformance = Tables<"sales", "t_live_performance">["Row"];
 export type TSalesOrder      = Tables<"sales", "t_sales_order">["Row"];
+export type MAfiliatorInsert = Tables<"sales", "m_affiliator">["Insert"];
+export type TContentPlannerInsert = Tables<"sales", "t_content_planner">["Insert"];
+export type TLivePerformanceInsert = Tables<"sales", "t_live_performance">["Insert"];
+export type TSalesOrderInsert = Tables<"sales", "t_sales_order">["Insert"];
 
 // management
 export type TBudgetRequest = Tables<"management", "t_budget_request">["Row"];
 export type TKPIWeekly     = Tables<"management", "t_kpi_weekly">["Row"];
+export type TBudgetRequestInsert = Tables<"management", "t_budget_request">["Insert"];
+export type TKPIWeeklyInsert = Tables<"management", "t_kpi_weekly">["Insert"];

@@ -1,6 +1,9 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { createAfiliator, listAfiliator } from "@/lib/services/sales.service";
+import { requireString } from "@/lib/validation/body-validator";
+import type { MAfiliatorInsert } from "@/types/supabase";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -11,7 +14,7 @@ export async function GET(request: Request) {
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 50, 1), 500);
 
   const { data, error, meta } = await listAfiliator(auth.ctx.supabase, page, limit);
-  if (error) return fail("DB_ERROR", "Gagal mengambil data affiliator.", 500, error.message);
+  if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data affiliator.", 500, error.message);
   return ok({ afiliator: data, meta });
 }
 
@@ -23,21 +26,22 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return fail("BAD_REQUEST", "Body harus JSON valid.", 400);
+    return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400);
   }
 
   const input = body as Record<string, unknown>;
-  if (!input.nama || typeof input.nama !== "string" || !input.nama.trim()) {
-    return fail("VALIDATION_ERROR", "nama wajib diisi.", 400);
-  }
+  const nama = requireString(input, "nama", { maxLen: 120 });
+  if (!nama.ok) return fail(ErrorCode.VALIDATION_ERROR, nama.message, 400);
+  const platform = requireString(input, "platform", { maxLen: 120, optional: true });
+  if (!platform.ok) return fail(ErrorCode.VALIDATION_ERROR, platform.message, 400);
 
-  const payload = {
+  const payload: MAfiliatorInsert = {
     ...input,
-    nama: (input.nama as string).trim(),
-    platform: typeof input.platform === "string" ? input.platform.trim() || null : null,
+    nama: nama.data!,
+    platform: platform.data,
   };
 
   const { data, error } = await createAfiliator(auth.ctx.supabase, payload);
-  if (error) return fail("DB_ERROR", "Gagal membuat affiliator.", 500, error.message);
+  if (error) return fail(ErrorCode.DB_ERROR, "Gagal membuat affiliator.", 500, error.message);
   return ok({ afiliator: data }, "Affiliator berhasil dibuat.", 201);
 }

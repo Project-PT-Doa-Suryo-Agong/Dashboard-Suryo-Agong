@@ -1,6 +1,7 @@
-import { ok } from "@/lib/http/response";
+import { fail, ok } from "@/lib/http/response";
+import { requireAuth } from "@/lib/guards/auth.guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
@@ -17,7 +18,9 @@ function getMonthBounds(date: Date) {
 
 export async function GET() {
   try {
-    const supabase = await createSupabaseServerClient();
+    const auth = await requireAuth();
+    if (!auth.ok) return auth.response;
+    const supabase = auth.ctx.supabase;
 
     const [{ count: employeeCount }, { count: activeOrderCount }] = await Promise.all([
       db(supabase, "hr").from("m_karyawan").select("id", { count: "exact", head: true }),
@@ -44,18 +47,12 @@ export async function GET() {
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    const status =
-      typeof error === "object" &&
-      error !== null &&
-      "status" in error &&
-      [400, 404, 500].includes((error as { status: number }).status)
-        ? (error as { status: number }).status
-        : 500;
-
-    return NextResponse.json(
-      { success: false, error: { message } },
-      { status }
+    return fail(
+      ErrorCode.INTERNAL_ERROR,
+      error instanceof Error
+        ? error.message
+        : "Terjadi kesalahan internal server.",
+      500
     );
   }
 }

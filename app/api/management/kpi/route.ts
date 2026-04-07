@@ -1,6 +1,9 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listKPIWeekly, createKPIWeekly } from "@/lib/services/management.service";
+import { requireNumber, requireString } from "@/lib/validation/body-validator";
+import type { TKPIWeeklyInsert } from "@/types/supabase";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -12,7 +15,7 @@ export async function GET(request: Request) {
   const divisi = url.searchParams.get("divisi") ?? undefined;
 
   const { data, error, meta } = await listKPIWeekly(auth.ctx.supabase, page, limit, divisi);
-  if (error) return fail("DB_ERROR", "Gagal mengambil data kpi.", 500, error.message);
+  if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data kpi.", 500, error.message);
   return ok({ kpi: data, meta });
 }
 
@@ -21,23 +24,27 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response;
 
   let body: unknown;
-  try { body = await request.json(); } catch { return fail("BAD_REQUEST", "Body harus JSON valid.", 400); }
+  try { body = await request.json(); } catch { return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400); }
 
   const input = body as Record<string, unknown>;
-  if (!input.minggu || typeof input.minggu !== "string") {
-    return fail("VALIDATION_ERROR", "minggu wajib diisi.", 400);
-  }
-  if (!input.divisi || typeof input.divisi !== "string") {
-    return fail("VALIDATION_ERROR", "divisi wajib diisi.", 400);
-  }
-  if (input.target === undefined || typeof input.target !== "number") {
-    return fail("VALIDATION_ERROR", "target wajib diisi dan harus angka.", 400);
-  }
-  if (input.realisasi === undefined || typeof input.realisasi !== "number") {
-    return fail("VALIDATION_ERROR", "realisasi wajib diisi dan harus angka.", 400);
-  }
+  const minggu = requireString(input, "minggu", { maxLen: 40 });
+  if (!minggu.ok) return fail(ErrorCode.VALIDATION_ERROR, minggu.message, 400);
+  const divisi = requireString(input, "divisi", { maxLen: 120, optional: true });
+  if (!divisi.ok) return fail(ErrorCode.VALIDATION_ERROR, divisi.message, 400);
+  const target = requireNumber(input, "target", { min: 0 });
+  if (!target.ok) return fail(ErrorCode.VALIDATION_ERROR, target.message, 400);
+  const realisasi = requireNumber(input, "realisasi", { min: 0 });
+  if (!realisasi.ok) return fail(ErrorCode.VALIDATION_ERROR, realisasi.message, 400);
 
-  const { data, error } = await createKPIWeekly(auth.ctx.supabase, input);
-  if (error) return fail("DB_ERROR", "Gagal menyimpan KPI.", 500, error.message);
+  const payload: TKPIWeeklyInsert = {
+    ...input,
+    minggu: minggu.data!,
+    divisi: divisi.data,
+    target: target.data!,
+    realisasi: realisasi.data!,
+  };
+
+  const { data, error } = await createKPIWeekly(auth.ctx.supabase, payload);
+  if (error) return fail(ErrorCode.DB_ERROR, "Gagal menyimpan KPI.", 500, error.message);
   return ok({ kpi: data }, "KPI berhasil disimpan.", 201);
 }
