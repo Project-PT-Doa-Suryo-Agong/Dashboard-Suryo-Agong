@@ -1,19 +1,30 @@
 import { NextResponse } from "next/server";
 import type { ApiError, ApiSuccess } from "@/types/api";
+import { ErrorCode, HTTP_STATUS, type ErrorCode as ErrorCodeType } from "./error-codes";
 
 export function ok<T>(data: T, message?: string, status = 200) {
-  const payload: ApiSuccess<T> = { success: true, data, message };
+  const payload: ApiSuccess<T> = {
+    ok: true,
+    success: true,
+    data,
+    message: message ?? null,
+  };
   return NextResponse.json(payload, { status });
 }
 
 export function fail(
-  code: string,
+  code: ErrorCodeType,
   message: string,
-  status = 400,
+  status?: number,
   details?: unknown
 ) {
+  const resolvedStatus = status ?? HTTP_STATUS[code] ?? 500;
   const payload: ApiError = {
+    ok: false,
     success: false,
+    data: null,
+    message,
+    errorCode: code,
     error: {
       code,
       message,
@@ -21,5 +32,7 @@ export function fail(
     },
   };
 
-  return NextResponse.json(payload, { status });
+  return NextResponse.json(payload, { status: resolvedStatus });
 }
+
+export { ErrorCode };

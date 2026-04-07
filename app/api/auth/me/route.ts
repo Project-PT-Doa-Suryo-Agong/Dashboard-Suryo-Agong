@@ -2,7 +2,7 @@ import { fail, ok } from "@/lib/http/response";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfileById } from "@/lib/services/profile.service";
 import { buildAccessSummary } from "@/lib/access/policy";
-import { NextResponse } from "next/server";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 export async function GET() {
   try {
@@ -10,11 +10,11 @@ export async function GET() {
     const { data, error } = await supabase.auth.getUser();
 
     if (error) {
-      return fail("UNAUTHORIZED", "Sesi tidak valid atau belum login.", 401, error.message);
+      return fail(ErrorCode.UNAUTHORIZED, "Sesi tidak valid atau belum login.", 401, error.message);
     }
 
     if (!data.user) {
-      return fail("UNAUTHORIZED", "User tidak ditemukan.", 401);
+      return fail(ErrorCode.UNAUTHORIZED, "User tidak ditemukan.", 401);
     }
 
     const { data: profile } = await getProfileById(supabase, data.user.id);
@@ -35,18 +35,7 @@ export async function GET() {
       jabatan: access.jabatan,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    const status =
-      typeof error === "object" &&
-      error !== null &&
-      "status" in error &&
-      [400, 404, 500].includes((error as { status: number }).status)
-        ? (error as { status: number }).status
-        : 500;
-
-    return NextResponse.json(
-      { success: false, error: { message } },
-      { status }
-    );
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan internal server.";
+    return fail(ErrorCode.INTERNAL_ERROR, message, 500);
   }
 }

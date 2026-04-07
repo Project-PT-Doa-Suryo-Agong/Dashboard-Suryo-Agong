@@ -1,30 +1,45 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { updateCashflow, deleteCashflow } from "@/lib/services/finance.service";
+import { requireNumber, requireString } from "@/lib/validation/body-validator";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
   const { id } = await params;
+  if (!id) return fail(ErrorCode.VALIDATION_ERROR, "ID wajib diisi.", 400);
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return fail("BAD_REQUEST", "Body harus JSON valid.", 400);
+    return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400);
   }
 
   const input = body as Record<string, unknown>;
-  if (input.tipe !== undefined && input.tipe !== "income" && input.tipe !== "expense") {
-    return fail("VALIDATION_ERROR", "tipe harus income atau expense.", 400);
+  if (Object.keys(input).length === 0) {
+    return fail(ErrorCode.VALIDATION_ERROR, "Tidak ada field yang diupdate.", 400);
   }
-  if (input.amount !== undefined && typeof input.amount !== "number") {
-    return fail("VALIDATION_ERROR", "amount harus angka.", 400);
+  if ("tipe" in input) {
+    const tipe = requireString(input, "tipe", { optional: true });
+    if (!tipe.ok) return fail(ErrorCode.VALIDATION_ERROR, tipe.message, 400);
+    if (tipe.data !== null && !["income", "expense"].includes(tipe.data)) {
+      return fail(ErrorCode.VALIDATION_ERROR, "tipe harus income atau expense.", 400);
+    }
+  }
+  if ("amount" in input) {
+    const amount = requireNumber(input, "amount", { min: 0, optional: true });
+    if (!amount.ok) return fail(ErrorCode.VALIDATION_ERROR, amount.message, 400);
+  }
+  if ("keterangan" in input) {
+    const keterangan = requireString(input, "keterangan", { maxLen: 255, optional: true });
+    if (!keterangan.ok) return fail(ErrorCode.VALIDATION_ERROR, keterangan.message, 400);
   }
 
   const { data, error } = await updateCashflow(auth.ctx.supabase, id, input);
-  if (error) return fail("DB_ERROR", "Gagal update cashflow.", 500, error.message);
-  if (!data) return fail("NOT_FOUND", "Data cashflow tidak ditemukan.", 404);
+  if (error) return fail(ErrorCode.DB_ERROR, "Gagal update cashflow.", 500, error.message);
+  if (!data) return fail(ErrorCode.NOT_FOUND, "Data cashflow tidak ditemukan.", 404);
   return ok({ cashflow: data });
 }
 
@@ -34,7 +49,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
 
   const { error, deleted } = await deleteCashflow(auth.ctx.supabase, id);
-  if (error) return fail("DB_ERROR", "Gagal hapus cashflow.", 500, error.message);
-  if (!deleted) return fail("NOT_FOUND", "Data cashflow tidak ditemukan.", 404);
+  if (error) return fail(ErrorCode.DB_ERROR, "Gagal hapus cashflow.", 500, error.message);
+  if (!deleted) return fail(ErrorCode.NOT_FOUND, "Data cashflow tidak ditemukan.", 404);
   return ok(null, "Data cashflow berhasil dihapus.");
 }

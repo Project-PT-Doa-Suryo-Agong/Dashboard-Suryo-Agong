@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfileById } from "@/lib/services/profile.service";
 import { buildAccessSummary, canAccessCluster } from "@/lib/access/policy";
 import type { AccessLevel } from "@/types/access";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 export type AuthContext = {
   userId: string;
@@ -26,7 +27,7 @@ export async function requireAuth(): Promise<
   if (error || !data.user) {
     return {
       ok: false,
-      response: fail("UNAUTHORIZED", "Sesi tidak valid atau belum login.", 401),
+      response: fail(ErrorCode.UNAUTHORIZED, "Sesi tidak valid atau belum login.", 401),
     };
   }
 
@@ -66,8 +67,7 @@ export async function requireRole(...allowedRoles: string[]): Promise<
   if (!ctx.role || !allowedRoles.includes(ctx.role)) {
     return {
       ok: false,
-      response: fail(
-        "FORBIDDEN",
+      response: fail(ErrorCode.FORBIDDEN,
         `Akses ditolak. Role yang dibutuhkan: ${allowedRoles.join(", ")}.`,
         403
       ),
@@ -91,8 +91,7 @@ export async function requireLevel(...allowedLevels: AccessLevel[]): Promise<
   if (!allowedLevels.includes(ctx.accessLevel)) {
     return {
       ok: false,
-      response: fail(
-        "FORBIDDEN",
+      response: fail(ErrorCode.FORBIDDEN,
         `Akses ditolak. Level yang dibutuhkan: ${allowedLevels.join(", ")}.`,
         403
       ),
@@ -116,8 +115,7 @@ export async function requireClusterAccess(clusterKey: string): Promise<
   if (!canAccessCluster(ctx.accessLevel, clusterKey)) {
     return {
       ok: false,
-      response: fail(
-        "FORBIDDEN",
+      response: fail(ErrorCode.FORBIDDEN,
         `Akses ditolak untuk cluster '${clusterKey}' pada level ${ctx.accessLevel}.`,
         403
       ),

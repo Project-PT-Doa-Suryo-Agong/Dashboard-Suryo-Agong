@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { getCookieDomain } from "@/lib/cookie-domain";
 import type { Database } from "@/types/supabase";
 import { fail, ok } from "@/lib/http/response";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 // --------------- helpers ---------------
 
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch {
-      const response = fail("BAD_REQUEST", "Body request harus JSON valid.", 400);
+      const response = fail(ErrorCode.INVALID_JSON, "Body request harus JSON valid.", 400);
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
       return response;
     }
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
     const password = typeof body.password === "string" ? body.password : "";
 
     if (!email || !password) {
-      const response = fail("VALIDATION_ERROR", "Email dan password wajib diisi.", 400);
+      const response = fail(ErrorCode.VALIDATION_ERROR, "Email dan password wajib diisi.", 400);
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
       return response;
     }
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      const response = fail("UNAUTHORIZED", error.message, 401);
+      const response = fail(ErrorCode.UNAUTHORIZED, error.message, 401);
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
       return response;
     }
@@ -222,7 +223,7 @@ export async function POST(request: NextRequest) {
     return finalResponse;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal Server Error";
-    const response = fail("INTERNAL_ERROR", message, 500);
+    const response = fail(ErrorCode.INTERNAL_ERROR, message, 500);
     Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
     return response;
   }

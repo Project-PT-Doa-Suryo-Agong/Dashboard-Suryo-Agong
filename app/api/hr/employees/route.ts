@@ -2,6 +2,7 @@ import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listKaryawan, createKaryawan } from "@/lib/services/hr.service";
 import { parseCreateEmployeeInput } from "@/lib/validation/hr-admin";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 50, 1), 500);
 
   const { data, error, meta } = await listKaryawan(auth.ctx.supabase, page, limit);
-  if (error) return fail("DB_ERROR", "Gagal mengambil data karyawan.", 500, error.message);
+  if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data karyawan.", 500, error.message);
   return ok({ karyawan: data, meta });
 }
 
@@ -24,18 +25,18 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return fail("BAD_REQUEST", "Body request harus JSON valid.", 400);
+    return fail(ErrorCode.INVALID_JSON, "Body request harus JSON valid.", 400);
   }
 
   const parsed = parseCreateEmployeeInput(body);
   if (!parsed.ok) {
-    return fail("VALIDATION_ERROR", parsed.message, 400);
+    return fail(ErrorCode.VALIDATION_ERROR, parsed.message, 400);
   }
 
   const { data, error } = await createKaryawan(auth.ctx.supabase, parsed.data);
 
   if (error) {
-    return fail("DB_ERROR", "Gagal menambahkan karyawan baru.", 500, error.message);
+    return fail(ErrorCode.DB_ERROR, "Gagal menambahkan karyawan baru.", 500, error.message);
   }
 
   return ok({ karyawan: data }, "Karyawan dan akun berhasil dibuat.", 201);

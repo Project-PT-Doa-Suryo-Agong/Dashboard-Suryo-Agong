@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireAuth } from "@/lib/guards/auth.guard";
 import { canAccessCluster, canAccessMenu } from "@/lib/access/policy";
-import { NextResponse } from "next/server";
+import { ErrorCode } from "@/lib/http/error-codes";
 
 export async function GET(request: Request) {
   try {
@@ -13,8 +13,7 @@ export async function GET(request: Request) {
     const menu = (url.searchParams.get("menu") ?? "").trim();
 
     if (!cluster && !menu) {
-      return fail(
-        "VALIDATION_ERROR",
+      return fail(ErrorCode.VALIDATION_ERROR,
         "Minimal salah satu query wajib diisi: cluster atau menu.",
         400
       );
@@ -38,18 +37,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    const status =
-      typeof error === "object" &&
-      error !== null &&
-      "status" in error &&
-      [400, 404, 500].includes((error as { status: number }).status)
-        ? (error as { status: number }).status
-        : 500;
-
-    return NextResponse.json(
-      { success: false, error: { message } },
-      { status }
-    );
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan internal server.";
+    return fail(ErrorCode.INTERNAL_ERROR, message, 500);
   }
 }
