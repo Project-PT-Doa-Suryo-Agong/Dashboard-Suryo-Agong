@@ -1,5 +1,13 @@
 import { TrendingUp, TrendingDown, Banknote, Users, FileText, Tv2 } from 'lucide-react';
 
+function formatRupiah(value: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export default function CreativeDashboard() {
   return (
     <div className="mx-auto w-full max-w-7xl space-y-3 p-3 md:space-y-4 md:p-4 lg:space-y-8 lg:p-8">
@@ -9,7 +17,7 @@ export default function CreativeDashboard() {
         <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4 lg:p-6">
           <div className="min-w-0">
             <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">Total Sales Revenue</p>
-            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">$128,430</h3>
+            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">{formatRupiah(128430)}</h3>
             <div className="mt-2 flex items-center gap-1 text-green-500 text-success">
               <TrendingUp className="h-4 w-4 flex-shrink-0 md:h-5 md:w-5" />
               <span className="text-xs font-bold md:text-sm lg:text-base">+12.5%</span>
@@ -54,7 +62,7 @@ export default function CreativeDashboard() {
         <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4 lg:p-6">
           <div className="min-w-0">
             <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">Live Stream Revenue</p>
-            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">$42,150</h3>
+            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">{formatRupiah(42150)}</h3>
             <div className="mt-2 flex items-center gap-1 text-green-500 text-success">
               <TrendingUp className="h-4 w-4 flex-shrink-0 md:h-5 md:w-5" />
               <span className="text-xs font-bold md:text-sm lg:text-base">+8.4%</span>
@@ -77,7 +85,7 @@ export default function CreativeDashboard() {
               <p className="text-xs text-slate-500 md:text-sm lg:text-base">Revenue growth tracked over the last 30 days</p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
-              <span className="text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">$42,150</span>
+              <span className="text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">{formatRupiah(42150)}</span>
               <span className="whitespace-nowrap rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-600 md:text-xs">LIVE</span>
             </div>
           </div>
@@ -166,7 +174,7 @@ export default function CreativeDashboard() {
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600 md:px-4 md:py-4 md:text-sm lg:px-6 lg:text-base">TikTok Shop</td>
                 <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-600 md:px-4 md:py-4 md:text-sm lg:px-6 lg:text-base">2</td>
-                <td className="whitespace-nowrap px-3 py-3 text-xs font-bold text-slate-900 md:px-4 md:py-4 md:text-sm lg:px-6 lg:text-base">$259.98</td>
+                <td className="whitespace-nowrap px-3 py-3 text-xs font-bold text-slate-900 md:px-4 md:py-4 md:text-sm lg:px-6 lg:text-base">{formatRupiah(259980)}</td>
               </tr>
               {/* Tambahkan baris tabel lainnya sesuai kebutuhan */}
             </tbody>
