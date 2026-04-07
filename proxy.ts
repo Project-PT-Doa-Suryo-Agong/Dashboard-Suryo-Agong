@@ -110,8 +110,29 @@ function normalizeRole(input: string | null | undefined): AppRole | null {
 }
 import { createServerClient } from "@supabase/ssr";
 
+function getHostWithoutPort(hostHeader: string): string {
+  return hostHeader.split(":")[0]?.toLowerCase() ?? "";
+}
+
+function resolveCookieDomain(hostHeader: string): string | undefined {
+  const host = getHostWithoutPort(hostHeader);
+  if (host === "localhost" || host.endsWith(".localhost")) return ".localhost";
+  if (host === DEV_ROOT_HOST || host.endsWith(`.${DEV_ROOT_HOST}`)) return `.${DEV_ROOT_HOST}`;
+
+  const configured = process.env.APP_COOKIE_DOMAIN?.replace(/^\./, "");
+  if (configured) return `.${configured}`;
+  return undefined;
+}
+
+function resolveAuthRootHost(hostHeader: string): string | null {
+  const host = getHostWithoutPort(hostHeader);
+  if (host.endsWith(".localhost") && host !== "localhost") return "localhost";
+  if (host.endsWith(`.${DEV_ROOT_HOST}`) && host !== DEV_ROOT_HOST) return DEV_ROOT_HOST;
+  return null;
+}
+
 async function readRoleFromSupabaseSession(request: NextRequest, response: NextResponse): Promise<AppRole | null> {
-  const cookieDomain = DEV_ROOT_HOST;
+  const cookieDomain = resolveCookieDomain(request.headers.get("host") ?? "");
 
   const supabase = createServerClient(
     env.supabaseUrl, 
@@ -136,14 +157,14 @@ async function readRoleFromSupabaseSession(request: NextRequest, response: NextR
           response.cookies.set({ 
             name, value, 
             ...(options as object), 
-            domain: `.${cookieDomain}` 
+            ...(cookieDomain ? { domain: cookieDomain } : {})
           });
         },
         remove(name: string, options: Record<string, unknown>) {
           response.cookies.set({ 
             name, value: "", 
             ...(options as object), 
-            domain: `.${cookieDomain}`, 
+            ...(cookieDomain ? { domain: cookieDomain } : {}),
             maxAge: 0 
           });
         },
@@ -236,6 +257,7 @@ function isLocalhostSubdomain(hostHeader: string) {
 export async function proxy(request: NextRequest) {
   const url = request.nextUrl;
   const hostHeader = request.headers.get("host") ?? "";
+  const authRootHost = resolveAuthRootHost(hostHeader);
   let response = NextResponse.next();
 
   console.log("[PROXY] incoming:", hostHeader, request.method, url.pathname);
@@ -245,9 +267,9 @@ export async function proxy(request: NextRequest) {
   }
 
   if (url.pathname.startsWith("/auth")) {
-    if (isLocalhostSubdomain(hostHeader)) {
+    if (isLocalhostSubdomain(hostHeader) && authRootHost) {
       const authUrl = request.nextUrl.clone();
-      authUrl.hostname = DEV_ROOT_HOST;
+      authUrl.hostname = authRootHost;
       return NextResponse.redirect(authUrl);
     }
     return response;
@@ -270,7 +292,7 @@ export async function proxy(request: NextRequest) {
     if (!role) {
       console.log("[PROXY] BRANCH → redirecting to login (no role)");
       const loginUrl = request.nextUrl.clone();
-      loginUrl.hostname = DEV_ROOT_HOST;
+      if (authRootHost) loginUrl.hostname = authRootHost;
       loginUrl.pathname = LOGIN_PATH;
       loginUrl.searchParams.set("next", effectivePathname);
       const redirect = NextResponse.redirect(loginUrl);
