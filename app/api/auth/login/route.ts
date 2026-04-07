@@ -97,14 +97,15 @@ function mapRoleToSubdomain(role: string | null | undefined): string {
 }
 
 function buildTenantRedirectUrl(subdomain: string): string {
+  const dashboardPath = `/${subdomain}`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
   if (siteUrl) {
     const base = siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`;
     const baseUrl = new URL(base);
     const hostname = baseUrl.hostname.replace(/^www\./, "");
-    return `${baseUrl.protocol}//${subdomain}.${hostname}${baseUrl.port ? `:${baseUrl.port}` : ""}`;
+    return `${baseUrl.protocol}//${subdomain}.${hostname}${baseUrl.port ? `:${baseUrl.port}` : ""}${dashboardPath}`;
   }
-  return `http://${subdomain}.localhost:3000`;
+  return `http://${subdomain}.localhost:3000${dashboardPath}`;
 }
 
 // --------------- CORS preflight ---------------
