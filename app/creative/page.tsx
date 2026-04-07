@@ -1,10 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Banknote, FileText, Tv2, Users } from "lucide-react";
+import {
+  ArrowBigLeft,
+  Banknote,
+  FileText,
+  Tv2,
+  Users,
+  ArrowRight,
+} from "lucide-react";
+import Link from "next/link";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { MAfiliator, MVarian, TContentPlanner, TLivePerformance, TSalesOrder } from "@/types/supabase";
+import type {
+  MAfiliator,
+  MVarian,
+  TContentPlanner,
+  TLivePerformance,
+  TSalesOrder,
+} from "@/types/supabase";
 
 type SalesOrderListPayload = { orders: TSalesOrder[] };
 type LiveListPayload = { live: TLivePerformance[] };
@@ -12,18 +26,24 @@ type ContentListPayload = { content: TContentPlanner[] };
 type AffiliatorListPayload = { afiliator: MAfiliator[] };
 type VarianListPayload = { varian: MVarian[] };
 
-async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+async function parseJsonResponse<T>(
+  response: Response,
+): Promise<ApiSuccess<T>> {
   const raw = await response.text();
   let payload: ApiSuccess<T> | ApiError;
   try {
     payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
   } catch {
-    const fallback = response.ok ? "Respons server tidak valid (bukan JSON)." : raw.slice(0, 200);
+    const fallback = response.ok
+      ? "Respons server tidak valid (bukan JSON)."
+      : raw.slice(0, 200);
     throw new Error(fallback || "Respons server tidak valid.");
   }
 
   if (!response.ok || !payload.success) {
-    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    const message = payload.success
+      ? "Terjadi kesalahan."
+      : payload.error.message;
     throw new Error(message);
   }
 
@@ -61,7 +81,13 @@ export default function CreativeDashboard() {
       setIsLoading(true);
       setErrorMessage(null);
       try {
-        const [ordersResponse, liveResponse, contentResponse, affiliatesResponse, variantsResponse] = await Promise.all([
+        const [
+          ordersResponse,
+          liveResponse,
+          contentResponse,
+          affiliatesResponse,
+          variantsResponse,
+        ] = await Promise.all([
           apiFetch("/api/sales/orders?page=1&limit=500", {
             method: "GET",
             headers: { "Content-Type": "application/json" },
@@ -89,11 +115,16 @@ export default function CreativeDashboard() {
           }),
         ]);
 
-        const ordersPayload = await parseJsonResponse<SalesOrderListPayload>(ordersResponse);
-        const livePayload = await parseJsonResponse<LiveListPayload>(liveResponse);
-        const contentPayload = await parseJsonResponse<ContentListPayload>(contentResponse);
-        const affiliatesPayload = await parseJsonResponse<AffiliatorListPayload>(affiliatesResponse);
-        const variantsPayload = await parseJsonResponse<VarianListPayload>(variantsResponse);
+        const ordersPayload =
+          await parseJsonResponse<SalesOrderListPayload>(ordersResponse);
+        const livePayload =
+          await parseJsonResponse<LiveListPayload>(liveResponse);
+        const contentPayload =
+          await parseJsonResponse<ContentListPayload>(contentResponse);
+        const affiliatesPayload =
+          await parseJsonResponse<AffiliatorListPayload>(affiliatesResponse);
+        const variantsPayload =
+          await parseJsonResponse<VarianListPayload>(variantsResponse);
 
         setOrders(ordersPayload.data.orders ?? []);
         setLiveItems(livePayload.data.live ?? []);
@@ -101,7 +132,11 @@ export default function CreativeDashboard() {
         setAffiliators(affiliatesPayload.data.afiliator ?? []);
         setVariants(variantsPayload.data.varian ?? []);
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Gagal memuat dashboard creative.");
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Gagal memuat dashboard creative.",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -145,22 +180,37 @@ export default function CreativeDashboard() {
   );
 
   const variantNameById = useMemo(
-    () => new Map<string, string>(variants.map((item) => [item.id, item.nama_varian ?? "-"])),
+    () =>
+      new Map<string, string>(
+        variants.map((item) => [item.id, item.nama_varian ?? "-"]),
+      ),
     [variants],
   );
 
   const affiliatorById = useMemo(
-    () => new Map<string, MAfiliator>(affiliators.map((item) => [item.id, item])),
+    () =>
+      new Map<string, MAfiliator>(affiliators.map((item) => [item.id, item])),
     [affiliators],
   );
+
+  const quickLinks = [
+    { label: "Affiliators", href: "/creative/affiliates" },
+    { label: "Content Planner", href: "/creative/content" },
+    { label: "Live Performance", href: "/creative/live-perf" },
+    { label: "Sales Order", href: "/creative/sales-order" },
+  ];
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-3 p-3 md:space-y-4 md:p-4 lg:space-y-8 lg:p-8">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:gap-3 lg:grid-cols-4 lg:gap-4">
         <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4 lg:p-6">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">Total Sales Revenue</p>
-            <p className="mt-1 text-medium font-bold text-slate-900 md:text-2xl lg:text-xl">{formatRupiah(totalSalesRevenue)}</p>
+            <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">
+              Total Sales Revenue
+            </p>
+            <p className="mt-1 text-medium font-bold text-slate-900 md:text-2xl lg:text-xl">
+              {formatRupiah(totalSalesRevenue)}
+            </p>
           </div>
           <div className="rounded-lg bg-primary/10 p-2 text-slate-600 md:p-3">
             <Banknote className="h-5 w-5 flex-shrink-0 md:h-6 md:w-6" />
@@ -169,8 +219,12 @@ export default function CreativeDashboard() {
 
         <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4 lg:p-6">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">Active Affiliators</p>
-            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-2xl">{affiliators.length}</h3>
+            <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">
+              Active Affiliators
+            </p>
+            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-2xl">
+              {affiliators.length}
+            </h3>
           </div>
           <div className="rounded-lg bg-primary/10 p-2 text-slate-600 md:p-3">
             <Users className="h-5 w-5 flex-shrink-0 md:h-6 md:w-6" />
@@ -179,8 +233,12 @@ export default function CreativeDashboard() {
 
         <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4 lg:p-6">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">Total Content Planned</p>
-            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">{contents.length}</h3>
+            <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">
+              Total Content Planned
+            </p>
+            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">
+              {contents.length}
+            </h3>
           </div>
           <div className="rounded-lg bg-primary/10 p-2 text-slate-600 md:p-3">
             <FileText className="h-5 w-5 flex-shrink-0 md:h-6 md:w-6" />
@@ -189,8 +247,12 @@ export default function CreativeDashboard() {
 
         <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4 lg:p-6">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">Live Stream Revenue</p>
-            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-xl">{formatRupiah(liveRevenue)}</h3>
+            <p className="text-xs font-medium text-slate-500 md:text-sm lg:text-base">
+              Live Stream Revenue
+            </p>
+            <h3 className="mt-1 text-lg font-bold text-slate-900 md:text-2xl lg:text-xl">
+              {formatRupiah(liveRevenue)}
+            </h3>
           </div>
           <div className="rounded-lg bg-primary/10 p-2 text-slate-600 md:p-3">
             <Tv2 className="h-5 w-5 flex-shrink-0 md:h-6 md:w-6" />
@@ -202,28 +264,49 @@ export default function CreativeDashboard() {
         <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:col-span-2 md:p-4 lg:p-6">
           <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center md:mb-6 md:gap-4">
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-slate-900 md:text-base lg:text-lg">Live Performance Revenue</h3>
-              <p className="text-xs text-slate-500 md:text-sm lg:text-base">Akumulasi revenue dari data live performance.</p>
+              <h3 className="text-sm font-bold text-slate-900 md:text-base lg:text-lg">
+                Live Performance Revenue
+              </h3>
+              <p className="text-xs text-slate-500 md:text-sm lg:text-base">
+                Akumulasi revenue dari data live performance.
+              </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
-              <span className="text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">{formatRupiah(liveRevenue)}</span>
-              <span className="whitespace-nowrap rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-600 md:text-xs">{liveItems.length} Session</span>
+              <span className="text-lg font-bold text-slate-900 md:text-2xl lg:text-3xl">
+                {formatRupiah(liveRevenue)}
+              </span>
+              <span className="whitespace-nowrap rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-600 md:text-xs">
+                {liveItems.length} Session
+              </span>
             </div>
           </div>
 
           {isLoading ? (
-            <p className="text-sm text-slate-500">Memuat data live performance...</p>
+            <p className="text-sm text-slate-500">
+              Memuat data live performance...
+            </p>
           ) : liveItems.length === 0 ? (
-            <p className="text-sm text-slate-500">Belum ada data live performance.</p>
+            <p className="text-sm text-slate-500">
+              Belum ada data live performance.
+            </p>
           ) : (
             <div className="space-y-2">
               {liveItems.slice(0, 5).map((item) => (
-                <div key={item.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2"
+                >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{item.platform}</p>
-                    <p className="text-xs text-slate-500">{formatDate(item.created_at)}</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {item.platform}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {formatDate(item.created_at)}
+                    </p>
                   </div>
-                  <p className="text-sm font-bold text-slate-900">{formatRupiah(item.revenue ?? 0)}</p>
+                  <p className="text-sm font-bold text-slate-900">
+                    {formatRupiah(item.revenue ?? 0)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -232,32 +315,35 @@ export default function CreativeDashboard() {
 
         <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm md:p-4 lg:p-6">
           <div className="mb-4 flex items-center justify-between md:mb-6">
-            <h3 className="text-sm font-bold text-slate-900 md:text-base lg:text-lg">Content Planner</h3>
+            <h3 className="text-sm font-bold text-slate-900 md:text-base lg:text-lg">
+              Quick Links
+            </h3>
           </div>
 
-          {isLoading ? (
-            <p className="text-sm text-slate-500">Memuat content planner...</p>
-          ) : recentContents.length === 0 ? (
-            <p className="text-sm text-slate-500">Belum ada data content planner.</p>
-          ) : (
-            <div className="space-y-3 md:space-y-4 lg:space-y-6">
-              {recentContents.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-slate-100 hover:bg-slate-50 md:gap-4 md:p-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate whitespace-nowrap text-sm font-bold text-slate-900 md:text-base lg:text-lg">{item.judul ?? "-"}</p>
-                    <p className="truncate whitespace-nowrap text-xs text-slate-500 md:text-sm lg:text-base">Added {formatDate(item.created_at)}</p>
+          <div className="space-y-2">
+            {quickLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="block rounded-xl border bg-slate-300 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500"
+              >
+                <div className="flex items-center justify-between text-slate-900 hover:text-slate-100">
+                  <div className="text-sm font-semibold">
+                    <p className="">{item.label}</p>
                   </div>
-                  <div className="whitespace-nowrap rounded bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-500 md:text-xs">
-                    {item.platform ?? "-"}
-                  </div>
+                  <div className="rounded-lg bg-primary/10 p-2">
+                      <ArrowRight className="h-2 w-2 flex-shrink-0 md:h-4 md:w-4" />
+                    </div>
                 </div>
-              ))}
-            </div>
-          )}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
       {errorMessage && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div>
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
       )}
     </div>
   );
