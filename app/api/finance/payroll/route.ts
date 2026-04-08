@@ -27,22 +27,29 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400); }
 
   const input = body as Record<string, unknown>;
-  const employeeId = requireUUID(input, "employee_id", { optional: true });
+  const employeeId = requireUUID(input, "employee_id");
   if (!employeeId.ok) return fail(ErrorCode.VALIDATION_ERROR, employeeId.message, 400);
-  const bulan = requireString(input, "bulan", { maxLen: 20, optional: true });
+  const bulan = requireString(input, "bulan", { maxLen: 20 });
   if (!bulan.ok) return fail(ErrorCode.VALIDATION_ERROR, bulan.message, 400);
+  
+  // Total can be explicitly set or fetched strictly from m_karyawan's gaji_pokok
   const total = requireNumber(input, "total", { min: 0, optional: true });
   if (!total.ok) return fail(ErrorCode.VALIDATION_ERROR, total.message, 400);
 
-  if (!("employee_id" in input) && !("bulan" in input) && !("total" in input)) {
-    return fail(ErrorCode.VALIDATION_ERROR, "Minimal satu field payroll harus diisi.", 400);
+  let finalTotal = total.data ?? 0;
+  
+  // Jika tidak diinputkan (misalkan dikirim kosong atau 0), kita ambilkan dari gaji_pokok HR
+  if (finalTotal === 0 && employeeId.data) {
+      const { data: employee } = await auth.ctx.supabase.schema("hr").from("m_karyawan").select("gaji_pokok").eq("id", employeeId.data).single();
+      if (employee?.gaji_pokok) {
+        finalTotal = employee.gaji_pokok;
+      }
   }
 
   const payload: TPayrollHistoryInsert = {
-    ...input,
     employee_id: employeeId.data,
     bulan: bulan.data,
-    total: total.data,
+    total: finalTotal,
   };
 
   const { data, error } = await createPayroll(auth.ctx.supabase, payload);

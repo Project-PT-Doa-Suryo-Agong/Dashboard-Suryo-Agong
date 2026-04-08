@@ -21,23 +21,28 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (Object.keys(input).length === 0) {
     return fail(ErrorCode.VALIDATION_ERROR, "Tidak ada field yang diupdate.", 400);
   }
+  const payload: Record<string, any> = {};
+
   if ("tipe" in input) {
-    const tipe = requireString(input, "tipe", { optional: true });
+    const tipe = requireString(input, "tipe");
     if (!tipe.ok) return fail(ErrorCode.VALIDATION_ERROR, tipe.message, 400);
-    if (tipe.data !== null && !["income", "expense"].includes(tipe.data)) {
+    if (!["income", "expense"].includes(tipe.data as string)) {
       return fail(ErrorCode.VALIDATION_ERROR, "tipe harus income atau expense.", 400);
     }
+    payload.tipe = tipe.data;
   }
   if ("amount" in input) {
-    const amount = requireNumber(input, "amount", { min: 0, optional: true });
+    const amount = requireNumber(input, "amount", { min: 0 });
     if (!amount.ok) return fail(ErrorCode.VALIDATION_ERROR, amount.message, 400);
+    payload.amount = amount.data;
   }
   if ("keterangan" in input) {
     const keterangan = requireString(input, "keterangan", { maxLen: 255, optional: true });
     if (!keterangan.ok) return fail(ErrorCode.VALIDATION_ERROR, keterangan.message, 400);
+    payload.keterangan = keterangan.data;
   }
 
-  const { data, error } = await updateCashflow(auth.ctx.supabase, id, input);
+  const { data, error } = await updateCashflow(auth.ctx.supabase, id, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update cashflow.", 500, error.message);
   if (!data) return fail(ErrorCode.NOT_FOUND, "Data cashflow tidak ditemukan.", 404);
   return ok({ cashflow: data });

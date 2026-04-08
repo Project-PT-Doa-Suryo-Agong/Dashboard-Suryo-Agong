@@ -86,3 +86,34 @@ CREATE TRIGGER trg_reimburse_to_cashflow
 AFTER INSERT OR UPDATE ON finance.t_reimbursement
 FOR EACH ROW
 EXECUTE FUNCTION finance.fn_reimburse_to_cashflow();
+
+-- 4. TRIGGER BUDGET REQUEST -> CASHFLOW (EXPENSE) 
+-- Catatan: Hanya terekap jika statusnya 'approved'
+
+CREATE OR REPLACE FUNCTION finance.fn_budget_to_cashflow()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Lakukan Insert ke cashflow HANYA jika budget request baru disetujui
+  IF (TG_OP = 'INSERT' AND NEW.status = 'approved') OR 
+     (TG_OP = 'UPDATE' AND OLD.status != 'approved' AND NEW.status = 'approved') THEN
+     
+     INSERT INTO finance.t_cashflow (tipe, amount, keterangan, created_at, updated_at)
+     VALUES (
+       'expense', 
+       NEW.amount, 
+       'Pengeluaran Pengajuan Anggaran (Divisi: ' || NEW.divisi || ')',
+       NOW(),
+       NOW()
+     );
+     
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_budget_to_cashflow ON management.t_budget_request;
+CREATE TRIGGER trg_budget_to_cashflow
+AFTER INSERT OR UPDATE ON management.t_budget_request
+FOR EACH ROW
+EXECUTE FUNCTION finance.fn_budget_to_cashflow();

@@ -172,6 +172,16 @@ Saat ini, migrasi arsitektur *Hybrid* (Fase 1 hingga Fase 4) di sisi server/back
 **Konteks Fase 4**: File gambar/dokumen tidak perlu transit merepotkan server utama. Bucket storage reimbursements (private) dan products (public) telah dikonfigurasi lengkap dengan perisai RLS-nya.
 **Tindakan Frontend**: Hapus fungsi *form-data api upload* lama, gantikan dengan mengeksekusi langsung await supabase.storage.from('products').upload(...) dari browser.
 
+### 6. Catatan Pembaruan Backend (Finance & Sales Logic)
+**Konteks Pembaruan**: Seluruh business logic, perbaikan error CRUD, parameter perhitungan biaya, dropdown relasi, serta otomatisasi trigger telah diselesaikan di Backend.
+**Tindakan Frontend**:
+1. **Total Price Otomatis (Sales)**: Saat *Insert Sales Order*, `total_price` tidak lagi wajib dikirim/dihitung oleh frontend. Backend otomatis menghitung `Harga Varian × QTY`.
+2. **Otomatisasi Gaji Pokok (Payroll)**: Saat input Payroll, jika nominal `total` dibiarkan kosong/0, backend akan otomatis mengambil `gaji_pokok` berdasarkan karyawan yang dipilih.
+3. **Perbaikan Relasi Karyawan**: RLS telah diperbaiki. Halaman Finance (*Payroll/Reimburse*) sekarang dijamin dapat me-load karyawan HR tanpa error.
+4. **Trigger Otomatis Anggaran (Budget)**: Jika Budget di-*approve*, data *Cashflow* akan tercipta otomatis. Frontend dilarang memanggil API POST `/api/finance/cashflow` secara implisit/ganda saat menyetujui anggaran.
+5. **Keamanan Payload API Finance**: Parameter `...input` yang disebar sembarangan telah difilter ketat di API. Jika ada form field frontend yang berlebihan, backend akan otomatis membuangnya.
+*(Silakan hapus poin catatan 6 ini jika penyesuaian UX/UI frontend & testing sudah diselesaikan).*
+
 ## Getting Started
 
 ### Prerequisites

@@ -158,12 +158,12 @@ USING (core.is_strategic());
 
 ALTER TABLE hr.m_karyawan ENABLE ROW LEVEL SECURITY;
 
--- HR, CEO, Developer bisa baca semua karyawan  
+-- HR, CEO, Developer, Finance bisa baca semua karyawan  
 CREATE POLICY "HR and strategic can read all employees"
 ON hr.m_karyawan FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('Developer', 'CEO', 'HR', 'Finance')
 );
 
 -- Karyawan bisa baca data sendiri (via profile_id)

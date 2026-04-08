@@ -30,24 +30,19 @@ export async function POST(request: Request) {
   }
 
   const input = body as Record<string, unknown>;
-  const tipe = requireString(input, "tipe", { optional: true });
+  const tipe = requireString(input, "tipe");
   if (!tipe.ok) return fail(ErrorCode.VALIDATION_ERROR, tipe.message, 400);
-  if (tipe.data !== null && !["income", "expense"].includes(tipe.data)) {
+  if (!["income", "expense"].includes(tipe.data as string)) {
     return fail(ErrorCode.VALIDATION_ERROR, "tipe harus income atau expense.", 400);
   }
-  const amount = requireNumber(input, "amount", { min: 0, optional: true });
+  const amount = requireNumber(input, "amount", { min: 0 });
   if (!amount.ok) return fail(ErrorCode.VALIDATION_ERROR, amount.message, 400);
   const keterangan = requireString(input, "keterangan", { maxLen: 255, optional: true });
   if (!keterangan.ok) return fail(ErrorCode.VALIDATION_ERROR, keterangan.message, 400);
 
-  if (!("tipe" in input) && !("amount" in input) && !("keterangan" in input)) {
-    return fail(ErrorCode.VALIDATION_ERROR, "Minimal satu field cashflow harus diisi.", 400);
-  }
-
   const payload: TCashflowInsert = {
-    ...input,
     tipe: tipe.data as TCashflowInsert["tipe"],
-    amount: amount.data,
+    amount: amount.data as number,
     keterangan: keterangan.data,
   };
 

@@ -26,21 +26,28 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400); }
 
   const input = body as Record<string, unknown>;
-  const varianId = requireUUID(input, "varian_id", { optional: true });
+  const varianId = requireUUID(input, "varian_id");
   if (!varianId.ok) return fail(ErrorCode.VALIDATION_ERROR, varianId.message, 400);
   const affiliatorId = requireUUID(input, "affiliator_id", { optional: true });
   if (!affiliatorId.ok) return fail(ErrorCode.VALIDATION_ERROR, affiliatorId.message, 400);
   const quantity = requireNumber(input, "quantity", { min: 1 });
   if (!quantity.ok) return fail(ErrorCode.VALIDATION_ERROR, quantity.message, 400);
-  const totalPrice = requireNumber(input, "total_price", { min: 0 });
-  if (!totalPrice.ok) return fail(ErrorCode.VALIDATION_ERROR, totalPrice.message, 400);
+
+  // Perhitungan total price otomatis di backend (Harga Varian x QTY)
+  let calculatedTotalPrice = 0;
+  if (varianId.data) {
+    const { data: varian } = await auth.ctx.supabase.schema("core").from("m_varian").select("harga").eq("id", varianId.data).single();
+    if (varian?.harga) {
+      calculatedTotalPrice = varian.harga * quantity.data!;
+    }
+  }
 
   const payload: TSalesOrderInsert = {
     ...input,
     varian_id: varianId.data,
     affiliator_id: affiliatorId.data,
     quantity: quantity.data!,
-    total_price: totalPrice.data!,
+    total_price: calculatedTotalPrice,
   };
 
   const { data, error } = await createSalesOrder(auth.ctx.supabase, payload);

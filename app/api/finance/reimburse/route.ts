@@ -31,25 +31,20 @@ export async function POST(request: Request) {
   }
 
   const input = body as Record<string, unknown>;
-  const employeeId = requireUUID(input, "employee_id", { optional: true });
+  const employeeId = requireUUID(input, "employee_id");
   if (!employeeId.ok) return fail(ErrorCode.VALIDATION_ERROR, employeeId.message, 400);
-  const amount = requireNumber(input, "amount", { min: 0, optional: true });
+  const amount = requireNumber(input, "amount", { min: 0 });
   if (!amount.ok) return fail(ErrorCode.VALIDATION_ERROR, amount.message, 400);
   const status = requireString(input, "status", { optional: true });
   if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);
-  if (status.data !== null && !["pending", "approved", "rejected"].includes(status.data)) {
+  if (status.data && !["pending", "approved", "rejected"].includes(status.data as string)) {
     return fail(ErrorCode.VALIDATION_ERROR, "status harus pending, approved, atau rejected.", 400);
   }
 
-  if (!("employee_id" in input) && !("amount" in input) && !("status" in input)) {
-    return fail(ErrorCode.VALIDATION_ERROR, "Minimal satu field reimburse harus diisi.", 400);
-  }
-
   const payload: TReimbursementInsert = {
-    ...input,
     employee_id: employeeId.data,
     amount: amount.data,
-    status: status.data as TReimbursementInsert["status"],
+    status: (status.data ?? "pending") as TReimbursementInsert["status"],
   };
 
   const { data, error } = await createReimbursement(auth.ctx.supabase, payload);
