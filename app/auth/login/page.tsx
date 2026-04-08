@@ -4,12 +4,15 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ShieldCheck, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function LoginPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
+
+	type LoginResponse = {
+		redirectUrl?: string;
+	};
 
 	async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault();
@@ -20,107 +23,33 @@ export default function LoginPage() {
 		const email = String(formData.get("email") ?? "").trim();
 		const password = String(formData.get("password") ?? "");
 
-		const supabase = createSupabaseBrowserClient();
+		try {
+			const response = await fetch("/api/auth/login", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ email, password }),
+			});
 
-		const { data, error: authError } = await supabase.auth
-			.signInWithPassword({ email, password });
-
-		if (authError) {
-			setError(authError.message);
-			setLoading(false);
-			return;
-		}
-
-		// Get role from profile
-		let role =
-			(typeof data.user?.user_metadata?.role === "string"
-				? data.user.user_metadata.role : null) ??
-			(typeof data.user?.app_metadata?.role === "string"
-				? data.user.app_metadata.role : null);
-
-		if (!role && data.user?.id) {
-			const { data: profile } = await supabase
-				.schema("core")
-				.from("profiles")
-				.select("role")
-				.eq("id", data.user.id)
-				.maybeSingle();
-			role = typeof profile?.role === "string"
-				? profile.role : null;
-		}
-
-		// Map role to subdomain
-		const slugMapToSubdomain = (rawRole: string | null | undefined): string => {
-			if (!rawRole) return "management";
-			const slug = rawRole.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-
-			const exactMap: Record<string, string> = {
-				"developer": "developer",
-				"senior-developer": "developer",
-				"ceo": "management",
-				"management": "management",
-				"manager": "management",
-				"management-strategy": "management",
-				"management-strategic": "management",
-				"finance": "finance",
-				"finance-accounting": "finance",
-				"finance-team": "finance",
-				"hr": "hr",
-				"human-resource": "hr",
-				"human-resources": "hr",
-				"human-resource-dept": "hr",
-				"human-resources-dept": "hr",
-				"produksi": "produksi",
-				"production": "produksi",
-				"produksi-team": "produksi",
-				"logistik": "logistik",
-				"logistics": "logistik",
-				"logistik-team": "logistik",
-				"creative": "creative",
-				"creative-manager": "creative",
-				"sales": "creative",
-				"creative-sales": "creative",
-				"office": "office",
-				"office-support": "office",
+			const payload = (await response.json()) as {
+				success?: boolean;
+				message?: string;
+				error?: { message?: string };
+				data?: LoginResponse;
 			};
 
-			if (exactMap[slug]) return exactMap[slug];
+			if (!response.ok || !payload.success) {
+				setError(payload.error?.message || payload.message || "Login gagal.");
+				setLoading(false);
+				return;
+			}
 
-			if (slug.includes("developer")) return "developer";
-			if (slug.includes("management")) return "management";
-			if (slug.includes("ceo")) return "management";
-			if (slug.includes("finance")) return "finance";
-			if (slug.includes("human-resource")) return "hr";
-			if (slug.includes("produksi")) return "produksi";
-			if (slug.includes("production")) return "produksi";
-			if (slug.includes("logistik")) return "logistik";
-			if (slug.includes("logistics")) return "logistik";
-			if (slug.includes("creative")) return "creative";
-			if (slug.includes("sales")) return "creative";
-			if (slug.includes("office")) return "office";
-			if (slug.includes("hr")) return "hr";
-
-			return "management";
-		};
-
-		const subdomain = slugMapToSubdomain(role);
-		const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-		const base = new URL(siteUrl || window.location.origin);
-		const hostname = base.hostname.replace(/^www\./, "");
-		const dashboardPath = `/${subdomain}`;
-
-		const isLocalHost =
-			hostname === "localhost" ||
-			hostname.endsWith(".localhost") ||
-			hostname === "lvh.me" ||
-			hostname.endsWith(".lvh.me");
-
-		const redirectUrl = isLocalHost
-			? `${base.protocol}//${subdomain}.${hostname}${base.port ? `:${base.port}` : ""}${dashboardPath}`
-			: `${base.protocol}//${hostname}${base.port ? `:${base.port}` : ""}${dashboardPath}`;
-
-		// Hard navigation to subdomain
-		window.location.href = redirectUrl;
+			const redirectUrl = payload.data?.redirectUrl;
+			window.location.href = redirectUrl || "/management";
+		} catch {
+			setError("Terjadi kesalahan saat login. Silakan coba lagi.");
+			setLoading(false);
+		}
 	}
 
 	return (
