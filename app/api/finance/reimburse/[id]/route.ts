@@ -21,23 +21,28 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (Object.keys(input).length === 0) {
     return fail(ErrorCode.VALIDATION_ERROR, "Tidak ada field yang diupdate.", 400);
   }
+  const payload: Record<string, any> = {};
+
   if ("employee_id" in input) {
-    const employeeId = requireUUID(input, "employee_id", { optional: true });
+    const employeeId = requireUUID(input, "employee_id");
     if (!employeeId.ok) return fail(ErrorCode.VALIDATION_ERROR, employeeId.message, 400);
+    payload.employee_id = employeeId.data;
   }
   if ("amount" in input) {
-    const amount = requireNumber(input, "amount", { min: 0, optional: true });
+    const amount = requireNumber(input, "amount", { min: 0 });
     if (!amount.ok) return fail(ErrorCode.VALIDATION_ERROR, amount.message, 400);
+    payload.amount = amount.data;
   }
   if ("status" in input) {
-    const status = requireString(input, "status", { optional: true });
+    const status = requireString(input, "status");
     if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);
-    if (status.data !== null && !["pending", "approved", "rejected"].includes(status.data)) {
+    if (!["pending", "approved", "rejected"].includes(status.data as string)) {
       return fail(ErrorCode.VALIDATION_ERROR, "status harus pending, approved, atau rejected.", 400);
     }
+    payload.status = status.data;
   }
 
-  const { data, error } = await updateReimbursement(auth.ctx.supabase, id, input);
+  const { data, error } = await updateReimbursement(auth.ctx.supabase, id, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update reimburse.", 500, error.message);
   if (!data) return fail(ErrorCode.NOT_FOUND, "Data reimburse tidak ditemukan.", 404);
   return ok({ reimburse: data });
