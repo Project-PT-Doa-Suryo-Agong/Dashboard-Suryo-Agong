@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   LayoutDashboard,
@@ -126,22 +126,12 @@ export default function Sidebar(props: SidebarProps) {
   } = props;
 
   const pathname = usePathname();
+  const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const mobileIsOpen = isOpen ?? isMobileOpen;
   const handleClose = onClose ?? onCloseMobile;
-
-  const resolveLoginUrl = () => {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-    if (siteUrl) {
-      return `${siteUrl.replace(/\/$/, "")}/auth/login`;
-    }
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/auth/login`;
-    }
-    return "/auth/login";
-  };
 
   const resolveSupabaseProjectRef = () => {
     const fromEnv = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF?.trim();
@@ -184,25 +174,54 @@ export default function Sidebar(props: SidebarProps) {
     expireCookie(cookieName, ".lvh.me");
   };
 
-  const handleLogout = () => {
+  const clearClientSessionFallback = () => {
+    clearRoleCookies();
+    clearSupabaseAuthCookie();
+
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("role");
+      window.sessionStorage.removeItem("role");
+      window.localStorage.removeItem("supabase.auth.token");
+      window.sessionStorage.removeItem("supabase.auth.token");
+    }
+  };
+
+  const handleLogout = async () => {
     if (isLoggingOut) return;
 
     setIsLoggingOut(true);
     setShowLogoutConfirm(false);
 
-    // Optimistic logout: clear local cookies first, then redirect immediately.
-    clearRoleCookies();
-    clearSupabaseAuthCookie();
+    try {
+      const supabase = createSupabaseBrowserClient();
+      void supabase.auth.signOut().catch(() => undefined);
 
-    const supabase = createSupabaseBrowserClient();
-    void supabase.auth.signOut().catch(() => undefined);
-    void fetch("/api/auth/logout", {
-      method: "POST",
-      credentials: "include",
-      keepalive: true,
-    }).catch(() => undefined);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Logout request timed out")), 5000);
+      });
 
-    window.location.replace(resolveLoginUrl());
+      const logoutPromise = fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+        keepalive: true,
+      }).then((response) => {
+        if (!response.ok) {
+          throw new Error("Logout request failed");
+        }
+      });
+
+      await Promise.race([logoutPromise, timeoutPromise]);
+
+      clearClientSessionFallback();
+      router.push("/login");
+    } catch {
+      clearClientSessionFallback();
+      const supabase = createSupabaseBrowserClient();
+      void supabase.auth.signOut().catch(() => undefined);
+      router.push("/login");
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const isPathActive = (href: string) =>

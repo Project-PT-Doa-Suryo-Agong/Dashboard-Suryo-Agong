@@ -123,7 +123,6 @@ export default function SalesOrderPage() {
     setFormData((prev) => ({
       ...prev,
       varian_id: variantId,
-      total_price: resolveCalculatedTotal(variantId, prev.quantity),
     }));
   };
 
@@ -131,9 +130,22 @@ export default function SalesOrderPage() {
     setFormData((prev) => ({
       ...prev,
       quantity,
-      total_price: resolveCalculatedTotal(prev.varian_id, quantity),
     }));
   };
+
+  useEffect(() => {
+    setFormData((prev) => {
+      const nextTotal = resolveCalculatedTotal(prev.varian_id, prev.quantity);
+      if (prev.total_price === nextTotal) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        total_price: nextTotal,
+      };
+    });
+  }, [formData.varian_id, formData.quantity, resolveCalculatedTotal]);
 
   const affiliatorMap = useMemo(
     () => new Map<string, MAfiliator>(affiliators.map((item) => [item.id, item])),
@@ -376,14 +388,13 @@ export default function SalesOrderPage() {
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Price</label>
             <input
-              required
               type="number"
               min={0}
               value={formData.total_price}
               readOnly
               className="w-full bg-slate-100 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm cursor-not-allowed"
               placeholder="0"
-              disabled={isSubmitting}
+              disabled
             />
           </div>
 
@@ -532,14 +543,13 @@ export default function SalesOrderPage() {
                 disabled={isSubmitting}
               />
               <input
-                required
                 type="number"
                 min={0}
                 value={formData.total_price}
                 readOnly
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 cursor-not-allowed"
                 placeholder="Total Price"
-                disabled={isSubmitting}
+                disabled
               />
             </div>
 

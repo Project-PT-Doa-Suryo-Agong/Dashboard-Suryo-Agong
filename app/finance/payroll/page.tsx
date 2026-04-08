@@ -13,6 +13,7 @@ import { apiFetch } from "@/lib/utils/api-fetch";
 type EmployeeOption = {
   id: string;
   nama: string;
+  gaji_pokok: number | null;
 };
 
 type PayrollListPayload = {
@@ -127,11 +128,17 @@ export default function FinancePayrollPage() {
       const options = (payload.data.karyawan ?? []).map((employee) => ({
         id: employee.id,
         nama: employee.nama,
+        gaji_pokok: employee.gaji_pokok,
       }));
       setEmployees(options);
       setFormData((prev) => ({
         ...prev,
         employee_id: prev.employee_id || options[0]?.id || "",
+        total:
+          prev.total ||
+          (options[0]?.gaji_pokok != null && options[0].gaji_pokok > 0
+            ? String(options[0].gaji_pokok)
+            : ""),
       }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat daftar karyawan.";
@@ -157,6 +164,24 @@ export default function FinancePayrollPage() {
     [employees],
   );
 
+  const employeeSalaryById = useMemo(
+    () =>
+      Object.fromEntries(
+        employees.map((employee) => [employee.id, employee.gaji_pokok]),
+      ) as Record<string, number | null>,
+    [employees],
+  );
+
+  const handleEmployeeChange = (employeeId: string) => {
+    const baseSalary = employeeSalaryById[employeeId];
+
+    setFormData((prev) => ({
+      ...prev,
+      employee_id: employeeId,
+      total: baseSalary != null && baseSalary > 0 ? String(baseSalary) : "",
+    }));
+  };
+
   const totalPayroll = useMemo(
     () => items.reduce((sum, item) => sum + (item.total ?? 0), 0),
     [items],
@@ -172,10 +197,14 @@ export default function FinancePayrollPage() {
   }, [items, searchTerm, employeeById]);
 
   const resetForm = () => {
+    const defaultEmployee = employees[0];
     setFormData({
-      employee_id: employees[0]?.id ?? "",
+      employee_id: defaultEmployee?.id ?? "",
       bulan: "",
-      total: "",
+      total:
+        defaultEmployee?.gaji_pokok != null && defaultEmployee.gaji_pokok > 0
+          ? String(defaultEmployee.gaji_pokok)
+          : "",
     });
     setEditData(null);
   };
@@ -431,7 +460,7 @@ export default function FinancePayrollPage() {
             <select
               required
               value={formData.employee_id}
-              onChange={(event) => setFormData((prev) => ({ ...prev, employee_id: event.target.value }))}
+              onChange={(event) => handleEmployeeChange(event.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
             >
               <option value="" disabled>
@@ -457,7 +486,7 @@ export default function FinancePayrollPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Gaji</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Nominal Gaji Pokok</label>
             <input
               required
               type="number"
@@ -465,7 +494,7 @@ export default function FinancePayrollPage() {
               value={formData.total}
               onChange={(event) => setFormData((prev) => ({ ...prev, total: event.target.value }))}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
-              placeholder="Masukkan total gaji"
+              placeholder="Terisi otomatis dari data karyawan"
             />
           </div>
 

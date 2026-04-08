@@ -47,6 +47,10 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
 });
 
+function getOrderPrimaryKey(value: { order_id?: string | null; id?: string | null } | null | undefined): string {
+  return value?.order_id ?? value?.id ?? "";
+}
+
 export default function ReturnsPage() {
   const [items, setItems] = useState<TReturnOrder[]>([]);
   const [orders, setOrders] = useState<TProduksiOrder[]>([]);
@@ -61,7 +65,7 @@ export default function ReturnsPage() {
   const [editData, setEditData] = useState<TReturnOrder | null>(null);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<{ order_id: string; alasan: string }>({
     order_id: "",
@@ -93,7 +97,7 @@ export default function ReturnsPage() {
       const payload = await parseJsonResponse<OrdersListPayload>(response);
       const list = payload.data.orders ?? [];
       setOrders(list);
-      setFormData((prev) => ({ ...prev, order_id: prev.order_id || list[0]?.id || "" }));
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || getOrderPrimaryKey(list[0]) || "" }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data pesanan.";
       alert(message);
@@ -129,7 +133,12 @@ export default function ReturnsPage() {
   }, []);
 
   const orderById = useMemo(
-    () => Object.fromEntries(orders.map((order) => [order.id, order])) as Record<string, TProduksiOrder>,
+    () =>
+      Object.fromEntries(
+        orders
+          .map((order) => [getOrderPrimaryKey(order), order] as const)
+          .filter(([orderId]) => !!orderId),
+      ) as Record<string, TProduksiOrder>,
     [orders],
   );
 
@@ -145,7 +154,7 @@ export default function ReturnsPage() {
       const order = orderById[item.order_id ?? ""];
       const productName = productById[order?.product_id ?? ""] ?? "";
       return (
-        (order?.id ?? "").toLowerCase().includes(keyword) ||
+        getOrderPrimaryKey(order).toLowerCase().includes(keyword) ||
         productName.toLowerCase().includes(keyword) ||
         (item.alasan ?? "").toLowerCase().includes(keyword)
       );
@@ -153,7 +162,7 @@ export default function ReturnsPage() {
   }, [items, searchTerm, orderById, productById]);
 
   const resetForm = () => {
-    setFormData({ order_id: orders[0]?.id ?? "", alasan: "" });
+    setFormData({ order_id: getOrderPrimaryKey(orders[0]) || "", alasan: "" });
     setEditData(null);
   };
 
@@ -185,7 +194,7 @@ export default function ReturnsPage() {
       const payload = { order_id: formData.order_id, alasan: formData.alasan.trim() || null };
 
       if (editData) {
-        const response = await apiFetch(`/api/logistics/returns/${editData.id}`, {
+        const response = await apiFetch(`/api/logistics/returns/${getOrderPrimaryKey(editData)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -210,22 +219,22 @@ export default function ReturnsPage() {
     }
   };
 
-  const openDeleteModal = (id: string) => {
-    setDeleteId(id);
+  const openDeleteModal = (orderId: string) => {
+    setSelectedOrderId(orderId);
     setIsDeleteModalOpen(true);
   };
 
   const closeDeleteModal = () => {
-    setDeleteId(null);
+    setSelectedOrderId(null);
     setIsDeleteModalOpen(false);
   };
 
   const handleDelete = async () => {
-    if (!deleteId || isSubmitting) return;
+    if (!selectedOrderId || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      const response = await apiFetch(`/api/logistics/returns/${deleteId}`, {
+      const response = await apiFetch(`/api/logistics/returns/${selectedOrderId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -291,9 +300,9 @@ export default function ReturnsPage() {
                 const order = orderById[item.order_id ?? ""];
                 const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
                 return (
-                  <tr key={item.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{item.id.slice(0, 8).toUpperCase()}</td>
-                    <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{order?.id ?? "Order tidak ditemukan"}</td>
+                  <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
+                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{getOrderPrimaryKey(item).slice(0, 8).toUpperCase()}</td>
+                    <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{getOrderPrimaryKey(order) || "Order tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{productName}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.alasan ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
@@ -310,7 +319,7 @@ export default function ReturnsPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openDeleteModal(item.id)}
+                          onClick={() => openDeleteModal(getOrderPrimaryKey(item))}
                           disabled={isSubmitting}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                         >
@@ -340,7 +349,8 @@ export default function ReturnsPage() {
               <option value="" disabled>Pilih order</option>
               {orders.map((order) => {
                 const productName = productById[order.product_id ?? ""] ?? "Produk";
-                return <option key={order.id} value={order.id}>{order.id} - {productName}</option>;
+                const orderId = getOrderPrimaryKey(order);
+                return <option key={orderId} value={orderId}>{orderId} - {productName}</option>;
               })}
             </select>
           </label>

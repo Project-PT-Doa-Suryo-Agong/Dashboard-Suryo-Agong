@@ -7,7 +7,7 @@ import { ShieldCheck, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
 	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
 
 	type LoginResponse = {
@@ -17,7 +17,7 @@ export default function LoginPage() {
 	async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault();
 		setError(null);
-		setLoading(true);
+		setIsLoading(true);
 
 		const formData = new FormData(e.currentTarget);
 		const email = String(formData.get("email") ?? "").trim();
@@ -40,7 +40,6 @@ export default function LoginPage() {
 
 			if (!response.ok || !payload.success) {
 				setError(payload.error?.message || payload.message || "Login gagal.");
-				setLoading(false);
 				return;
 			}
 
@@ -48,7 +47,8 @@ export default function LoginPage() {
 			window.location.href = redirectUrl || "/management";
 		} catch {
 			setError("Terjadi kesalahan saat login. Silakan coba lagi.");
-			setLoading(false);
+		} finally {
+			setIsLoading(false);
 		}
 	}
 
@@ -96,7 +96,7 @@ export default function LoginPage() {
 								type="email"
 								autoComplete="email"
 								required
-								disabled={loading}
+								disabled={isLoading}
 								className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20 disabled:opacity-50"
 								placeholder="nama@perusahaan.com"
 							/>
@@ -113,7 +113,7 @@ export default function LoginPage() {
 									type={showPassword ? "text" : "password"}
 									autoComplete="current-password"
 									required
-									disabled={loading}
+									disabled={isLoading}
 									className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20 disabled:opacity-50"
 									placeholder="Masukkan password"
 								/>
@@ -134,13 +134,13 @@ export default function LoginPage() {
 
 						<button
 							type="submit"
-							disabled={loading}
+							disabled={isLoading}
 							className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-3 mt-4 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#A88444] disabled:cursor-not-allowed disabled:opacity-50"
 						>
-							{loading ? (
+							{isLoading ? (
 								<>
 									<Loader2 className="h-4 w-4 animate-spin" />
-									Memproses...
+									Loading...
 								</>
 							) : (
 								<>

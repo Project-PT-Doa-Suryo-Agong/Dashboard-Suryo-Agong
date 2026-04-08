@@ -47,6 +47,10 @@ function shortId(id: string | null | undefined) {
   return id.slice(0, 8).toUpperCase();
 }
 
+function getOrderPrimaryKey(value: { order_id?: string | null; id?: string | null } | null | undefined): string {
+  return value?.order_id ?? value?.id ?? "";
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const raw = await response.text();
   let payload: ApiSuccess<T> | ApiError;
@@ -85,7 +89,7 @@ export default function ManifestPage() {
   const [editData, setEditData] = useState<TLogistikManifest | null>(null);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<{ order_id: string; resi: string }>({
     order_id: "",
@@ -117,7 +121,7 @@ export default function ManifestPage() {
       const payload = await parseJsonResponse<OrdersListPayload>(response);
       const list = pickOrders(payload.data);
       setOrders(list);
-      setFormData((prev) => ({ ...prev, order_id: prev.order_id || list[0]?.id || "" }));
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || getOrderPrimaryKey(list[0]) || "" }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data pesanan.";
       alert(message);
@@ -153,7 +157,12 @@ export default function ManifestPage() {
   }, []);
 
   const orderById = useMemo(
-    () => Object.fromEntries(orders.filter((order) => !!order.id).map((order) => [order.id, order])) as Record<string, TProduksiOrder>,
+    () =>
+      Object.fromEntries(
+        orders
+          .map((order) => [getOrderPrimaryKey(order), order] as const)
+          .filter(([orderId]) => !!orderId),
+      ) as Record<string, TProduksiOrder>,
     [orders],
   );
 
@@ -170,14 +179,14 @@ export default function ManifestPage() {
       const productName = productById[order?.product_id ?? ""] ?? "";
       return (
         (item.resi ?? "").toLowerCase().includes(keyword) ||
-        (order?.id ?? "").toLowerCase().includes(keyword) ||
+        getOrderPrimaryKey(order).toLowerCase().includes(keyword) ||
         productName.toLowerCase().includes(keyword)
       );
     });
   }, [items, searchTerm, orderById, productById]);
 
   const resetForm = () => {
-    setFormData({ order_id: orders[0]?.id ?? "", resi: "" });
+    setFormData({ order_id: getOrderPrimaryKey(orders[0]) || "", resi: "" });
     setEditData(null);
   };
 
@@ -213,7 +222,7 @@ export default function ManifestPage() {
       const payload = { order_id: formData.order_id, resi: formData.resi.trim() };
 
       if (editData) {
-        const response = await apiFetch(`/api/logistics/manifest/${editData.id}`, {
+        const response = await apiFetch(`/api/logistics/manifest/${getOrderPrimaryKey(editData)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -238,22 +247,22 @@ export default function ManifestPage() {
     }
   };
 
-  const openDeleteModal = (id: string) => {
-    setDeleteId(id);
+  const openDeleteModal = (orderId: string) => {
+    setSelectedOrderId(orderId);
     setIsDeleteModalOpen(true);
   };
 
   const closeDeleteModal = () => {
-    setDeleteId(null);
+    setSelectedOrderId(null);
     setIsDeleteModalOpen(false);
   };
 
   const handleDelete = async () => {
-    if (!deleteId || isSubmitting) return;
+    if (!selectedOrderId || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      const response = await apiFetch(`/api/logistics/manifest/${deleteId}`, {
+      const response = await apiFetch(`/api/logistics/manifest/${selectedOrderId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -274,8 +283,8 @@ export default function ManifestPage() {
       const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
 
       return {
-        manifest_id: item.id,
-        order_id: order?.id ?? "Order tidak ditemukan",
+        manifest_id: getOrderPrimaryKey(item) || "-",
+        order_id: getOrderPrimaryKey(order) || "Order tidak ditemukan",
         produk: productName,
         resi: item.resi ?? "-",
         dibuat_pada: item.created_at ? dateTimeFormatter.format(new Date(item.created_at)) : "-",
@@ -348,9 +357,9 @@ export default function ManifestPage() {
                 const order = orderById[item.order_id ?? ""];
                 const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
                 return (
-                  <tr key={item.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{shortId(item.id)}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{order?.id ?? item.order_id ?? "Order tidak ditemukan"}</td>
+                  <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
+                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{shortId(getOrderPrimaryKey(item))}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderPrimaryKey(order) || item.order_id || "Order tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{productName}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.resi ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateTimeFormatter.format(new Date(item.created_at)) : "-"}</td>
@@ -367,7 +376,7 @@ export default function ManifestPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openDeleteModal(item.id)}
+                          onClick={() => openDeleteModal(getOrderPrimaryKey(item))}
                           disabled={isSubmitting}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                         >
@@ -395,12 +404,13 @@ export default function ManifestPage() {
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
               <option value="" disabled>Pilih order</option>
-              {formData.order_id && !orders.some((order) => order.id === formData.order_id) ? (
+              {formData.order_id && !orders.some((order) => getOrderPrimaryKey(order) === formData.order_id) ? (
                 <option value={formData.order_id}>{formData.order_id} - Order tersimpan</option>
               ) : null}
               {orders.map((order) => {
                 const productName = productById[order.product_id ?? ""] ?? "Produk";
-                return <option key={order.id} value={order.id}>{order.id} - {productName}</option>;
+                const orderId = getOrderPrimaryKey(order);
+                return <option key={orderId} value={orderId}>{orderId} - {productName}</option>;
               })}
             </select>
           </label>

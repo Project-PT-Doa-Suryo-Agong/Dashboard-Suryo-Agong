@@ -46,17 +46,34 @@ type VendorsListPayload = {
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const raw = await response.text();
+
+  if (!response.ok) {
+    let message = `Request gagal dengan status ${response.status}.`;
+
+    if (raw) {
+      try {
+        const parsedError = JSON.parse(raw) as ApiError;
+        message = parsedError.error?.message || parsedError.message || message;
+      } catch {
+        message = raw.slice(0, 200) || message;
+      }
+    }
+
+    throw new Error(message);
+  }
+
   let payload: ApiSuccess<T> | ApiError;
   try {
     payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
   } catch {
-    const fallback = response.ok ? "Respons server tidak valid (bukan JSON)." : raw.slice(0, 200);
-    throw new Error(fallback || "Respons server tidak valid.");
+    throw new Error("Respons server tidak valid (bukan JSON).")
   }
-  if (!response.ok || !payload.success) {
+
+  if (!payload.success) {
     const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
     throw new Error(message);
   }
+
   return payload;
 }
 
@@ -121,6 +138,9 @@ export default function ProductionOrdersPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data pesanan produksi.";
       alert(message);
+    } finally {
+      // Keep loading state recoverable on any API failure path.
+      setIsLoading(false);
     }
   };
 
@@ -140,6 +160,9 @@ export default function ProductionOrdersPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
       alert(message);
+    } finally {
+      // Keep loading state recoverable on any API failure path.
+      setIsLoading(false);
     }
   };
 
@@ -159,6 +182,9 @@ export default function ProductionOrdersPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat daftar vendor.";
       alert(message);
+    } finally {
+      // Keep loading state recoverable on any API failure path.
+      setIsLoading(false);
     }
   };
 

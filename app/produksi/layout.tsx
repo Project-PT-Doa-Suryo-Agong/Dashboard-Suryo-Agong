@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
 
-// PERBAIKAN ROUTING: Sesuaikan href dengan struktur folder /produksi/...
 const navItems = [
   { label: 'Dashboard Produksi', href: '/produksi', icon: 'LayoutDashboard' },
   { label: 'Pesanan (Orders)', href: '/produksi/orders', icon: 'ClipboardList' },
@@ -41,9 +40,9 @@ export default function ProduksiLayout({
       <Sidebar
         title="Production"
         subtitle="Manufacturing Portal"
-        logoIcon="Factory" // Diubah dari Palette (Creative) ke Factory (Produksi)
+        logoIcon="Factory"
         navItems={navItems}
-        footerAction={{ label: 'New Order', icon: 'Plus' }} // Diubah dari New Campaign
+        footerAction={{ label: 'New Order', icon: 'Plus' }}
         isOpen={isMobileSidebarOpen}
         onClose={() => setIsMobileSidebarOpen(false)}
       />
