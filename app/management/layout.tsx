@@ -7,8 +7,8 @@ import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
   { label: 'Dashboard Overview', href: '/management', icon: 'LayoutDashboard' },
-  { label: 'Budget', href: '/budget', icon: 'Banknote' },
-  { label: 'KPI', href: '/kpi', icon: 'TrendingUp' },
+  { label: 'Budget', href: '/management/budget', icon: 'Banknote' },
+  { label: 'KPI', href: '/management/kpi', icon: 'TrendingUp' },
 ];
 
 export default function CreativeLayout({

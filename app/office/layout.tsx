@@ -7,8 +7,8 @@ import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
   { label: 'Dashboard Overview', href: '/office', icon: 'LayoutDashboard' },
-  { label: 'Product', href: '/products', icon: 'Package' },
-  { label: 'Vendors', href: '/vendors', icon: 'Handshake' },
+  { label: 'Product', href: '/office/products', icon: 'Package' },
+  { label: 'Vendors', href: '/office/vendors', icon: 'Handshake' },
 ];
 
 export default function CreativeLayout({

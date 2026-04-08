@@ -7,9 +7,9 @@ import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
   { label: 'Dashboard Overview', href: '/hr', icon: 'LayoutDashboard' },
-  { label: 'Kehadiran', href: '/attendance', icon: 'CalendarDays' },
-  { label: 'Karyawan', href: '/karyawan', icon: 'Users' },
-  { label: 'Perigatan', href: '/warnings', icon: 'BookAlert' },
+  { label: 'Kehadiran', href: '/hr/attendance', icon: 'CalendarDays' },
+  { label: 'Karyawan', href: '/hr/employees', icon: 'Users' },
+  { label: 'Perigatan', href: '/hr/warnings', icon: 'BookAlert' },
 ];
 
 export default function CreativeLayout({
