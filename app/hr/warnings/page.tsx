@@ -238,7 +238,7 @@ export default function EmployeeWarningsPage() {
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
         >
           <AlertTriangle size={18} />
-          Buat Warning
+          Buat Peringatan
         </button>
       </div>
 
@@ -323,7 +323,7 @@ export default function EmployeeWarningsPage() {
             ) : (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">
-                  Data warning tidak ditemukan.
+                  Data peringatan tidak ditemukan.
                 </td>
               </tr>
             )}
