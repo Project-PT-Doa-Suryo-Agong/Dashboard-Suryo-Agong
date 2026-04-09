@@ -45,10 +45,38 @@ export async function POST(request: Request) {
     return fail(ErrorCode.VALIDATION_ERROR, "status harus pending, approved, atau rejected.", 400);
   }
 
+  let finalBukti = bukti.data ?? null;
+
+  if (finalBukti && finalBukti.startsWith("data:image")) {
+    const matches = finalBukti.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (matches && matches.length === 3) {
+      const mimeType = matches[1];
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, "base64");
+      const ext = mimeType.split("/")[1] || "png";
+      const fileName = `${employeeId.data}-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await auth.ctx.supabase.storage
+        .from("reimbursements")
+        .upload(fileName, buffer, {
+          contentType: mimeType,
+          upsert: true
+        });
+
+      if (uploadError) {
+        return fail(ErrorCode.DB_ERROR, "Gagal upload bukti reimburse ke storage.", 500, uploadError.message);
+      }
+
+      // Karena bucket tipe private, kita cukup simpan path/nama filenya di DB
+      // supaya mudah degenerate URL-nya (signed url) di frontend
+      finalBukti = fileName;
+    }
+  }
+
   const payload: TReimbursementInsert = {
     employee_id: employeeId.data,
     amount: amount.data,
-    bukti: bukti.data ?? null,
+    bukti: finalBukti,
     status: (status.data ?? "pending") as TReimbursementInsert["status"],
   };
 
