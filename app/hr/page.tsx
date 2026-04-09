@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
 	AlertOctagon,
@@ -9,6 +10,9 @@ import {
 	UserCheck,
 	Users,
 } from "lucide-react";
+import { apiFetch } from "@/lib/utils/api-fetch";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type { MKaryawan, TAttendance, TEmployeeWarning } from "@/types/supabase";
 
 type AttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";
 
@@ -26,24 +30,20 @@ type WarningItem = {
 	tanggal: string;
 };
 
-const todayDate = "2026-03-13";
+type EmployeesListPayload = {
+	karyawan: MKaryawan[];
+	meta: { page: number; limit: number; total: number };
+};
 
-const attendanceData: AttendanceItem[] = [
-	{ id: "att-001", employeeName: "Rani Wulandari", status: "hadir", tanggal: todayDate },
-	{ id: "att-002", employeeName: "Bima Pratama", status: "hadir", tanggal: todayDate },
-	{ id: "att-003", employeeName: "Nadia Putri", status: "izin", tanggal: todayDate },
-	{ id: "att-004", employeeName: "Dwi Firmansyah", status: "hadir", tanggal: todayDate },
-	{ id: "att-005", employeeName: "Salsa Maharani", status: "sakit", tanggal: todayDate },
-	{ id: "att-006", employeeName: "Farhan Maulana", status: "alpha", tanggal: todayDate },
-];
+type AttendanceListPayload = {
+	attendance: TAttendance[];
+	meta: { page: number; limit: number; total: number };
+};
 
-const warningData: WarningItem[] = [
-	{ id: "wrn-001", employeeName: "Nadia Putri", level: "SP1", tanggal: "2026-03-12" },
-	{ id: "wrn-002", employeeName: "Agus Setiawan", level: "Teguran Lisan", tanggal: "2026-03-10" },
-	{ id: "wrn-003", employeeName: "Dwi Firmansyah", level: "SP2", tanggal: "2026-03-07" },
-	{ id: "wrn-004", employeeName: "Bima Pratama", level: "SP3", tanggal: "2026-03-03" },
-	{ id: "wrn-005", employeeName: "Salsa Maharani", level: "SP1", tanggal: "2026-03-01" },
-];
+type WarningsListPayload = {
+	warnings: TEmployeeWarning[];
+	meta: { page: number; limit: number; total: number };
+};
 
 const quickLinks = [
 	{
@@ -72,6 +72,23 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
 	year: "numeric",
 });
 
+function getTodayDateInput() {
+	const now = new Date();
+	const year = now.getFullYear();
+	const month = String(now.getMonth() + 1).padStart(2, "0");
+	const day = String(now.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+	const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+	if (!response.ok || !payload.success) {
+		const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+		throw new Error(message);
+	}
+	return payload;
+}
+
 function warningBadgeClass(level: string) {
 	if (level === "SP1") return "bg-amber-100 text-amber-700";
 	if (level === "SP2") return "bg-orange-100 text-orange-700";
@@ -80,9 +97,86 @@ function warningBadgeClass(level: string) {
 }
 
 export default function HrDashboardPage() {
-	const totalKaryawan = 156;
-	const totalAktif = 142;
-	const totalNonaktif = 14;
+	const [employees, setEmployees] = useState<MKaryawan[]>([]);
+	const [attendances, setAttendances] = useState<TAttendance[]>([]);
+	const [warnings, setWarnings] = useState<TEmployeeWarning[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [loadError, setLoadError] = useState<string | null>(null);
+
+	const todayDate = getTodayDateInput();
+
+	useEffect(() => {
+		const fetchDashboardData = async () => {
+			setIsLoading(true);
+			setLoadError(null);
+			try {
+				const [employeesRes, attendanceRes, warningsRes] = await Promise.all([
+					apiFetch("/api/hr/employees?page=1&limit=500", {
+						method: "GET",
+						headers: { "Content-Type": "application/json" },
+						cache: "no-store",
+					}),
+					apiFetch("/api/hr/attendance?page=1&limit=500", {
+						method: "GET",
+						headers: { "Content-Type": "application/json" },
+						cache: "no-store",
+					}),
+					apiFetch("/api/hr/warnings?page=1&limit=500", {
+						method: "GET",
+						headers: { "Content-Type": "application/json" },
+						cache: "no-store",
+					}),
+				]);
+
+				const employeesPayload = await parseJsonResponse<EmployeesListPayload>(employeesRes);
+				const attendancePayload = await parseJsonResponse<AttendanceListPayload>(attendanceRes);
+				const warningsPayload = await parseJsonResponse<WarningsListPayload>(warningsRes);
+
+				setEmployees(employeesPayload.data.karyawan ?? []);
+				setAttendances(attendancePayload.data.attendance ?? []);
+				setWarnings(warningsPayload.data.warnings ?? []);
+			} catch (error) {
+				setLoadError(error instanceof Error ? error.message : "Gagal memuat dashboard HR.");
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		void fetchDashboardData();
+	}, []);
+
+	const employeeNameById = useMemo(
+		() => Object.fromEntries(employees.map((employee) => [employee.id, employee.nama])) as Record<string, string>,
+		[employees],
+	);
+
+	const attendanceData = useMemo(
+		() =>
+			attendances
+				.filter((item) => (item.tanggal ?? "") === todayDate)
+				.map((item) => ({
+					id: item.id,
+					employeeName: item.employee_id ? employeeNameById[item.employee_id] ?? "Karyawan tidak ditemukan" : "Karyawan tidak ditemukan",
+					status: (item.status ?? "alpha") as AttendanceStatus,
+					tanggal: item.tanggal ?? todayDate,
+				})),
+		[attendances, todayDate, employeeNameById],
+	);
+
+	const warningData = useMemo(
+		() =>
+			warnings.map((item) => ({
+				id: item.id,
+				employeeName: item.employee_id ? employeeNameById[item.employee_id] ?? "Karyawan tidak ditemukan" : "Karyawan tidak ditemukan",
+				level: item.level ?? "Teguran Lisan",
+				tanggal: (item.created_at ?? "").slice(0, 10),
+			})),
+		[warnings, employeeNameById],
+	);
+
+	const totalKaryawan = employees.length;
+	const totalAktif = employees.filter((item) => item.status === "aktif").length;
+	const totalNonaktif = employees.filter((item) => item.status === "nonaktif").length;
 
 	const hadirCount = attendanceData.filter((item) => item.status === "hadir").length;
 	const izinCount = attendanceData.filter((item) => item.status === "izin").length;
@@ -92,8 +186,14 @@ export default function HrDashboardPage() {
 	const hadirRate = totalAttendance > 0 ? Math.round((hadirCount / totalAttendance) * 100) : 0;
 	const izinSakitCount = izinCount + sakitCount;
 
-	const monthlyWarningCount = warningData.length;
+	const monthlyWarningCount = warningData.filter((item) => {
+		if (!item.tanggal) return false;
+		const date = new Date(item.tanggal);
+		const now = new Date();
+		return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+	}).length;
 	const recentWarnings = warningData.slice(0, 4);
+	const displayDate = dateFormatter.format(new Date(todayDate));
 
 	const attendanceOverview = [
 		{ label: "Hadir", value: hadirCount, className: "bg-emerald-500" },
@@ -109,9 +209,15 @@ export default function HrDashboardPage() {
 					Dashboard Utama HR
 				</h1>
 				<p className="text-sm text-slate-200 md:text-base">
-					Ringkasan eksekutif divisi SDM per Jumat, 13 Maret 2026.
+					Ringkasan eksekutif divisi SDM per {displayDate}.
 				</p>
 			</div>
+
+			{loadError && (
+				<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+					{loadError}
+				</div>
+			)}
 
 			<div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
 				<div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -222,7 +328,15 @@ export default function HrDashboardPage() {
 								</tr>
 							</thead>
 							<tbody>
-								{recentWarnings.map((item) => (
+								{isLoading ? (
+									<tr>
+										<td colSpan={3} className="px-1 py-3 text-sm text-slate-500">Memuat data...</td>
+									</tr>
+								) : recentWarnings.length === 0 ? (
+									<tr>
+										<td colSpan={3} className="px-1 py-3 text-sm text-slate-500">Belum ada data warning.</td>
+									</tr>
+								) : recentWarnings.map((item) => (
 									<tr key={item.id} className="border-b border-slate-50 last:border-b-0">
 										<td className="px-1 py-2.5 text-sm font-medium text-slate-900">
 											{item.employeeName}
@@ -233,7 +347,7 @@ export default function HrDashboardPage() {
 											</span>
 										</td>
 										<td className="whitespace-nowrap px-1 py-2.5 text-sm text-slate-600">
-											{dateFormatter.format(new Date(item.tanggal))}
+											{item.tanggal ? dateFormatter.format(new Date(item.tanggal)) : "-"}
 										</td>
 									</tr>
 								))}

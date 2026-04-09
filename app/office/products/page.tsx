@@ -6,6 +6,7 @@ import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MProduk, MVarian } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { useProfile } from "@/hooks/use-profile";
 
 type ProductsListPayload = {
   produk: MProduk[];
@@ -51,6 +52,9 @@ function formatRupiah(amount: number): string {
 }
 
 export default function OfficeProductsPage() {
+  const { role } = useProfile();
+  const isOfficeSupport = role === "Office Support";
+
   const [produkItems, setProdukItems] = useState<MProduk[]>([]);
   const [varianItems, setVarianItems] = useState<MVarian[]>([]);
 
@@ -261,14 +265,16 @@ export default function OfficeProductsPage() {
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={openProductModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 w-full sm:w-auto"
-        >
-          <Plus className="h-4 w-4" />
-          Tambah Produk Baru
-        </button>
+        {!isOfficeSupport && (
+          <button
+            type="button"
+            onClick={openProductModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 w-full sm:w-auto"
+          >
+            <Plus className="h-4 w-4" />
+            Tambah Produk Baru
+          </button>
+        )}
       </section>
 
       <section className="space-y-4">

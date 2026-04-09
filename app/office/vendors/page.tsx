@@ -7,6 +7,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MVendor } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { useProfile } from "@/hooks/use-profile";
 
 type VendorsListPayload = {
   vendor: MVendor[];
@@ -45,6 +46,9 @@ function formatDate(date: string | null): string {
 }
 
 export default function OfficeVendorsPage() {
+  const { role } = useProfile();
+  const isOfficeSupport = role === "Office Support";
+
   const [items, setItems] = useState<MVendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -204,14 +208,16 @@ export default function OfficeVendorsPage() {
           />
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 w-full sm:w-auto"
-        >
-          <Plus className="h-4 w-4" />
-          Tambah Vendor
-        </button>
+        {!isOfficeSupport && (
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 w-full sm:w-auto"
+          >
+            <Plus className="h-4 w-4" />
+            Tambah Vendor
+          </button>
+        )}
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
