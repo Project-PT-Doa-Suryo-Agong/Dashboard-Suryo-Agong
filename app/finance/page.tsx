@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   TrendingDown,
@@ -8,6 +9,9 @@ import {
   Wallet,
 } from 'lucide-react';
 import { CashflowLineChart, type CashflowPoint } from '@/components/ui/DashboardCharts';
+import { apiFetch } from '@/lib/utils/api-fetch';
+import type { ApiError, ApiSuccess } from '@/types/api';
+import type { TCashflow, TReimbursement } from '@/types/supabase';
 
 type TransactionType = 'In' | 'Out';
 
@@ -19,51 +23,32 @@ type TransactionItem = {
   amount: number;
 };
 
-const METRICS = {
-  totalBalance: 1250000000,
-  monthlyIncome: 325000000,
-  monthlyExpense: 189500000,
+type CashflowListPayload = {
+  cashflow: TCashflow[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 };
 
-const RECENT_TRANSACTIONS: TransactionItem[] = [
-  {
-    id: 'TRX-240301',
-    date: '13 Mar 2026',
-    description: 'Pelunasan invoice client A',
-    type: 'In',
-    amount: 78500000,
-  },
-  {
-    id: 'TRX-240298',
-    date: '12 Mar 2026',
-    description: 'Pembayaran vendor bahan baku',
-    type: 'Out',
-    amount: 45250000,
-  },
-  {
-    id: 'TRX-240287',
-    date: '10 Mar 2026',
-    description: 'Pembayaran termin proyek B',
-    type: 'In',
-    amount: 120000000,
-  },
-  {
-    id: 'TRX-240281',
-    date: '09 Mar 2026',
-    description: 'Biaya operasional kantor',
-    type: 'Out',
-    amount: 18750000,
-  },
-];
+type ReimburseListPayload = {
+  reimburse: TReimbursement[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
 
-const CASHFLOW_PREVIEW_DATA: CashflowPoint[] = [
-  { bulan: 'Okt', pemasukan: 235000000, pengeluaran: 172000000 },
-  { bulan: 'Nov', pemasukan: 261000000, pengeluaran: 183000000 },
-  { bulan: 'Des', pemasukan: 289000000, pengeluaran: 204000000 },
-  { bulan: 'Jan', pemasukan: 248000000, pengeluaran: 191000000 },
-  { bulan: 'Feb', pemasukan: 307000000, pengeluaran: 212000000 },
-  { bulan: 'Mar', pemasukan: 325000000, pengeluaran: 189500000 },
-];
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? 'Terjadi kesalahan.' : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
 
 function formatRupiah(amount: number): string {
   return new Intl.NumberFormat('id-ID', {
@@ -74,6 +59,125 @@ function formatRupiah(amount: number): string {
 }
 
 export default function FinanceDashboardPage() {
+  const [cashflowItems, setCashflowItems] = useState<TCashflow[]>([]);
+  const [reimburseItems, setReimburseItems] = useState<TReimbursement[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const [cashflowResponse, reimburseResponse] = await Promise.all([
+          apiFetch('/api/finance/cashflow?page=1&limit=500', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+          }),
+          apiFetch('/api/finance/reimburse?page=1&limit=200', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+          }),
+        ]);
+
+        const cashflowPayload = await parseJsonResponse<CashflowListPayload>(cashflowResponse);
+        const reimbursePayload = await parseJsonResponse<ReimburseListPayload>(reimburseResponse);
+
+        setCashflowItems(cashflowPayload.data.cashflow ?? []);
+        setReimburseItems(reimbursePayload.data.reimburse ?? []);
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : 'Gagal memuat data dashboard finance.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchDashboardData();
+  }, []);
+
+  const metrics = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    let totalBalance = 0;
+    let monthlyIncome = 0;
+    let monthlyExpense = 0;
+
+    for (const item of cashflowItems) {
+      const amount = item.amount ?? 0;
+      const isIncome = item.tipe === 'income';
+
+      totalBalance += isIncome ? amount : -amount;
+
+      if (!item.created_at) continue;
+      const date = new Date(item.created_at);
+      if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+        if (isIncome) monthlyIncome += amount;
+        else monthlyExpense += amount;
+      }
+    }
+
+    return { totalBalance, monthlyIncome, monthlyExpense };
+  }, [cashflowItems]);
+
+  const cashflowPreviewData = useMemo<CashflowPoint[]>(() => {
+    const now = new Date();
+    const buckets = new Map<string, { label: string; pemasukan: number; pengeluaran: number }>();
+
+    for (let i = 5; i >= 0; i -= 1) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const labelRaw = new Intl.DateTimeFormat('id-ID', { month: 'short' }).format(date);
+      const label = labelRaw.replace('.', '').replace(/^./, (s) => s.toUpperCase());
+      buckets.set(key, { label, pemasukan: 0, pengeluaran: 0 });
+    }
+
+    for (const item of cashflowItems) {
+      if (!item.created_at) continue;
+      const date = new Date(item.created_at);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const bucket = buckets.get(key);
+      if (!bucket) continue;
+
+      const amount = item.amount ?? 0;
+      if (item.tipe === 'income') bucket.pemasukan += amount;
+      if (item.tipe === 'expense') bucket.pengeluaran += amount;
+    }
+
+    return Array.from(buckets.values()).map((item) => ({
+      bulan: item.label,
+      pemasukan: item.pemasukan,
+      pengeluaran: item.pengeluaran,
+    }));
+  }, [cashflowItems]);
+
+  const recentTransactions = useMemo<TransactionItem[]>(() => {
+    return [...cashflowItems]
+      .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+      .slice(0, 4)
+      .map((item) => ({
+        id: item.id,
+        date: item.created_at
+          ? new Intl.DateTimeFormat('id-ID', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            }).format(new Date(item.created_at))
+          : '-',
+        description: item.keterangan?.trim() || 'Transaksi cashflow',
+        type: item.tipe === 'income' ? 'In' : 'Out',
+        amount: item.amount ?? 0,
+      }));
+  }, [cashflowItems]);
+
+  const pendingReimburseCount = useMemo(
+    () => reimburseItems.filter((item) => item.status === 'pending').length,
+    [reimburseItems],
+  );
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 lg:space-y-8 max-w-7xl mx-auto w-full">
       <section className="space-y-1 md:space-y-2">
@@ -83,12 +187,18 @@ export default function FinanceDashboardPage() {
         </p>
       </section>
 
+      {loadError && (
+        <section className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}
+        </section>
+      )}
+
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         <article className="bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2 min-w-0">
               <p className="text-xs uppercase tracking-wide font-semibold text-slate-500 truncate">Total Saldo Perusahaan</p>
-              <p className="text-base md:text-2xl font-bold text-slate-900 wrap-break-word">{formatRupiah(METRICS.totalBalance)}</p>
+              <p className="text-base md:text-2xl font-bold text-slate-900 wrap-break-word">{formatRupiah(metrics.totalBalance)}</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#BC934B]/15 text-[#1E3A8A]">
               <Wallet className="h-4 w-4 md:h-5 md:w-5" />
@@ -100,7 +210,7 @@ export default function FinanceDashboardPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2 min-w-0">
               <p className="text-xs uppercase tracking-wide font-semibold text-slate-500 truncate">Pemasukan Bulan Ini</p>
-              <p className="text-base md:text-2xl font-bold text-emerald-600 wrap-break-word">{formatRupiah(METRICS.monthlyIncome)}</p>
+              <p className="text-base md:text-2xl font-bold text-emerald-600 wrap-break-word">{formatRupiah(metrics.monthlyIncome)}</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <TrendingUp className="h-4 w-4 md:h-5 md:w-5" />
@@ -112,7 +222,7 @@ export default function FinanceDashboardPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2 min-w-0">
               <p className="text-xs uppercase tracking-wide font-semibold text-slate-500 truncate">Pengeluaran Bulan Ini</p>
-              <p className="text-base md:text-2xl font-bold text-red-600 wrap-break-word">{formatRupiah(METRICS.monthlyExpense)}</p>
+              <p className="text-base md:text-2xl font-bold text-red-600 wrap-break-word">{formatRupiah(metrics.monthlyExpense)}</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
               <TrendingDown className="h-4 w-4 md:h-5 md:w-5" />
@@ -126,7 +236,7 @@ export default function FinanceDashboardPage() {
           <h2 className="text-sm md:text-base font-bold text-slate-900">Tren Cashflow</h2>
           <p className="text-xs md:text-sm text-slate-500 mt-1">Preview interaktif pemasukan vs pengeluaran 6 bulan terakhir.</p>
         </div>
-        <CashflowLineChart data={CASHFLOW_PREVIEW_DATA} />
+        <CashflowLineChart data={cashflowPreviewData} />
       </section>
 
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -137,7 +247,7 @@ export default function FinanceDashboardPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-3 min-w-0">
               <div className="inline-flex items-center rounded-full border border-orange-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-orange-400">
-                3 Pending
+                {isLoading ? 'Loading...' : `${pendingReimburseCount} Pending`}
               </div>
               <h2 className="text-base md:text-lg font-bold text-slate-900 wrap-break-word">Approval Pengajuan Dana</h2>
               <p className="text-sm text-slate-500 wrap-break-word">Tinjau dan proses pengajuan dana yang menunggu persetujuan.</p>
@@ -181,7 +291,7 @@ export default function FinanceDashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {RECENT_TRANSACTIONS.map((item) => (
+              {recentTransactions.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="px-4 md:px-6 py-3 text-sm font-mono text-slate-600">{item.id}</td>
                   <td className="px-4 md:px-6 py-3 text-sm text-slate-600">{item.date}</td>
@@ -205,6 +315,13 @@ export default function FinanceDashboardPage() {
                   </td>
                 </tr>
               ))}
+              {!isLoading && recentTransactions.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 md:px-6 py-6 text-sm text-slate-500">
+                    Belum ada data transaksi cashflow.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
