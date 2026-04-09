@@ -89,6 +89,15 @@ const statusBadgeClass: Record<ProductionStatus, string> = {
   done: "bg-emerald-100 text-emerald-700",
 };
 
+const CRUD_PRIMARY_BUTTON_CLASS =
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC934B]/30 disabled:opacity-50";
+const CRUD_EDIT_BUTTON_CLASS =
+  "inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 disabled:opacity-50";
+const CRUD_DELETE_BUTTON_CLASS =
+  "inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 disabled:opacity-50";
+const CRUD_CANCEL_BUTTON_CLASS =
+  "inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 disabled:opacity-50";
+
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
@@ -371,7 +380,7 @@ export default function ProductionOrdersPage() {
         <button
           type="button"
           onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] w-full sm:w-auto"
+          className={`${CRUD_PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
         >
           <Plus className="h-4 w-4" />
           Buat Pesanan Baru
@@ -429,7 +438,7 @@ export default function ProductionOrdersPage() {
                           type="button"
                           onClick={() => openEditModal(item)}
                           disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+                          className={CRUD_EDIT_BUTTON_CLASS}
                         >
                           <Edit3 className="h-4 w-4" />
                           Edit
@@ -438,7 +447,7 @@ export default function ProductionOrdersPage() {
                           type="button"
                           onClick={() => openDeleteModal(item.id)}
                           disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                          className={CRUD_DELETE_BUTTON_CLASS}
                         >
                           <Trash2 className="h-4 w-4" />
                           Hapus
@@ -524,14 +533,14 @@ export default function ProductionOrdersPage() {
               type="button"
               onClick={closeFormModal}
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              className={CRUD_CANCEL_BUTTON_CLASS}
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] disabled:opacity-50"
+              className={CRUD_PRIMARY_BUTTON_CLASS}
             >
               {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
             </button>
