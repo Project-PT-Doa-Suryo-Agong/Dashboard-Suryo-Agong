@@ -28,27 +28,33 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (Object.keys(input).length === 0) {
     return fail(ErrorCode.VALIDATION_ERROR, "Tidak ada field yang diupdate.", 400);
   }
+  const payload: Record<string, any> = {};
+
   if ("vendor_id" in input) {
-    const vendorId = requireUUID(input, "vendor_id", { optional: true });
+    const vendorId = requireUUID(input, "vendor_id");
     if (!vendorId.ok) return fail(ErrorCode.VALIDATION_ERROR, vendorId.message, 400);
+    payload.vendor_id = vendorId.data;
   }
   if ("product_id" in input) {
-    const productId = requireUUID(input, "product_id", { optional: true });
+    const productId = requireUUID(input, "product_id");
     if (!productId.ok) return fail(ErrorCode.VALIDATION_ERROR, productId.message, 400);
+    payload.product_id = productId.data;
   }
   if ("quantity" in input) {
-    const quantity = requireNumber(input, "quantity", { min: 0, optional: true });
+    const quantity = requireNumber(input, "quantity", { min: 0 });
     if (!quantity.ok) return fail(ErrorCode.VALIDATION_ERROR, quantity.message, 400);
+    payload.quantity = quantity.data;
   }
   if ("status" in input) {
-    const status = requireString(input, "status", { optional: true });
+    const status = requireString(input, "status");
     if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);
-    if (status.data !== null && !["draft", "ongoing", "done"].includes(status.data)) {
+    if (!["draft", "ongoing", "done"].includes(status.data as string)) {
       return fail(ErrorCode.VALIDATION_ERROR, "status harus draft, ongoing, atau done.", 400);
     }
+    payload.status = status.data;
   }
 
-  const { data, error } = await updateProduksiOrder(auth.ctx.supabase, id, input);
+  const { data, error } = await updateProduksiOrder(auth.ctx.supabase, id, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update produksi order.", 500, error.message);
   if (!data) return fail(ErrorCode.NOT_FOUND, "Produksi order tidak ditemukan.", 404);
   return ok({ order: data });

@@ -223,13 +223,15 @@ CREATE POLICY "HR and strategic can update attendance"
 ON hr.t_attendance FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'HR')
+  core.get_user_role() IN ('Developer', 'CEO', 'HR', 'HR & Operation Manager')
 );
 
 CREATE POLICY "Strategic can delete attendance"
 ON hr.t_attendance FOR DELETE
 TO authenticated
-USING (core.is_strategic());
+USING (
+  core.is_strategic() OR core.get_user_role() IN ('HR', 'HR & Operation Manager')
+);
 
 --  hr.t_employee_warning 
 
@@ -364,21 +366,21 @@ CREATE POLICY "Produksi and strategic can read production orders"
 ON production.t_produksi_order FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Logistik')
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control', 'Logistik', 'Logistics & Packing')
 );
 
 CREATE POLICY "Produksi and strategic can insert production orders"
 ON production.t_produksi_order FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control')
 );
 
 CREATE POLICY "Produksi and strategic can update production orders"
 ON production.t_produksi_order FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control')
 );
 
 CREATE POLICY "Strategic can delete production orders"
@@ -394,21 +396,21 @@ CREATE POLICY "Produksi and strategic can read QC inbound"
 ON production.t_qc_inbound FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Logistik')
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control', 'Logistik', 'Logistics & Packing')
 );
 
 CREATE POLICY "Produksi and strategic can insert QC inbound"
 ON production.t_qc_inbound FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control')
 );
 
 CREATE POLICY "Produksi and strategic can update QC inbound"
 ON production.t_qc_inbound FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control')
 );
 
 CREATE POLICY "Strategic can delete QC inbound"
@@ -424,21 +426,21 @@ CREATE POLICY "Produksi and strategic can read QC outbound"
 ON production.t_qc_outbound FOR SELECT
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Logistik')
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control', 'Logistik', 'Logistics & Packing')
 );
 
 CREATE POLICY "Produksi and strategic can insert QC outbound"
 ON production.t_qc_outbound FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control')
 );
 
 CREATE POLICY "Produksi and strategic can update QC outbound"
 ON production.t_qc_outbound FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Produksi')
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control')
 );
 
 CREATE POLICY "Strategic can delete QC outbound"

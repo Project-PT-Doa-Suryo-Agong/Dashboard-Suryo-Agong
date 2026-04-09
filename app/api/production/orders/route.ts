@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireLevel("strategic", "managerial");
+  const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
 
   let body: unknown;
@@ -34,19 +34,16 @@ export async function POST(request: Request) {
   if (!quantity.ok) return fail(ErrorCode.VALIDATION_ERROR, quantity.message, 400);
   const status = requireString(input, "status", { optional: true });
   if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);
-  if (status.data !== null && !["draft", "ongoing", "done"].includes(status.data)) {
+  if (status.data && !["draft", "ongoing", "done"].includes(status.data as string)) {
     return fail(ErrorCode.VALIDATION_ERROR, "status harus draft, ongoing, atau done.", 400);
   }
-  if (!("vendor_id" in input) && !("product_id" in input) && !("quantity" in input) && !("status" in input)) {
-    return fail(ErrorCode.VALIDATION_ERROR, "Minimal satu field produksi order harus diisi.", 400);
-  }
 
+  // Setidaknya validasi ini memastikan payload bersih dari extraneous keys.
   const payload: TProduksiOrderInsert = {
-    ...input,
     vendor_id: vendorId.data,
     product_id: productId.data,
     quantity: quantity.data,
-    status: status.data as TProduksiOrderInsert["status"],
+    status: (status.data ?? "draft") as TProduksiOrderInsert["status"],
   };
 
   const { data, error } = await createProduksiOrder(auth.ctx.supabase, payload);

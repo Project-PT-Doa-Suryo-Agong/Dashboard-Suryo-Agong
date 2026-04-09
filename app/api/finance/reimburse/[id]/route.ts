@@ -33,6 +33,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!amount.ok) return fail(ErrorCode.VALIDATION_ERROR, amount.message, 400);
     payload.amount = amount.data;
   }
+  if ("bukti" in input) {
+    const bukti = requireString(input, "bukti", { optional: true });
+    if (!bukti.ok) return fail(ErrorCode.VALIDATION_ERROR, bukti.message, 400);
+    payload.bukti = bukti.data;
+  }
+  if ("keterangan" in input) {
+    const keterangan = requireString(input, "keterangan", { optional: true });
+    if (!keterangan.ok) return fail(ErrorCode.VALIDATION_ERROR, keterangan.message, 400);
+    payload.keterangan = keterangan.data;
+  }
   if ("status" in input) {
     const status = requireString(input, "status");
     if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);

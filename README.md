@@ -180,7 +180,17 @@ Saat ini, migrasi arsitektur *Hybrid* (Fase 1 hingga Fase 4) di sisi server/back
 3. **Perbaikan Relasi Karyawan**: RLS telah diperbaiki. Halaman Finance (*Payroll/Reimburse*) sekarang dijamin dapat me-load karyawan HR tanpa error.
 4. **Trigger Otomatis Anggaran (Budget)**: Jika Budget di-*approve*, data *Cashflow* akan tercipta otomatis. Frontend dilarang memanggil API POST `/api/finance/cashflow` secara implisit/ganda saat menyetujui anggaran.
 5. **Keamanan Payload API Finance**: Parameter `...input` yang disebar sembarangan telah difilter ketat di API. Jika ada form field frontend yang berlebihan, backend akan otomatis membuangnya.
-*(Silakan hapus poin catatan 6 ini jika penyesuaian UX/UI frontend & testing sudah diselesaikan).*
+
+### 7. Catatan Pembaruan Backend (HR & Produksi)
+**Konteks Pembaruan**: RLS Produksi dan HR Attendance, perbaikan endpoint Order (Crash 500), serta logika Create M_Karyawan yang terstruktur telah rampung.
+**Tindakan Frontend**:
+1. **Alur Create Karyawan Baru (Sangat Penting)**: Halaman `app/hr/karyawan/page.tsx` saat ini di-hardcode dengan `useInsertKaryawan` (Supabase Direct) dan `<select>` "Profile_id". **Harap ubah ini.** Penambahan Karyawan *wajib* memanggil API endpoint via **POST `/api/hr/employees`** dengan payload: `{ email, password, nama, role, posisi, divisi, status, gaji_pokok, phone }`. Ini diwajibkan karena backend bertugas menyiapkan akun (auth) secara terpusat! Update dan Delete boleh tetap dengan direct API, namun Insert wajib via endpoint.
+2. **Perbaikan RLS Delete/Update HR (Attendance)**: Role 'HR & Operation Manager' tidak lagi tertolak saat ingin mengupdate atau mendelete *Attendance* berkat penyetelan nama role RLS yang diselaraskan dengan backend policy terbaru.
+3. **Unexpected JSON Token (Crash Server Order)**: Endpoint `/api/production/orders` dan QC telah direvisi total. Backend tak lagi crash bila Frontend menyisipkan ekstra-parameter. `...input` telah kami potong ke model *strict map constraint*.
+4. **RLS Issue Add/Delete Order (Produksi)**: Sistem sekarang dapat memproses CRUD dan *Add Sales Order* dari role 'Produksi' dan 'Produksi & Quality Control'. *Security Guards* di API level Next.js (`requireLevel`) juga diekstensikan mencakup role kelas `operational` yang sebelumnya dilupakan untuk Produksi.
+5. **Reimbursement Bukti Upload**: File SQL `supabase/add_kolom_reimburse.sql` telah dibuat. **Penting:** Jalankan script ini di menu SQL Editor Supabase Anda untuk menyuntikkan kolom `bukti` dan `keterangan` ke tabel `t_reimbursement`. Untuk alur Frontend: upload bukti ke `supabase.storage`, lalu ambil URL/Path nya. Lempar path tersebut via Fetch `POST /api/finance/reimburse` (field JSON: `"bukti": "url..."`) menuju Backend, *bukan di-insert secara direct dari browser*.
+
+*(Silakan hapus poin catatan 6 & 7 ini jika penyesuaian UX/UI frontend & testing sudah diselesaikan).*
 
 ## Getting Started
 

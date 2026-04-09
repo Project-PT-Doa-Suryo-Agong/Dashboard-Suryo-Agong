@@ -34,12 +34,8 @@ export async function POST(request: Request) {
   if (hasil.data !== null && !["pass", "reject"].includes(hasil.data)) {
     return fail(ErrorCode.VALIDATION_ERROR, "hasil harus pass atau reject.", 400);
   }
-  if (!("produksi_order_id" in input) && !("hasil" in input)) {
-    return fail(ErrorCode.VALIDATION_ERROR, "Minimal satu field qc-inbound harus diisi.", 400);
-  }
-
+  // Create strict payload without input spreading to avoid DB type mismatches
   const payload: TQCInboundInsert = {
-    ...input,
     produksi_order_id: produksiOrderId.data,
     hasil: hasil.data as TQCInboundInsert["hasil"],
   };
