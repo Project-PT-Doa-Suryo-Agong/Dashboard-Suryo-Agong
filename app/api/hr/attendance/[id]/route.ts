@@ -27,6 +27,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const { data, error } = await updateAttendance(auth.ctx.supabase, id, input);
+  console.log("[HR ROUTE][attendance][PATCH] auth level:", auth.ctx.accessLevel);
+  console.log("[HR ROUTE][attendance][PATCH] role:", auth.ctx.role);
+  console.log("[HR ROUTE][attendance][PATCH] query result:", {
+    id: data?.id ?? null,
+    hasError: Boolean(error),
+    error: error?.message,
+  });
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update attendance.", 500, error.message);
   if (!data) return fail(ErrorCode.NOT_FOUND, "Data attendance tidak ditemukan.", 404);
   return ok({ attendance: data });
@@ -38,6 +45,13 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const { id } = await params;
 
   const { error, deleted } = await deleteAttendance(auth.ctx.supabase, id);
+  console.log("[HR ROUTE][attendance][DELETE] auth level:", auth.ctx.accessLevel);
+  console.log("[HR ROUTE][attendance][DELETE] role:", auth.ctx.role);
+  console.log("[HR ROUTE][attendance][DELETE] query result:", {
+    deleted,
+    hasError: Boolean(error),
+    error: error?.message,
+  });
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal hapus attendance.", 500, error.message);
   if (!deleted) return fail(ErrorCode.NOT_FOUND, "Data attendance tidak ditemukan.", 404);
   return ok(null, "Data attendance berhasil dihapus.");
