@@ -13,6 +13,13 @@ export async function GET(request: Request) {
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 50, 1), 500);
 
   const { data, error, meta } = await listKaryawan(auth.ctx.supabase, page, limit);
+  console.log("[HR ROUTE][employees][GET] auth level:", auth.ctx.accessLevel);
+  console.log("[HR ROUTE][employees][GET] role:", auth.ctx.role);
+  console.log("[HR ROUTE][employees][GET] query result:", {
+    count: data.length,
+    hasError: Boolean(error),
+    error: error?.message,
+  });
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data karyawan.", 500, error.message);
   return ok({ karyawan: data, meta });
 }
@@ -34,6 +41,14 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await createKaryawan(auth.ctx.supabase, parsed.data);
+
+  console.log("[HR ROUTE][employees][POST] auth level:", auth.ctx.accessLevel);
+  console.log("[HR ROUTE][employees][POST] role:", auth.ctx.role);
+  console.log("[HR ROUTE][employees][POST] query result:", {
+    id: data?.id ?? null,
+    hasError: Boolean(error),
+    error: error?.message,
+  });
 
   if (error) {
     return fail(ErrorCode.DB_ERROR, "Gagal menambahkan karyawan baru.", 500, error.message);
