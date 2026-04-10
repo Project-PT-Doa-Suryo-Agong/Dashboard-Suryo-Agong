@@ -2,8 +2,8 @@ import React from 'react';
 import { Menu } from 'lucide-react';
 
 interface TopbarUser {
-  name: string;
-  role: string;
+  name?: string | null;
+  role?: string | null;
   avatar?: string;
 }
 
@@ -13,13 +13,10 @@ interface TopbarProps {
   onMenuClick?: () => void;
 }
 
-const DEFAULT_USER: TopbarUser = {
-  name: 'Alex Rivera',
-  role: 'Admin Account',
-};
-
 export default function Topbar({ title = 'Dashboard Overview', user, onMenuClick }: TopbarProps) {
-  const { name, role, avatar } = { ...DEFAULT_USER, ...user };
+  const name = user?.name?.trim() ?? '';
+  const role = user?.role?.trim() ?? '';
+  const avatar = user?.avatar;
   const initials = name
     .split(' ')
     .filter(Boolean)
@@ -46,13 +43,13 @@ export default function Topbar({ title = 'Dashboard Overview', user, onMenuClick
         {/* User Profile */}
         <div className="flex items-center gap-2 md:gap-3">
           <div className="text-right hidden sm:block">
-            <p className="text-xs md:text-sm font-bold text-slate-900 leading-none">{name}</p>
-            <p className="text-[10px] md:text-xs text-slate-500">{role}</p>
+            {name ? <p className="text-xs md:text-sm font-bold text-slate-900 leading-none">{name}</p> : null}
+            {role ? <p className="text-[10px] md:text-xs text-slate-500">{role}</p> : null}
           </div>
           <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-slate-200 text-slate-700 overflow-hidden flex items-center justify-center text-xs font-semibold">
             {avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt={name} className="h-full w-full object-cover" />
+              <img src={avatar} alt={name || 'User avatar'} className="h-full w-full object-cover" />
             ) : (
               <span>{initials || 'NA'}</span>
             )}

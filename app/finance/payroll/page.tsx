@@ -397,22 +397,25 @@ export default function FinancePayrollPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <tr>
+                <tr key="loading-row">
                   <td colSpan={5} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
                     Memuat data...
                   </td>
                 </tr>
               ) : filteredPayroll.length === 0 ? (
-                <tr>
+                <tr key="empty-row">
                   <td colSpan={5} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
                     Karyawan tidak ditemukan.
                   </td>
                 </tr>
               ) : (
-                filteredPayroll.map((item) => {
+                filteredPayroll.map((item, index) => {
                   const employeeName = employeeById[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan";
+                  const rowKey =
+                    item.id ??
+                    `${item.employee_id ?? "unknown"}-${item.bulan ?? "no-period"}-${item.created_at ?? "no-date"}-${index}`;
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr key={rowKey} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.bulan ? formatPeriod(item.bulan) : "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-900 whitespace-nowrap">{employeeName}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-semibold text-right text-slate-900 whitespace-nowrap">{formatRupiah(item.total ?? 0)}</td>

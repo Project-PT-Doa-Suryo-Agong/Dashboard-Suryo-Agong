@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Package,
   Save,
@@ -11,6 +12,8 @@ import {
   PlusCircle,
   ChevronDown,
   ChevronRight,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import type { MProduk } from "@/types/supabase";
 import {
@@ -19,6 +22,10 @@ import {
   useUpdateProduct,
   useDeleteProduct,
 } from "@/lib/supabase/hooks/index";
+import {
+  uploadProdukFoto,
+  extractStoragePath,
+} from "@/lib/utils/upload-produk-foto";
 
 const KATEGORI_LIST = [
   "Pakaian",
@@ -35,6 +42,13 @@ export default function ProdukPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // ── Foto state ──
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [existingFotoUrl, setExistingFotoUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Supabase Direct: read products ──
   const { data: produkList, loading: isLoading, error: readError, refresh } = useProducts();
@@ -44,11 +58,29 @@ export default function ProdukPage() {
   const { update } = useUpdateProduct();
   const { remove } = useDeleteProduct();
 
-  const resetForm = () => {
+  const handleFotoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFotoFile(file);
+    setFotoPreview(URL.createObjectURL(file));
+  }, []);
+
+  const handleRemoveFoto = useCallback(() => {
+    setFotoFile(null);
+    setFotoPreview(null);
+    setExistingFotoUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  const resetForm = useCallback(() => {
     setNamaProduk("");
     setKategori("");
     setEditingId(null);
-  };
+    setFotoFile(null);
+    setFotoPreview(null);
+    setExistingFotoUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,17 +88,32 @@ export default function ProdukPage() {
 
     setIsSubmitting(true);
     try {
+      let fotoUrl: string | null = existingFotoUrl ?? null;
+
+      // Upload new foto if selected
+      if (fotoFile) {
+        setIsUploading(true);
+        const oldPath = existingFotoUrl
+          ? extractStoragePath(existingFotoUrl)
+          : null;
+        fotoUrl = await uploadProdukFoto(fotoFile, oldPath);
+        setIsUploading(false);
+      }
+
+      const payload = { nama_produk: namaProduk, kategori, foto_url: fotoUrl };
+
       if (editingId) {
-        const result = await update(editingId, { nama_produk: namaProduk, kategori });
+        const result = await update(editingId, payload);
         if (!result) throw new Error("Gagal update produk.");
       } else {
-        const result = await insert({ nama_produk: namaProduk, kategori });
+        const result = await insert(payload);
         if (!result) throw new Error("Gagal membuat produk.");
       }
 
       refresh();
       resetForm();
     } catch (error) {
+      setIsUploading(false);
       const message = error instanceof Error ? error.message : "Operasi simpan produk gagal.";
       alert(message);
     } finally {
@@ -78,6 +125,10 @@ export default function ProdukPage() {
     setEditingId(p.id);
     setNamaProduk(p.nama_produk);
     setKategori(p.kategori ?? "");
+    setFotoFile(null);
+    setFotoPreview(null);
+    setExistingFotoUrl(p.foto_url ?? null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -106,6 +157,9 @@ export default function ProdukPage() {
       ),
     [produkList, searchQuery],
   );
+
+  // The preview to show in the form — new file takes priority over existing URL
+  const displayPreview = fotoPreview ?? existingFotoUrl ?? null;
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
@@ -142,6 +196,7 @@ export default function ProdukPage() {
         </div>
       </div>
 
+      {/* ── Form Section ── */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-6">
           <PlusCircle size={18} className="text-slate-400" />
@@ -158,10 +213,8 @@ export default function ProdukPage() {
           )}
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Nama Produk */}
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">
               Nama Produk <span className="text-red-400">*</span>
@@ -176,6 +229,7 @@ export default function ProdukPage() {
             />
           </div>
 
+          {/* Kategori */}
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">
               Kategori <span className="text-red-400">*</span>
@@ -203,6 +257,80 @@ export default function ProdukPage() {
             </div>
           </div>
 
+          {/* Foto Produk — full width */}
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">
+              Foto Produk <span className="text-slate-400 normal-case font-normal">(opsional)</span>
+            </label>
+
+            <div className="flex items-start gap-4">
+              {/* Preview box */}
+              <div className="relative flex-shrink-0 w-28 h-28 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center group">
+                {displayPreview ? (
+                  <>
+                    <Image
+                      src={displayPreview}
+                      alt="Preview foto produk"
+                      fill
+                      className="object-cover"
+                      sizes="112px"
+                      unoptimized={displayPreview.startsWith("blob:")}
+                    />
+                    {/* Remove overlay */}
+                    <button
+                      type="button"
+                      onClick={handleRemoveFoto}
+                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      title="Hapus foto"
+                    >
+                      <X size={20} className="text-white" />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-slate-400">
+                    <ImagePlus size={24} />
+                    <span className="text-[10px]">Belum ada foto</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Controls */}
+              <div className="flex flex-col gap-2 pt-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handleFotoChange}
+                  id="foto-produk-input"
+                />
+                <label
+                  htmlFor="foto-produk-input"
+                  className="inline-flex items-center gap-2 cursor-pointer rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors"
+                >
+                  <ImagePlus size={15} />
+                  {displayPreview ? "Ganti Foto" : "Pilih Foto"}
+                </label>
+
+                {displayPreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveFoto}
+                    className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <X size={15} />
+                    Hapus Foto
+                  </button>
+                )}
+
+                <p className="text-xs text-slate-400 mt-1">
+                  Format: JPG, PNG, WEBP. Maks 5 MB.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Submit button */}
           <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
@@ -210,12 +338,19 @@ export default function ProdukPage() {
               className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-xl shadow-md shadow-green-100 transition-all"
             >
               <Save size={17} />
-              {isSubmitting ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Save Product"}
+              {isUploading
+                ? "Mengunggah foto..."
+                : isSubmitting
+                  ? "Menyimpan..."
+                  : editingId
+                    ? "Simpan Perubahan"
+                    : "Save Product"}
             </button>
           </div>
         </form>
       </section>
 
+      {/* ── Table Section ── */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {readError ? (
           <p className="px-5 pt-5 text-sm text-rose-600">Gagal memuat data produk: {readError}</p>
@@ -250,7 +385,7 @@ export default function ProdukPage() {
             <thead className="bg-slate-50/80">
               <tr>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                  ID
+                  Foto
                 </th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
                   Nama Produk
@@ -291,8 +426,21 @@ export default function ProdukPage() {
                     key={p.id}
                     className="hover:bg-slate-50/60 transition-colors"
                   >
-                    <td className="px-6 py-4 text-xs font-mono text-slate-400">
-                      {p.id}
+                    {/* Foto thumbnail */}
+                    <td className="px-6 py-3">
+                      <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center flex-shrink-0">
+                        {p.foto_url ? (
+                          <Image
+                            src={p.foto_url}
+                            alt={p.nama_produk}
+                            fill
+                            className="object-cover"
+                            sizes="48px"
+                          />
+                        ) : (
+                          <Package size={18} className="text-slate-300" />
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-slate-800">
                       {p.nama_produk}

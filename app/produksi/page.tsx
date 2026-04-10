@@ -1,195 +1,62 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   CheckSquare,
   ClipboardList,
   ShieldAlert,
 } from "lucide-react";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type {
+  MProduk,
+  ProductionQcResult,
+  ProductionStatus,
+  TProduksiOrder,
+  TQCInbound,
+  TQCOutbound,
+} from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
-type OrderStatus = "draft" | "ongoing" | "done";
-type QcResultStatus = "pass" | "reject";
-
-type OrderSummary = {
-  id: string;
-  product_name: string;
-  target_qty: number;
-  status: OrderStatus;
-  start_date: string;
+type OrdersListPayload = {
+  orders: TProduksiOrder[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 };
 
-type QcSummary = {
-  id: string;
-  reference_id: string;
-  product_name: string;
-  qty: number;
-  status: QcResultStatus;
-  date: string;
+type QcInboundListPayload = {
+  qc_inbound: TQCInbound[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 };
 
-const production_t_produksi_order_rows_seed: OrderSummary[] = [
-  {
-    id: "PO-20260316-001",
-    product_name: "Coffee Beans Arabica 250gr",
-    target_qty: 500,
-    status: "ongoing",
-    start_date: "2026-03-15",
-  },
-  {
-    id: "PO-20260316-002",
-    product_name: "Chocolate Blend 500gr",
-    target_qty: 320,
-    status: "draft",
-    start_date: "2026-03-16",
-  },
-  {
-    id: "PO-20260316-003",
-    product_name: "Syrup Caramel 1L",
-    target_qty: 220,
-    status: "done",
-    start_date: "2026-03-12",
-  },
-  {
-    id: "PO-20260316-004",
-    product_name: "Matcha Mix 400gr",
-    target_qty: 280,
-    status: "draft",
-    start_date: "2026-03-10",
-  },
-  {
-    id: "PO-20260316-005",
-    product_name: "Roasted Robusta 1kg",
-    target_qty: 150,
-    status: "ongoing",
-    start_date: "2026-03-16",
-  },
-  {
-    id: "PO-20260316-006",
-    product_name: "Vanilla Cream Powder 500gr",
-    target_qty: 260,
-    status: "draft",
-    start_date: "2026-03-17",
-  },
-  {
-    id: "PO-20260316-007",
-    product_name: "Hazelnut Syrup 750ml",
-    target_qty: 180,
-    status: "done",
-    start_date: "2026-03-13",
-  },
-];
+type QcOutboundListPayload = {
+  qc_outbound: TQCOutbound[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
 
-const production_t_qc_inbound_rows_seed: QcSummary[] = [
-  {
-    id: "QCI-20260316-001",
-    reference_id: "PO-MAT-202603-121",
-    product_name: "Biji Kopi Arabica Grade A",
-    qty: 180,
-    status: "pass",
-    date: "2026-03-16",
-  },
-  {
-    id: "QCI-20260316-002",
-    reference_id: "PO-MAT-202603-122",
-    product_name: "Susu Bubuk Full Cream",
-    qty: 140,
-    status: "pass",
-    date: "2026-03-16",
-  },
-  {
-    id: "QCI-20260316-003",
-    reference_id: "PO-MAT-202603-123",
-    product_name: "Kemasan Pouch 250gr",
-    qty: 1000,
-    status: "reject",
-    date: "2026-03-15",
-  },
-  {
-    id: "QCI-20260316-004",
-    reference_id: "PO-MAT-202603-124",
-    product_name: "Label Produk Batch Maret",
-    qty: 950,
-    status: "reject",
-    date: "2026-03-15",
-  },
-  {
-    id: "QCI-20260316-005",
-    reference_id: "PO-MAT-202603-125",
-    product_name: "Caramel Concentrate",
-    qty: 65,
-    status: "pass",
-    date: "2026-03-14",
-  },
-  {
-    id: "QCI-20260316-006",
-    reference_id: "PO-MAT-202603-126",
-    product_name: "Cocoa Powder Premium",
-    qty: 120,
-    status: "pass",
-    date: "2026-03-14",
-  },
-];
+type ProductsListPayload = {
+  produk: MProduk[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
 
-const production_t_qc_outbound_rows_seed: QcSummary[] = [
-  {
-    id: "QCO-20260316-001",
-    reference_id: "BATCH-PROD-240316-A",
-    product_name: "Coffee Beans Arabica 250gr",
-    qty: 500,
-    status: "pass",
-    date: "2026-03-16",
-  },
-  {
-    id: "QCO-20260316-002",
-    reference_id: "BATCH-PROD-240316-B",
-    product_name: "Chocolate Blend 500gr",
-    qty: 320,
-    status: "pass",
-    date: "2026-03-16",
-  },
-  {
-    id: "QCO-20260316-003",
-    reference_id: "BATCH-PROD-240315-C",
-    product_name: "Syrup Caramel 1L",
-    qty: 220,
-    status: "reject",
-    date: "2026-03-15",
-  },
-  {
-    id: "QCO-20260316-004",
-    reference_id: "BATCH-PROD-240315-D",
-    product_name: "Matcha Mix 400gr",
-    qty: 280,
-    status: "reject",
-    date: "2026-03-15",
-  },
-  {
-    id: "QCO-20260316-005",
-    reference_id: "BATCH-PROD-240314-E",
-    product_name: "Roasted Robusta 1kg",
-    qty: 150,
-    status: "pass",
-    date: "2026-03-14",
-  },
-  {
-    id: "QCO-20260316-006",
-    reference_id: "BATCH-PROD-240314-F",
-    product_name: "Vanilla Cream Powder 500gr",
-    qty: 260,
-    status: "pass",
-    date: "2026-03-14",
-  },
-  {
-    id: "QCO-20260316-007",
-    reference_id: "BATCH-PROD-240313-G",
-    product_name: "Hazelnut Syrup 750ml",
-    qty: 180,
-    status: "reject",
-    date: "2026-03-13",
-  },
-];
+type DisplayOrderStatus = ProductionStatus | "unknown";
+type DisplayQcStatus = ProductionQcResult | "unknown";
 
 const quick_links = [
   {
@@ -209,70 +76,176 @@ const quick_links = [
   },
 ];
 
-const order_status_label: Record<OrderStatus, string> = {
+const order_status_label: Record<DisplayOrderStatus, string> = {
   draft: "Draft",
   ongoing: "Berjalan",
   done: "Selesai",
+  unknown: "Tidak diketahui",
 };
 
-const order_status_class: Record<OrderStatus, string> = {
+const order_status_class: Record<DisplayOrderStatus, string> = {
   draft: "bg-amber-100 text-amber-700",
   ongoing: "bg-blue-100 text-blue-700",
   done: "bg-emerald-100 text-emerald-700",
+  unknown: "bg-slate-100 text-slate-700",
 };
 
-const qc_result_label: Record<QcResultStatus, string> = {
+const qc_result_label: Record<DisplayQcStatus, string> = {
   pass: "Pass",
   reject: "Reject",
+  unknown: "N/A",
 };
 
-const qc_result_class: Record<QcResultStatus, string> = {
+const qc_result_class: Record<DisplayQcStatus, string> = {
   pass: "bg-emerald-100 text-emerald-700",
   reject: "bg-rose-100 text-rose-700",
+  unknown: "bg-slate-100 text-slate-700",
 };
 
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const raw = await response.text();
+
+  let payload: ApiSuccess<T> | ApiError;
+  try {
+    payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
+  } catch {
+    const fallback = response.ok ? "Respons server tidak valid (bukan JSON)." : raw.slice(0, 200);
+    throw new Error(fallback || "Respons server tidak valid.");
+  }
+
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+
+  return payload;
+}
+
+function getOrderStatus(status: ProductionStatus | null): DisplayOrderStatus {
+  if (status === "draft" || status === "ongoing" || status === "done") {
+    return status;
+  }
+  return "unknown";
+}
+
+function getQcStatus(status: ProductionQcResult | null): DisplayQcStatus {
+  if (status === "pass" || status === "reject") {
+    return status;
+  }
+  return "unknown";
+}
+
 export default function ProduksiDashboardPage() {
-  const [production_t_produksi_order_rows] = useState<OrderSummary[]>(
-    production_t_produksi_order_rows_seed,
+  const [orders, setOrders] = useState<TProduksiOrder[]>([]);
+  const [qcInboundRows, setQcInboundRows] = useState<TQCInbound[]>([]);
+  const [qcOutboundRows, setQcOutboundRows] = useState<TQCOutbound[]>([]);
+  const [products, setProducts] = useState<MProduk[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchOrders = async () => {
+    const response = await apiFetch("/api/production/orders?page=1&limit=200", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    const payload = await parseJsonResponse<OrdersListPayload>(response);
+    setOrders(payload.data.orders ?? []);
+  };
+
+  const fetchQcInbound = async () => {
+    const response = await apiFetch("/api/production/qc-inbound?page=1&limit=200", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    const payload = await parseJsonResponse<QcInboundListPayload>(response);
+    setQcInboundRows(payload.data.qc_inbound ?? []);
+  };
+
+  const fetchQcOutbound = async () => {
+    const response = await apiFetch("/api/production/qc-outbound?page=1&limit=200", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    const payload = await parseJsonResponse<QcOutboundListPayload>(response);
+    setQcOutboundRows(payload.data.qc_outbound ?? []);
+  };
+
+  const fetchProducts = async () => {
+    const response = await apiFetch("/api/core/products?page=1&limit=200", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    const payload = await parseJsonResponse<ProductsListPayload>(response);
+    setProducts(payload.data.produk ?? []);
+  };
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          fetchOrders(),
+          fetchQcInbound(),
+          fetchQcOutbound(),
+          fetchProducts(),
+        ]);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Gagal memuat dashboard produksi.";
+        alert(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadDashboardData();
+  }, []);
+
+  const productById = useMemo(
+    () =>
+      Object.fromEntries(
+        products.map((item) => [item.id, item.nama_produk]),
+      ) as Record<string, string>,
+    [products],
   );
-  const [production_t_qc_inbound_rows] = useState<QcSummary[]>(
-    production_t_qc_inbound_rows_seed,
-  );
-  const [production_t_qc_outbound_rows] = useState<QcSummary[]>(
-    production_t_qc_outbound_rows_seed,
+
+  const orderById = useMemo(
+    () => Object.fromEntries(orders.map((item) => [item.id, item])) as Record<string, TProduksiOrder>,
+    [orders],
   );
 
   const pesanan_aktif_count = useMemo(() => {
-    return production_t_produksi_order_rows.filter(
-      (item) => item.status === "ongoing",
-    ).length;
-  }, [production_t_produksi_order_rows]);
+    return orders.filter((item) => item.status === "ongoing").length;
+  }, [orders]);
 
   const antrean_qc_inbound_count = useMemo(() => {
-    return production_t_qc_inbound_rows.filter((item) => item.status === "reject").length;
-  }, [production_t_qc_inbound_rows]);
-
-  const outbound_checked_rows = useMemo(() => {
-    return production_t_qc_outbound_rows;
-  }, [production_t_qc_outbound_rows]);
+    return qcInboundRows.filter((item) => item.hasil === "reject").length;
+  }, [qcInboundRows]);
 
   const outbound_passed_rate = useMemo(() => {
-    if (outbound_checked_rows.length === 0) return 0;
-    const passed_count = outbound_checked_rows.filter((item) => item.status === "pass").length;
-    return Math.round((passed_count / outbound_checked_rows.length) * 100);
-  }, [outbound_checked_rows]);
+    if (qcOutboundRows.length === 0) return 0;
+    const passed_count = qcOutboundRows.filter((item) => item.hasil === "pass").length;
+    return Math.round((passed_count / qcOutboundRows.length) * 100);
+  }, [qcOutboundRows]);
 
   const pesanan_berjalan_rows = useMemo(() => {
-    return production_t_produksi_order_rows
-      .filter((item) => item.status === "ongoing")
-      .slice(0, 5);
-  }, [production_t_produksi_order_rows]);
+    return orders.filter((item) => item.status === "ongoing").slice(0, 5);
+  }, [orders]);
 
   const hasil_qc_terbaru_rows = useMemo(() => {
-    return [...production_t_qc_outbound_rows]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    return [...qcOutboundRows]
+      .sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      })
       .slice(0, 5);
-  }, [production_t_qc_outbound_rows]);
+  }, [qcOutboundRows]);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 md:space-y-6 lg:space-y-8">
@@ -366,18 +339,37 @@ export default function ProduksiDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {pesanan_berjalan_rows.map((item) => (
-                  <tr key={item.id}>
-                    <td className="py-3 pr-2 text-sm font-semibold text-slate-800 break-all">{item.id}</td>
-                    <td className="py-3 pr-2 text-sm text-slate-700 break-words">{item.product_name}</td>
-                    <td className="py-3 pr-2 text-sm text-slate-700 whitespace-nowrap">{item.target_qty} Unit</td>
-                    <td className="py-3">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${order_status_class[item.status]}`}>
-                        {order_status_label[item.status]}
-                      </span>
+                {isLoading ? (
+                  <tr key="loading-orders-row">
+                    <td colSpan={4} className="py-5 text-sm text-slate-500">
+                      Memuat data...
                     </td>
                   </tr>
-                ))}
+                ) : pesanan_berjalan_rows.length === 0 ? (
+                  <tr key="empty-orders-row">
+                    <td colSpan={4} className="py-5 text-sm text-slate-500">
+                      Belum ada pesanan berstatus berjalan.
+                    </td>
+                  </tr>
+                ) : (
+                  pesanan_berjalan_rows.map((item) => {
+                    const displayStatus = getOrderStatus(item.status);
+                    return (
+                      <tr key={item.id}>
+                        <td className="py-3 pr-2 text-sm font-semibold text-slate-800 break-all">{item.id}</td>
+                        <td className="py-3 pr-2 text-sm text-slate-700 wrap-break-word">
+                          {productById[item.product_id ?? ""] ?? "Produk tidak ditemukan"}
+                        </td>
+                        <td className="py-3 pr-2 text-sm text-slate-700 whitespace-nowrap">{item.quantity ?? 0} Unit</td>
+                        <td className="py-3">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${order_status_class[displayStatus]}`}>
+                            {order_status_label[displayStatus]}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -399,20 +391,42 @@ export default function ProduksiDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {hasil_qc_terbaru_rows.map((item) => {
-                  const resultStatus = item.status;
-                  return (
-                    <tr key={item.id}>
-                      <td className="py-3 pr-2 text-sm font-semibold text-slate-800 break-all">{item.reference_id}</td>
-                      <td className="py-3 pr-2 text-sm text-slate-700 break-words">{item.product_name}</td>
-                      <td className="py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${qc_result_class[resultStatus]}`}>
-                          {qc_result_label[resultStatus]}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {isLoading ? (
+                  <tr key="loading-qc-row">
+                    <td colSpan={3} className="py-5 text-sm text-slate-500">
+                      Memuat data...
+                    </td>
+                  </tr>
+                ) : hasil_qc_terbaru_rows.length === 0 ? (
+                  <tr key="empty-qc-row">
+                    <td colSpan={3} className="py-5 text-sm text-slate-500">
+                      Belum ada data QC outbound.
+                    </td>
+                  </tr>
+                ) : (
+                  hasil_qc_terbaru_rows.map((item) => {
+                    const relatedOrder = orderById[item.produksi_order_id ?? ""];
+                    const displayStatus = getQcStatus(item.hasil);
+
+                    return (
+                      <tr key={item.id}>
+                        <td className="py-3 pr-2 text-sm font-semibold text-slate-800 break-all">
+                          {relatedOrder?.id ?? item.produksi_order_id ?? "-"}
+                        </td>
+                        <td className="py-3 pr-2 text-sm text-slate-700 wrap-break-word">
+                          {relatedOrder
+                            ? productById[relatedOrder.product_id ?? ""] ?? "Produk tidak ditemukan"
+                            : "Produk tidak ditemukan"}
+                        </td>
+                        <td className="py-3">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${qc_result_class[displayStatus]}`}>
+                            {qc_result_label[displayStatus]}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

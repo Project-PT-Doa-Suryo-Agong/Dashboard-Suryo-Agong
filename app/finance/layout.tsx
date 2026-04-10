@@ -19,6 +19,7 @@ export default function FinanceLayout({
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { name, role } = useProfile();
+  const topbarUser = name || role ? { name: name ?? '', role: role ?? '' } : undefined;
 
   return (
     <div className="flex min-h-screen bg-background-light font-display">
@@ -42,7 +43,7 @@ export default function FinanceLayout({
       <main className="flex-1 min-w-0 w-full md:ml-0 overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Finance Dashboard"
-          user={{ name: name ?? '...', role: role ?? '' }}
+          user={topbarUser}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

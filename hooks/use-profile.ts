@@ -10,12 +10,18 @@ import { useAuth } from "@/lib/supabase/auth-context";
  */
 export function useProfile() {
   const { user, loading } = useAuth();
+  const profileName = user?.profile?.nama?.trim() || null;
+  const profileRole = user?.profile?.role?.trim() || null;
+
+  // Keep fallback values sourced from real auth data (not hardcoded dummy strings).
+  const emailName = user?.email?.split("@")[0]?.trim() || null;
+  const accessRole = user?.accessSummary?.jabatan?.trim() || null;
 
   return {
     /** Full name from core.profiles.nama */
-    name: user?.profile?.nama ?? null,
+    name: profileName ?? emailName,
     /** Role from core.profiles.role */
-    role: user?.profile?.role ?? null,
+    role: profileRole ?? accessRole,
     /** True while AuthProvider is resolving the initial session */
     loading,
   };
