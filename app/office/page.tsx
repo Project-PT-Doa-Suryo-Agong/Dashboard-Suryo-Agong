@@ -1,109 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Building2, Package, Users } from "lucide-react";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type { MKaryawan, MProduk, MVarian, MVendor } from "@/types/supabase";
+import { apiFetch } from "@/lib/utils/api-fetch";
 
-type HrEmployeeStatus = "aktif" | "nonaktif";
-
-type CoreMVendorItem = {
-  id: string;
-  nama_vendor: string;
-  kontak: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type CoreMProdukItem = {
-  id: string;
-  nama_produk: string;
-  kategori: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type CoreMVarianItem = {
-  id: string;
-  product_id: string;
-  nama_varian: string;
-  sku: string;
-  harga: number;
-  created_at: string;
-  updated_at: string;
-};
-
-type HrMKaryawanItem = {
-  id: string;
-  nama: string;
-  posisi: string;
-  divisi: string;
-  status: HrEmployeeStatus;
-  created_at: string;
-};
-
-const core_m_vendor_rows_seed: CoreMVendorItem[] = [
-  { id: "vnd-001", nama_vendor: "PT Mitra Pangan Nusantara", kontak: "021-7788123", created_at: "2026-02-10T09:00:00+07:00", updated_at: "2026-03-12T14:20:00+07:00" },
-  { id: "vnd-002", nama_vendor: "CV Sumber Kemasan Prima", kontak: "022-6102233", created_at: "2026-01-28T10:00:00+07:00", updated_at: "2026-03-15T11:10:00+07:00" },
-  { id: "vnd-003", nama_vendor: "PT Aroma Bahan Baku", kontak: "031-4991122", created_at: "2026-02-12T08:40:00+07:00", updated_at: "2026-03-11T16:00:00+07:00" },
-  { id: "vnd-004", nama_vendor: "CV Makmur Sentosa Trade", kontak: "0274-889912", created_at: "2026-02-20T13:00:00+07:00", updated_at: "2026-03-16T08:35:00+07:00" },
-  { id: "vnd-005", nama_vendor: "PT Tiga Karya Logam", kontak: "024-7012256", created_at: "2026-02-05T09:30:00+07:00", updated_at: "2026-03-09T15:15:00+07:00" },
-  { id: "vnd-006", nama_vendor: "PT Ocean Packaging", kontak: "021-4455123", created_at: "2026-01-30T11:00:00+07:00", updated_at: "2026-03-08T12:00:00+07:00" },
-  { id: "vnd-007", nama_vendor: "CV Multi Ingredient", kontak: "0231-779001", created_at: "2026-02-18T14:00:00+07:00", updated_at: "2026-03-14T09:25:00+07:00" },
-  { id: "vnd-008", nama_vendor: "PT Agro Sukses Mandiri", kontak: "061-7700122", created_at: "2026-02-22T10:50:00+07:00", updated_at: "2026-03-13T17:45:00+07:00" },
-  { id: "vnd-009", nama_vendor: "CV Bumi Kemas Jaya", kontak: "0267-551223", created_at: "2026-03-01T09:00:00+07:00", updated_at: "2026-03-10T10:10:00+07:00" },
-  { id: "vnd-010", nama_vendor: "PT Citra Rasa Foodtech", kontak: "031-5659012", created_at: "2026-03-02T11:20:00+07:00", updated_at: "2026-03-16T09:45:00+07:00" },
-  { id: "vnd-011", nama_vendor: "PT Solusi Label Indonesia", kontak: "021-8800112", created_at: "2026-02-14T15:30:00+07:00", updated_at: "2026-03-15T13:40:00+07:00" },
-  { id: "vnd-012", nama_vendor: "CV Prima Kopi Supply", kontak: "0251-660998", created_at: "2026-03-04T08:15:00+07:00", updated_at: "2026-03-12T16:05:00+07:00" },
-  { id: "vnd-013", nama_vendor: "PT Kharisma Ingredient", kontak: "0271-889100", created_at: "2026-03-06T10:05:00+07:00", updated_at: "2026-03-14T15:20:00+07:00" },
-  { id: "vnd-014", nama_vendor: "CV Nusantara Warehouse", kontak: "024-663490", created_at: "2026-03-07T09:40:00+07:00", updated_at: "2026-03-11T14:00:00+07:00" },
-  { id: "vnd-015", nama_vendor: "PT Sentral Distribusi Bahan", kontak: "021-7733445", created_at: "2026-03-09T10:25:00+07:00", updated_at: "2026-03-16T10:55:00+07:00" },
-];
-
-const core_m_produk_rows_seed: CoreMProdukItem[] = [
-  { id: "prd-001", nama_produk: "Coffee Beans Arabica", kategori: "Minuman", created_at: "2026-01-10T08:00:00+07:00", updated_at: "2026-03-12T08:00:00+07:00" },
-  { id: "prd-002", nama_produk: "Coffee Beans Robusta", kategori: "Minuman", created_at: "2026-01-12T08:00:00+07:00", updated_at: "2026-03-12T08:00:00+07:00" },
-  { id: "prd-003", nama_produk: "Chocolate Blend", kategori: "Powder", created_at: "2026-01-15T08:00:00+07:00", updated_at: "2026-03-10T08:00:00+07:00" },
-  { id: "prd-004", nama_produk: "Matcha Mix", kategori: "Powder", created_at: "2026-01-17T08:00:00+07:00", updated_at: "2026-03-14T08:00:00+07:00" },
-  { id: "prd-005", nama_produk: "Vanilla Cream", kategori: "Powder", created_at: "2026-01-18T08:00:00+07:00", updated_at: "2026-03-15T08:00:00+07:00" },
-  { id: "prd-006", nama_produk: "Hazelnut Syrup", kategori: "Syrup", created_at: "2026-01-21T08:00:00+07:00", updated_at: "2026-03-12T08:00:00+07:00" },
-  { id: "prd-007", nama_produk: "Caramel Syrup", kategori: "Syrup", created_at: "2026-01-22T08:00:00+07:00", updated_at: "2026-03-09T08:00:00+07:00" },
-  { id: "prd-008", nama_produk: "Milk Tea Base", kategori: "Minuman", created_at: "2026-01-25T08:00:00+07:00", updated_at: "2026-03-11T08:00:00+07:00" },
-  { id: "prd-009", nama_produk: "Signature Latte Base", kategori: "Minuman", created_at: "2026-01-27T08:00:00+07:00", updated_at: "2026-03-13T08:00:00+07:00" },
-  { id: "prd-010", nama_produk: "Mocha Premix", kategori: "Powder", created_at: "2026-01-29T08:00:00+07:00", updated_at: "2026-03-16T08:00:00+07:00" },
-  { id: "prd-011", nama_produk: "Fresh Tea Concentrate", kategori: "Concentrate", created_at: "2026-02-01T08:00:00+07:00", updated_at: "2026-03-14T08:00:00+07:00" },
-  { id: "prd-012", nama_produk: "Fruit Syrup Series", kategori: "Syrup", created_at: "2026-02-03T08:00:00+07:00", updated_at: "2026-03-16T08:00:00+07:00" },
-];
-
-const core_m_varian_rows_seed: CoreMVarianItem[] = Array.from({ length: 42 }, (_, index) => {
-  const product = core_m_produk_rows_seed[index % core_m_produk_rows_seed.length];
-  const varianNo = Math.floor(index / core_m_produk_rows_seed.length) + 1;
-  const day = (index % 18) + 1;
-  const createdAt = `2026-03-${String(day).padStart(2, "0")}T09:${String((index * 3) % 60).padStart(2, "0")}:00+07:00`;
-
-  return {
-    id: `var-${String(index + 1).padStart(3, "0")}`,
-    product_id: product.id,
-    nama_varian: `${product.nama_produk} Varian ${varianNo}`,
-    sku: `${product.id.toUpperCase()}-V${String(varianNo).padStart(2, "0")}`,
-    harga: 45000 + (index % 6) * 5000,
-    created_at: createdAt,
-    updated_at: createdAt,
+type VendorsListPayload = {
+  vendor: MVendor[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
   };
-});
+};
 
-const hr_m_karyawan_rows_seed: HrMKaryawanItem[] = Array.from({ length: 142 }, (_, index) => {
-  const divisi = ["Office", "Produksi", "Logistik", "Finance", "HR", "Creative"][
-    index % 6
-  ];
-  return {
-    id: `emp-${String(index + 1).padStart(3, "0")}`,
-    nama: `Karyawan ${String(index + 1).padStart(3, "0")}`,
-    posisi: divisi === "Office" ? "Admin Staff" : "Staff",
-    divisi,
-    status: index % 18 === 0 ? "nonaktif" : "aktif",
-    created_at: `2025-11-${String((index % 28) + 1).padStart(2, "0")}T08:00:00+07:00`,
+type ProductsListPayload = {
+  produk: MProduk[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
   };
-});
+};
+
+type VariantsListPayload = {
+  varian: MVarian[];
+};
+
+type EmployeesListPayload = {
+  karyawan: MKaryawan[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
 
 const quick_links = [
   {
@@ -118,6 +51,25 @@ const quick_links = [
   },
 ];
 
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const raw = await response.text();
+  let payload: ApiSuccess<T> | ApiError;
+
+  try {
+    payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
+  } catch {
+    const fallback = response.ok ? "Respons server tidak valid (bukan JSON)." : raw.slice(0, 200);
+    throw new Error(fallback || "Respons server tidak valid.");
+  }
+
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+
+  return payload;
+}
+
 function formatDate(date: string): string {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
@@ -127,30 +79,101 @@ function formatDate(date: string): string {
 }
 
 export default function OfficeDashboardPage() {
-  const [core_m_vendor_rows] = useState<CoreMVendorItem[]>(core_m_vendor_rows_seed);
-  const [core_m_produk_rows] = useState<CoreMProdukItem[]>(core_m_produk_rows_seed);
-  const [core_m_varian_rows] = useState<CoreMVarianItem[]>(core_m_varian_rows_seed);
-  const [hr_m_karyawan_rows] = useState<HrMKaryawanItem[]>(hr_m_karyawan_rows_seed);
+  const [vendors, setVendors] = useState<MVendor[]>([]);
+  const [products, setProducts] = useState<MProduk[]>([]);
+  const [variants, setVariants] = useState<MVarian[]>([]);
+  const [employees, setEmployees] = useState<MKaryawan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const total_vendor_aktif = core_m_vendor_rows.length;
-  const total_katalog_produk = core_m_varian_rows.length;
-  const total_karyawan = hr_m_karyawan_rows.length;
+  const fetchVendors = async () => {
+    const response = await apiFetch("/api/core/vendors?page=1&limit=200", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    const payload = await parseJsonResponse<VendorsListPayload>(response);
+    setVendors(payload.data.vendor ?? []);
+  };
+
+  const fetchProducts = async () => {
+    const response = await apiFetch("/api/core/products?page=1&limit=200", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    const payload = await parseJsonResponse<ProductsListPayload>(response);
+    setProducts(payload.data.produk ?? []);
+  };
+
+  const fetchVariants = async () => {
+    const response = await apiFetch("/api/core/variants", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    const payload = await parseJsonResponse<VariantsListPayload>(response);
+    setVariants(payload.data.varian ?? []);
+  };
+
+  const fetchEmployees = async () => {
+    const response = await apiFetch("/api/hr/employees?page=1&limit=500", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    const payload = await parseJsonResponse<EmployeesListPayload>(response);
+    setEmployees(payload.data.karyawan ?? []);
+  };
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          fetchVendors(),
+          fetchProducts(),
+          fetchVariants(),
+          fetchEmployees(),
+        ]);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Gagal memuat dashboard office.";
+        alert(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadDashboardData();
+  }, []);
+
+  const total_vendor_aktif = vendors.length;
+  const total_katalog_produk = variants.length;
+  const total_karyawan = employees.length;
 
   const vendor_update_terbaru = useMemo(() => {
-    return [...core_m_vendor_rows]
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    return [...vendors]
+      .sort((a, b) => {
+        const left = new Date(b.updated_at ?? b.created_at ?? 0).getTime();
+        const right = new Date(a.updated_at ?? a.created_at ?? 0).getTime();
+        return left - right;
+      })
       .slice(0, 5);
-  }, [core_m_vendor_rows]);
+  }, [vendors]);
 
   const produk_by_id = useMemo(() => {
-    return Object.fromEntries(core_m_produk_rows.map((item) => [item.id, item]));
-  }, [core_m_produk_rows]);
+    return Object.fromEntries(products.map((item) => [item.id, item])) as Record<string, MProduk>;
+  }, [products]);
 
   const produk_varian_baru = useMemo(() => {
-    return [...core_m_varian_rows]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    return [...variants]
+      .sort((a, b) => {
+        const left = new Date(b.created_at ?? 0).getTime();
+        const right = new Date(a.created_at ?? 0).getTime();
+        return left - right;
+      })
       .slice(0, 6);
-  }, [core_m_varian_rows]);
+  }, [variants]);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 md:space-y-6 lg:space-y-8">
@@ -182,7 +205,7 @@ export default function OfficeDashboardPage() {
             <div className="min-w-0 space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Katalog Produk</p>
               <p className="text-base md:text-2xl font-bold text-slate-900">{total_katalog_produk} Item</p>
-              <p className="text-xs md:text-sm text-slate-600">{core_m_produk_rows.length} produk, varian produk aktif</p>
+              <p className="text-xs md:text-sm text-slate-600">{products.length} produk, varian produk aktif</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700 shrink-0">
               <Package className="h-5 w-5" />
@@ -233,7 +256,7 @@ export default function OfficeDashboardPage() {
           </div>
 
           <div className="overflow-x-auto w-full">
-            <table className="w-full min-w-[460px]">
+            <table className="w-full min-w-115">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
@@ -248,29 +271,49 @@ export default function OfficeDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {vendor_update_terbaru.map((vendor) => {
-                  const isUpdated = vendor.updated_at !== vendor.created_at;
-                  return (
-                    <tr key={vendor.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-800 break-words">
-                        {vendor.nama_vendor}
-                      </td>
-                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{vendor.kontak}</td>
-                      <td className="px-4 md:px-6 py-3">
-                        <div className="flex flex-col gap-1">
-                          <span
-                            className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${
-                              isUpdated ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                            }`}
-                          >
-                            {isUpdated ? "Updated" : "Baru"}
-                          </span>
-                          <span className="text-xs text-slate-500 whitespace-nowrap">{formatDate(vendor.updated_at)}</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {isLoading ? (
+                  <tr key="loading-vendor-row">
+                    <td colSpan={3} className="px-4 md:px-6 py-8 text-sm text-slate-500">
+                      Memuat data...
+                    </td>
+                  </tr>
+                ) : vendor_update_terbaru.length === 0 ? (
+                  <tr key="empty-vendor-row">
+                    <td colSpan={3} className="px-4 md:px-6 py-8 text-sm text-slate-500">
+                      Belum ada data vendor.
+                    </td>
+                  </tr>
+                ) : (
+                  vendor_update_terbaru.map((vendor) => {
+                    const baseDate = vendor.created_at ?? vendor.updated_at;
+                    const compareUpdated = vendor.updated_at ?? "";
+                    const compareCreated = vendor.created_at ?? "";
+                    const isUpdated = compareUpdated !== "" && compareUpdated !== compareCreated;
+
+                    return (
+                      <tr key={vendor.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-800 wrap-break-word">
+                          {vendor.nama_vendor ?? "-"}
+                        </td>
+                        <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{vendor.kontak ?? "-"}</td>
+                        <td className="px-4 md:px-6 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                isUpdated ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                              }`}
+                            >
+                              {isUpdated ? "Updated" : "Baru"}
+                            </span>
+                            <span className="text-xs text-slate-500 whitespace-nowrap">
+                              {baseDate ? formatDate(baseDate) : "-"}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -282,7 +325,7 @@ export default function OfficeDashboardPage() {
           </div>
 
           <div className="overflow-x-auto w-full">
-            <table className="w-full min-w-[460px]">
+            <table className="w-full min-w-115">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
@@ -297,17 +340,31 @@ export default function OfficeDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {produk_varian_baru.map((varian) => (
-                  <tr key={varian.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-800 break-words">
-                      {produk_by_id[varian.product_id]?.nama_produk ?? "Produk Tidak Ditemukan"}
-                    </td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{varian.sku}</td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">
-                      {produk_by_id[varian.product_id]?.kategori ?? "-"}
+                {isLoading ? (
+                  <tr key="loading-product-row">
+                    <td colSpan={3} className="px-4 md:px-6 py-8 text-sm text-slate-500">
+                      Memuat data...
                     </td>
                   </tr>
-                ))}
+                ) : produk_varian_baru.length === 0 ? (
+                  <tr key="empty-product-row">
+                    <td colSpan={3} className="px-4 md:px-6 py-8 text-sm text-slate-500">
+                      Belum ada data varian.
+                    </td>
+                  </tr>
+                ) : (
+                  produk_varian_baru.map((varian) => (
+                    <tr key={varian.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-800 wrap-break-word">
+                        {produk_by_id[varian.product_id ?? ""]?.nama_produk ?? "Produk Tidak Ditemukan"}
+                      </td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{varian.sku ?? "-"}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">
+                        {produk_by_id[varian.product_id ?? ""]?.kategori ?? "-"}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
