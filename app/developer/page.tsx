@@ -12,7 +12,6 @@ import {
   Server,
 } from 'lucide-react';
 import type { ApiError, ApiSuccess } from '@/types/api';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { apiFetch } from "@/lib/utils/api-fetch";
 
 type ProfilesListPayload = {
@@ -22,6 +21,28 @@ type ProfilesListPayload = {
     limit: number;
     total: number;
   };
+};
+
+type ProductsListPayload = {
+  produk: Array<{ id: string }>;
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type VendorsListPayload = {
+  vendor: Array<{ id: string }>;
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type VariantsListPayload = {
+  varian: Array<{ id: string }>;
 };
 
 type DashboardStats = {
@@ -72,37 +93,39 @@ export default function DeveloperDashboard() {
       setIsLoading(true);
       setErrorMessage(null);
       try {
-        const supabase = createSupabaseBrowserClient();
-        const [profilesResponse, produkCountResult, varianCountResult, vendorCountResult] = await Promise.all([
+        const [profilesResponse, productsResponse, variantsResponse, vendorsResponse] = await Promise.all([
           apiFetch('/api/profiles?page=1&limit=1', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
             cache: 'no-store',
           }),
-          (supabase as unknown as { schema: (schema: string) => typeof supabase })
-            .schema('core')
-            .from('m_produk')
-            .select('id', { count: 'exact', head: true }),
-          (supabase as unknown as { schema: (schema: string) => typeof supabase })
-            .schema('core')
-            .from('m_varian')
-            .select('id', { count: 'exact', head: true }),
-          (supabase as unknown as { schema: (schema: string) => typeof supabase })
-            .schema('core')
-            .from('m_vendor')
-            .select('id', { count: 'exact', head: true }),
+          apiFetch('/api/core/products?page=1&limit=1', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+          }),
+          apiFetch('/api/core/variants', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+          }),
+          apiFetch('/api/core/vendors?page=1&limit=1', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+          }),
         ]);
 
         const profilesPayload = await parseJsonResponse<ProfilesListPayload>(profilesResponse);
-        if (produkCountResult.error) throw new Error(produkCountResult.error.message);
-        if (varianCountResult.error) throw new Error(varianCountResult.error.message);
-        if (vendorCountResult.error) throw new Error(vendorCountResult.error.message);
+        const productsPayload = await parseJsonResponse<ProductsListPayload>(productsResponse);
+        const variantsPayload = await parseJsonResponse<VariantsListPayload>(variantsResponse);
+        const vendorsPayload = await parseJsonResponse<VendorsListPayload>(vendorsResponse);
 
         setStats({
           totalUsers: profilesPayload.data.meta.total ?? 0,
-          totalProduk: produkCountResult.count ?? 0,
-          totalVarian: varianCountResult.count ?? 0,
-          totalVendor: vendorCountResult.count ?? 0,
+          totalProduk: productsPayload.data.meta.total ?? 0,
+          totalVarian: variantsPayload.data.varian?.length ?? 0,
+          totalVendor: vendorsPayload.data.meta.total ?? 0,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Gagal memuat statistik developer.';

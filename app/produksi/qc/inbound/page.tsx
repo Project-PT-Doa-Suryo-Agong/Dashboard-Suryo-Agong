@@ -73,6 +73,10 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+function getQcPrimaryKey(value: { produksi_order_id?: string | null; id?: string | null } | null | undefined): string {
+  return value?.produksi_order_id ?? value?.id ?? "";
+}
+
 export default function QcInboundPage() {
   const [items, setItems] = useState<TQCInbound[]>([]);
   const [orders, setOrders] = useState<TProduksiOrder[]>([]);
@@ -158,8 +162,7 @@ export default function QcInboundPage() {
       const matchStatus = filterStatus === "all" || item.hasil === filterStatus;
       const matchSearch =
         normalizedSearch.length === 0 ||
-        item.id.toLowerCase().includes(normalizedSearch) ||
-        (order?.id ?? "").toLowerCase().includes(normalizedSearch);
+        (order?.id ?? item.produksi_order_id ?? "").toLowerCase().includes(normalizedSearch);
 
       return matchStatus && matchSearch;
     });
@@ -219,7 +222,9 @@ export default function QcInboundPage() {
       };
 
       if (editData) {
-        const response = await apiFetch(`/api/production/qc-inbound/${editData.id}`, {
+        const primaryKey = getQcPrimaryKey(editData);
+        if (!primaryKey) throw new Error("Order ID QC inbound tidak ditemukan.");
+        const response = await apiFetch(`/api/production/qc-inbound/${primaryKey}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -279,7 +284,7 @@ export default function QcInboundPage() {
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Cari ID inspeksi atau produksi order..."
+              placeholder="Cari produksi order..."
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
             />
           </div>
@@ -315,7 +320,6 @@ export default function QcInboundPage() {
           <table className="w-full min-w-max">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">ID Inspeksi</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Produksi Order</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</th>
@@ -325,16 +329,15 @@ export default function QcInboundPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Memuat data...</td>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={4}>Memuat data...</td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Tidak ada data inspeksi yang sesuai filter.</td>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={4}>Tidak ada data inspeksi yang sesuai filter.</td>
                 </tr>
               ) : (
                 filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.id}</td>
+                  <tr key={getQcPrimaryKey(item)} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-72">{orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan"}</td>
                     <td className="px-4 md:px-6 py-3">
@@ -355,7 +358,14 @@ export default function QcInboundPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openDeleteModal(item.id)}
+                          onClick={() => {
+                            const primaryKey = getQcPrimaryKey(item);
+                            if (!primaryKey) {
+                              alert("Order ID QC inbound tidak ditemukan.");
+                              return;
+                            }
+                            openDeleteModal(primaryKey);
+                          }}
                           disabled={isSubmitting}
                           className={CRUD_DELETE_BUTTON_CLASS}
                         >

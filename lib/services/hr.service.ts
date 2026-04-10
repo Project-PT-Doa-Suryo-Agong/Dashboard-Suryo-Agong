@@ -9,6 +9,23 @@ type SchemaClient = DbClient & { schema: (schema: string) => any };
 const schema = (client: DbClient, name: string) => (client as unknown as SchemaClient).schema(name) as any;
 const db = (client: DbClient) => schema(client, "hr");
 
+function normalizeAttendanceRow(row: Record<string, unknown>): TAttendance {
+  const normalized = { ...row } as Record<string, unknown>;
+  if (typeof normalized.id !== "string" || normalized.id.length === 0) {
+    const legacyId = normalized.attendance_id;
+    if (typeof legacyId === "string" && legacyId.length > 0) {
+      normalized.id = legacyId;
+    }
+  }
+  return normalized as unknown as TAttendance;
+}
+
+function missingIdColumnError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const message = "message" in error ? String((error as { message?: unknown }).message ?? "") : "";
+  return message.toLowerCase().includes("column") && message.toLowerCase().includes("id");
+}
+
 export async function listKaryawan(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
   const { data, error, count } = await db(client)
@@ -40,29 +57,90 @@ export async function listAttendance(client: DbClient, page = 1, limit = 50, emp
     .from("t_attendance")
     .select("*", { count: "exact" })
     .order("tanggal", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("employee_id", { ascending: true })
     .range(from, from + limit - 1);
   if (employeeId) query = query.eq("employee_id", employeeId);
   const { data, error, count } = await query;
-  return { data: (data ?? []) as TAttendance[], error, meta: { page, limit, total: count ?? 0 } };
+  const normalized = (data ?? []).map((item: Record<string, unknown>) => normalizeAttendanceRow(item));
+  return { data: normalized, error, meta: { page, limit, total: count ?? 0 } };
 }
 
 export async function createAttendance(client: DbClient, input: Record<string, unknown>) {
   const { data, error } = await db(client).from("t_attendance").insert(input).select("*").single();
-  return { data: data as TAttendance | null, error };
+  return {
+    data: data ? normalizeAttendanceRow(data as unknown as Record<string, unknown>) : null,
+    error,
+  };
 }
 
 export async function updateAttendance(client: DbClient, id: string, input: Record<string, unknown>) {
-  const { data, error } = await db(client)
+  const byId = await db(client)
     .from("t_attendance")
     .update(input)
     .eq("id", id)
     .select("*")
     .maybeSingle();
-  return { data: data as TAttendance | null, error };
+
+  if (!missingIdColumnError(byId.error)) {
+    return {
+      data: byId.data ? normalizeAttendanceRow(byId.data as unknown as Record<string, unknown>) : null,
+      error: byId.error,
+    };
+  }
+
+  const byLegacyId = await db(client)
+    .from("t_attendance")
+    .update(input)
+    .eq("attendance_id", id)
+    .select("*")
+    .maybeSingle();
+
+  return {
+    data: byLegacyId.data ? normalizeAttendanceRow(byLegacyId.data as unknown as Record<string, unknown>) : null,
+    error: byLegacyId.error,
+  };
+}
+
+export async function updateAttendanceByEmployeeDate(
+  client: DbClient,
+  employeeId: string,
+  tanggal: string,
+  input: Record<string, unknown>,
+) {
+  const { data, error } = await db(client)
+    .from("t_attendance")
+    .update(input)
+    .eq("employee_id", employeeId)
+    .eq("tanggal", tanggal)
+    .select("*")
+    .maybeSingle();
+
+  return {
+    data: data ? normalizeAttendanceRow(data as unknown as Record<string, unknown>) : null,
+    error,
+  };
 }
 
 export async function deleteAttendance(client: DbClient, id: string) {
-  const { error, count } = await db(client).from("t_attendance").delete({ count: "exact" }).eq("id", id);
+  const byId = await db(client).from("t_attendance").delete({ count: "exact" }).eq("id", id);
+  if (!missingIdColumnError(byId.error)) {
+    return { error: byId.error, deleted: (byId.count ?? 0) > 0 };
+  }
+
+  const byLegacyId = await db(client)
+    .from("t_attendance")
+    .delete({ count: "exact" })
+    .eq("attendance_id", id);
+  return { error: byLegacyId.error, deleted: (byLegacyId.count ?? 0) > 0 };
+}
+
+export async function deleteAttendanceByEmployeeDate(client: DbClient, employeeId: string, tanggal: string) {
+  const { error, count } = await db(client)
+    .from("t_attendance")
+    .delete({ count: "exact" })
+    .eq("employee_id", employeeId)
+    .eq("tanggal", tanggal);
   return { error, deleted: (count ?? 0) > 0 };
 }
 
