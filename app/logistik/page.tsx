@@ -1,52 +1,37 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Package, RefreshCcw, Truck } from "lucide-react";
+import { apiFetch } from "@/lib/utils/api-fetch";
+import type { ApiError, ApiSuccess } from "@/types/api";
+import type { MProduk, TLogistikManifest, TPacking, TProduksiOrder, TReturnOrder } from "@/types/supabase";
 
 type PackingStatus = "pending" | "packed" | "shipped";
-type ManifestStatus = "pending" | "dikirim" | "selesai";
-type ReturnStatus = "pending" | "diproses" | "selesai";
 
-type ManifestRecord = {
-  manifest_id: string;
-  tujuan: string;
-  manifest_status: ManifestStatus;
+type PackingListPayload = {
+  packing: TPacking[];
+  meta: { page: number; limit: number; total: number };
 };
 
-type ReturnRecord = {
-  nama_barang: string;
-  alasan_retur: string;
-  return_status: ReturnStatus;
+type ManifestListPayload = {
+  manifest: TLogistikManifest[];
+  meta: { page: number; limit: number; total: number };
 };
 
-type LogisticsDashboardData = {
-  packing_breakdown: Record<PackingStatus, number>;
-  manifest_pengiriman_aktif: number;
-  retur_pending: number;
-  recent_manifests: ManifestRecord[];
-  recent_returns: ReturnRecord[];
+type ReturnsListPayload = {
+  returns: TReturnOrder[];
+  meta: { page: number; limit: number; total: number };
 };
 
-const LOGISTICS_DASHBOARD_DUMMY: LogisticsDashboardData = {
-  packing_breakdown: {
-    pending: 25,
-    packed: 120,
-    shipped: 0,
-  },
-  manifest_pengiriman_aktif: 12,
-  retur_pending: 3,
-  recent_manifests: [
-    { manifest_id: "MNF-260314-001", tujuan: "Bandung", manifest_status: "dikirim" },
-    { manifest_id: "MNF-260314-002", tujuan: "Surabaya", manifest_status: "pending" },
-    { manifest_id: "MNF-260313-019", tujuan: "Semarang", manifest_status: "selesai" },
-    { manifest_id: "MNF-260313-018", tujuan: "Yogyakarta", manifest_status: "dikirim" },
-  ],
-  recent_returns: [
-    { nama_barang: "Jaket Windproof", alasan_retur: "Ukuran tidak sesuai", return_status: "pending" },
-    { nama_barang: "Sepatu Safety", alasan_retur: "Salah varian warna", return_status: "diproses" },
-    { nama_barang: "Helm Pro Guard", alasan_retur: "Terdapat cacat minor", return_status: "pending" },
-    { nama_barang: "Tas Utility", alasan_retur: "Aksesoris kurang lengkap", return_status: "selesai" },
-  ],
+type OrdersListPayload = {
+  orders: TProduksiOrder[];
+  meta: { page: number; limit: number; total: number };
+};
+
+type ProductsListPayload = {
+  produk: MProduk[];
+  meta: { page: number; limit: number; total: number };
 };
 
 const QUICK_LINKS = [
@@ -67,25 +52,160 @@ const QUICK_LINKS = [
   },
 ];
 
-function manifestStatusClass(status: ManifestStatus): string {
-  if (status === "pending") return "bg-amber-100 text-amber-700";
-  if (status === "dikirim") return "bg-blue-100 text-blue-700";
-  return "bg-emerald-100 text-emerald-700";
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
 }
 
-function returnStatusClass(status: ReturnStatus): string {
-  if (status === "pending") return "bg-red-100 text-red-700";
-  if (status === "diproses") return "bg-orange-100 text-orange-700";
-  return "bg-emerald-100 text-emerald-700";
+function pickPacking(data: unknown): TPacking[] {
+  if (!data || typeof data !== "object") return [];
+  const source = data as Record<string, unknown>;
+  return asArray<TPacking>(source.packing ?? source.packings ?? source.data);
+}
+
+function pickManifest(data: unknown): TLogistikManifest[] {
+  if (!data || typeof data !== "object") return [];
+  const source = data as Record<string, unknown>;
+  return asArray<TLogistikManifest>(source.manifest ?? source.manifests ?? source.data);
+}
+
+function pickReturns(data: unknown): TReturnOrder[] {
+  if (!data || typeof data !== "object") return [];
+  const source = data as Record<string, unknown>;
+  return asArray<TReturnOrder>(source.returns ?? source.retur ?? source.data);
+}
+
+function pickOrders(data: unknown): TProduksiOrder[] {
+  if (!data || typeof data !== "object") return [];
+  const source = data as Record<string, unknown>;
+  return asArray<TProduksiOrder>(source.orders ?? source.order ?? source.data);
+}
+
+function pickProducts(data: unknown): MProduk[] {
+  if (!data || typeof data !== "object") return [];
+  const source = data as Record<string, unknown>;
+  return asArray<MProduk>(source.produk ?? source.products ?? source.data);
+}
+
+function getOrderPrimaryKey(value: { order_id?: string | null; id?: string | null } | null | undefined): string {
+  return value?.order_id ?? value?.id ?? "";
+}
+
+function shortId(id: string | null | undefined) {
+  if (!id) return "-";
+  return id.slice(0, 8).toUpperCase();
+}
+
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const raw = await response.text();
+  let payload: ApiSuccess<T> | ApiError;
+  try {
+    payload = JSON.parse(raw) as ApiSuccess<T> | ApiError;
+  } catch {
+    const fallback = response.ok ? "Respons server tidak valid (bukan JSON)." : raw.slice(0, 200);
+    throw new Error(fallback || "Respons server tidak valid.");
+  }
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
 }
 
 export default function LogistikDashboardPage() {
-  const totalPackingHariIni = Object.values(LOGISTICS_DASHBOARD_DUMMY.packing_breakdown).reduce(
-    (total, value) => total + value,
-    0,
+  const [isLoading, setIsLoading] = useState(true);
+  const [packingItems, setPackingItems] = useState<TPacking[]>([]);
+  const [manifestItems, setManifestItems] = useState<TLogistikManifest[]>([]);
+  const [returnItems, setReturnItems] = useState<TReturnOrder[]>([]);
+  const [orders, setOrders] = useState<TProduksiOrder[]>([]);
+  const [products, setProducts] = useState<MProduk[]>([]);
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      setIsLoading(true);
+      try {
+        const [packingRes, manifestRes, returnsRes, ordersRes, productsRes] = await Promise.all([
+          apiFetch("/api/logistics/packing?page=1&limit=500", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          }),
+          apiFetch("/api/logistics/manifest?page=1&limit=200", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          }),
+          apiFetch("/api/logistics/returns?page=1&limit=200", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          }),
+          apiFetch("/api/production/orders?page=1&limit=500", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          }),
+          apiFetch("/api/core/products?page=1&limit=500", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          }),
+        ]);
+
+        const [packingPayload, manifestPayload, returnsPayload, ordersPayload, productsPayload] = await Promise.all([
+          parseJsonResponse<PackingListPayload>(packingRes),
+          parseJsonResponse<ManifestListPayload>(manifestRes),
+          parseJsonResponse<ReturnsListPayload>(returnsRes),
+          parseJsonResponse<OrdersListPayload>(ordersRes),
+          parseJsonResponse<ProductsListPayload>(productsRes),
+        ]);
+
+        setPackingItems(pickPacking(packingPayload.data));
+        setManifestItems(pickManifest(manifestPayload.data));
+        setReturnItems(pickReturns(returnsPayload.data));
+        setOrders(pickOrders(ordersPayload.data));
+        setProducts(pickProducts(productsPayload.data));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Gagal memuat dashboard logistik.";
+        alert(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadDashboard();
+  }, []);
+
+  const orderById = useMemo(
+    () =>
+      Object.fromEntries(
+        orders
+          .map((order) => [getOrderPrimaryKey(order), order] as const)
+          .filter(([orderId]) => !!orderId),
+      ) as Record<string, TProduksiOrder>,
+    [orders],
   );
-  const packingSelesai = LOGISTICS_DASHBOARD_DUMMY.packing_breakdown.packed;
-  const packingProses = LOGISTICS_DASHBOARD_DUMMY.packing_breakdown.pending;
+
+  const productById = useMemo(
+    () => Object.fromEntries(products.map((product) => [product.id, product.nama_produk])) as Record<string, string>,
+    [products],
+  );
+
+  const packingBreakdown = useMemo(() => {
+    const base: Record<PackingStatus, number> = { pending: 0, packed: 0, shipped: 0 };
+    for (const item of packingItems) {
+      const status = item.status;
+      if (status === "pending" || status === "packed" || status === "shipped") {
+        base[status] += 1;
+      }
+    }
+    return base;
+  }, [packingItems]);
+
+  const totalPacking = packingItems.length;
+  const totalManifest = manifestItems.length;
+  const totalRetur = returnItems.length;
+  const recentManifests = manifestItems.slice(0, 4);
+  const recentReturns = returnItems.slice(0, 4);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 md:space-y-6 lg:space-y-8">
@@ -100,10 +220,10 @@ export default function LogistikDashboardPage() {
         <article className="rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Packing Hari Ini</p>
-              <p className="mt-1 text-2xl md:text-3xl font-bold text-slate-900">{totalPackingHariIni}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Packing</p>
+              <p className="mt-1 text-2xl md:text-3xl font-bold text-slate-900">{isLoading ? "..." : totalPacking}</p>
               <p className="mt-1 text-xs md:text-sm text-slate-600">
-                {packingSelesai} Selesai, {packingProses} Proses
+                {packingBreakdown.packed} Selesai, {packingBreakdown.pending} Proses
               </p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#BC934B]/15 text-[#BC934B]">
@@ -115,11 +235,9 @@ export default function LogistikDashboardPage() {
         <article className="rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Manifest Pengiriman Aktif</p>
-              <p className="mt-1 text-2xl md:text-3xl font-bold text-slate-900">
-                {LOGISTICS_DASHBOARD_DUMMY.manifest_pengiriman_aktif}
-              </p>
-              <p className="mt-1 text-xs md:text-sm text-slate-600">Sedang dalam perjalanan</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Manifest</p>
+              <p className="mt-1 text-2xl md:text-3xl font-bold text-slate-900">{isLoading ? "..." : totalManifest}</p>
+              <p className="mt-1 text-xs md:text-sm text-slate-600">Data manifest pengiriman tercatat</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
               <Truck className="h-5 w-5" />
@@ -130,9 +248,9 @@ export default function LogistikDashboardPage() {
         <article className="rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm sm:col-span-2 xl:col-span-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Retur Pending</p>
-              <p className="mt-1 text-2xl md:text-3xl font-bold text-orange-600">{LOGISTICS_DASHBOARD_DUMMY.retur_pending}</p>
-              <p className="mt-1 text-xs md:text-sm text-orange-500">Perlu penanganan segera</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Retur</p>
+              <p className="mt-1 text-2xl md:text-3xl font-bold text-orange-600">{isLoading ? "..." : totalRetur}</p>
+              <p className="mt-1 text-xs md:text-sm text-orange-500">Data pengajuan retur barang</p>
             </div>
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
               <RefreshCcw className="h-5 w-5" />
@@ -166,40 +284,42 @@ export default function LogistikDashboardPage() {
         <article className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-4 md:px-6 py-4 border-b border-slate-100">
             <h3 className="text-base font-bold text-slate-900">Recent Manifests</h3>
-            <p className="mt-1 text-xs md:text-sm text-slate-500">4 manifest pengiriman terakhir</p>
+            <p className="mt-1 text-xs md:text-sm text-slate-500">4 manifest pengiriman terakhir dari database</p>
           </div>
 
           <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-[460px]">
+            <table className="w-full min-w-115">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
                     ID Manifest
                   </th>
                   <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                    Tujuan
+                    Order
                   </th>
                   <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                    Status
+                    Resi
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {LOGISTICS_DASHBOARD_DUMMY.recent_manifests.map((manifest) => (
-                  <tr key={manifest.manifest_id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-4 md:px-6 py-3 text-sm font-mono text-slate-700">{manifest.manifest_id}</td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-800">{manifest.tujuan}</td>
-                    <td className="px-4 md:px-6 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${manifestStatusClass(
-                          manifest.manifest_status,
-                        )}`}
-                      >
-                        {manifest.manifest_status}
-                      </span>
-                    </td>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 md:px-6 py-6 text-sm text-slate-500">Memuat data...</td>
                   </tr>
-                ))}
+                ) : recentManifests.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 md:px-6 py-6 text-sm text-slate-500">Belum ada data manifest.</td>
+                  </tr>
+                ) : (
+                  recentManifests.map((manifest, index) => (
+                    <tr key={manifest.id || `${manifest.order_id ?? "no-order"}-${index}`} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 md:px-6 py-3 text-sm font-mono text-slate-700">{shortId(manifest.id)}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-800">{manifest.order_id ?? "-"}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700">{manifest.resi ?? "-"}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -208,28 +328,34 @@ export default function LogistikDashboardPage() {
         <article className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-4 md:px-6 py-4 border-b border-slate-100">
             <h3 className="text-base font-bold text-slate-900">Recent Returns</h3>
-            <p className="mt-1 text-xs md:text-sm text-slate-500">Daftar barang retur terbaru</p>
+            <p className="mt-1 text-xs md:text-sm text-slate-500">Daftar retur terbaru dari database</p>
           </div>
 
           <div className="p-4 md:p-6">
             <ul className="space-y-3">
-              {LOGISTICS_DASHBOARD_DUMMY.recent_returns.map((item, index) => (
-                <li key={`${item.nama_barang}-${index}`} className="rounded-lg border border-slate-100 p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-sm font-semibold text-slate-900 break-words">{item.nama_barang}</p>
-                      <p className="text-xs md:text-sm text-slate-600 break-words">{item.alasan_retur}</p>
-                    </div>
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize whitespace-nowrap ${returnStatusClass(
-                        item.return_status,
-                      )}`}
-                    >
-                      {item.return_status}
-                    </span>
-                  </div>
-                </li>
-              ))}
+              {isLoading ? (
+                <li className="rounded-lg border border-slate-100 p-3 text-sm text-slate-500">Memuat data...</li>
+              ) : recentReturns.length === 0 ? (
+                <li className="rounded-lg border border-slate-100 p-3 text-sm text-slate-500">Belum ada data retur.</li>
+              ) : (
+                recentReturns.map((item, index) => {
+                  const order = orderById[item.order_id ?? ""];
+                  const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
+                  return (
+                    <li key={item.id || `${item.order_id ?? "no-order"}-${index}`} className="rounded-lg border border-slate-100 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-sm font-semibold text-slate-900 wrap-break-word">{productName}</p>
+                          <p className="text-xs md:text-sm text-slate-600 wrap-break-word">{item.alasan ?? "Tanpa alasan"}</p>
+                        </div>
+                        <span className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap bg-orange-100 text-orange-700">
+                          {item.created_at ? new Date(item.created_at).toLocaleDateString("id-ID") : "-"}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })
+              )}
             </ul>
           </div>
         </article>

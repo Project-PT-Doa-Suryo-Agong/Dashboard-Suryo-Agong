@@ -26,6 +26,22 @@ type ProductsListPayload = {
   meta: { page: number; limit: number; total: number };
 };
 
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function pickOrders(data: unknown): TProduksiOrder[] {
+  if (!data || typeof data !== "object") return [];
+  const source = data as Record<string, unknown>;
+  return asArray<TProduksiOrder>(source.orders ?? source.order ?? source.data);
+}
+
+function pickProducts(data: unknown): MProduk[] {
+  if (!data || typeof data !== "object") return [];
+  const source = data as Record<string, unknown>;
+  return asArray<MProduk>(source.produk ?? source.products ?? source.data);
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const raw = await response.text();
   let payload: ApiSuccess<T> | ApiError;
@@ -101,9 +117,10 @@ export default function ReturnsPage() {
         cache: "no-store",
       });
       const payload = await parseJsonResponse<OrdersListPayload>(response);
-      const list = payload.data.orders ?? [];
+      const list = pickOrders(payload.data);
+      const firstOrderId = getOrderPrimaryKey(list[0]);
       setOrders(list);
-      setFormData((prev) => ({ ...prev, order_id: prev.order_id || getOrderPrimaryKey(list[0]) || "" }));
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || firstOrderId || "" }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data pesanan.";
       alert(message);
@@ -118,7 +135,7 @@ export default function ReturnsPage() {
         cache: "no-store",
       });
       const payload = await parseJsonResponse<ProductsListPayload>(response);
-      setProducts(payload.data.produk ?? []);
+      setProducts(pickProducts(payload.data));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
       alert(message);
@@ -153,6 +170,16 @@ export default function ReturnsPage() {
     [products],
   );
 
+  const selectableOrders = useMemo(() => {
+    const map = new Map<string, TProduksiOrder>();
+    for (const order of orders) {
+      const orderId = getOrderPrimaryKey(order).trim();
+      if (!orderId || map.has(orderId)) continue;
+      map.set(orderId, order);
+    }
+    return Array.from(map.values());
+  }, [orders]);
+
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
@@ -168,7 +195,7 @@ export default function ReturnsPage() {
   }, [items, searchTerm, orderById, productById]);
 
   const resetForm = () => {
-    setFormData({ order_id: getOrderPrimaryKey(orders[0]) || "", alasan: "", bukti: null });
+    setFormData({ order_id: getOrderPrimaryKey(selectableOrders[0]) || "", alasan: "", bukti: null });
     setSelectedBuktiFile(null);
     setEditData(null);
   };
@@ -363,10 +390,14 @@ export default function ReturnsPage() {
               required
               value={formData.order_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, order_id: event.target.value }))}
+              disabled={selectableOrders.length === 0}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
-              <option value="" disabled>Pilih order</option>
-              {orders.map((order) => {
+              <option value="" disabled>{selectableOrders.length === 0 ? "Tidak ada order tersedia" : "Pilih order"}</option>
+              {formData.order_id && !selectableOrders.some((order) => getOrderPrimaryKey(order) === formData.order_id) ? (
+                <option value={formData.order_id}>{formData.order_id} - Order tersimpan</option>
+              ) : null}
+              {selectableOrders.map((order) => {
                 const productName = productById[order.product_id ?? ""] ?? "Produk";
                 const orderId = getOrderPrimaryKey(order);
                 return <option key={orderId} value={orderId}>{orderId} - {productName}</option>;
