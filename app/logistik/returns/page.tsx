@@ -7,7 +7,6 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MProduk, TProduksiOrder, TReturnOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
-import { getStorageFileName, uploadReturnBukti } from "@/lib/utils/upload-return-bukti";
 
 type ReturnsListPayload = {
   returns: TReturnOrder[];
@@ -25,22 +24,6 @@ type ProductsListPayload = {
   produk: MProduk[];
   meta: { page: number; limit: number; total: number };
 };
-
-function asArray<T>(value: unknown): T[] {
-  return Array.isArray(value) ? (value as T[]) : [];
-}
-
-function pickOrders(data: unknown): TProduksiOrder[] {
-  if (!data || typeof data !== "object") return [];
-  const source = data as Record<string, unknown>;
-  return asArray<TProduksiOrder>(source.orders ?? source.order ?? source.data);
-}
-
-function pickProducts(data: unknown): MProduk[] {
-  if (!data || typeof data !== "object") return [];
-  const source = data as Record<string, unknown>;
-  return asArray<MProduk>(source.produk ?? source.products ?? source.data);
-}
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const raw = await response.text();
@@ -68,9 +51,6 @@ function getOrderPrimaryKey(value: { order_id?: string | null; id?: string | nul
   return value?.order_id ?? value?.id ?? "";
 }
 
-const MAX_BUKTI_SIZE = 5 * 1024 * 1024;
-const ACCEPTED_BUKTI_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-
 export default function ReturnsPage() {
   const [items, setItems] = useState<TReturnOrder[]>([]);
   const [orders, setOrders] = useState<TProduksiOrder[]>([]);
@@ -87,12 +67,10 @@ export default function ReturnsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<{ order_id: string; alasan: string; bukti: string | null }>({
+  const [formData, setFormData] = useState<{ order_id: string; alasan: string }>({
     order_id: "",
     alasan: "",
-    bukti: null,
   });
-  const [selectedBuktiFile, setSelectedBuktiFile] = useState<File | null>(null);
 
   const fetchReturns = async () => {
     try {
@@ -117,10 +95,9 @@ export default function ReturnsPage() {
         cache: "no-store",
       });
       const payload = await parseJsonResponse<OrdersListPayload>(response);
-      const list = pickOrders(payload.data);
-      const firstOrderId = getOrderPrimaryKey(list[0]);
+      const list = payload.data.orders ?? [];
       setOrders(list);
-      setFormData((prev) => ({ ...prev, order_id: prev.order_id || firstOrderId || "" }));
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || getOrderPrimaryKey(list[0]) || "" }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data pesanan.";
       alert(message);
@@ -135,7 +112,7 @@ export default function ReturnsPage() {
         cache: "no-store",
       });
       const payload = await parseJsonResponse<ProductsListPayload>(response);
-      setProducts(pickProducts(payload.data));
+      setProducts(payload.data.produk ?? []);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
       alert(message);
@@ -170,16 +147,6 @@ export default function ReturnsPage() {
     [products],
   );
 
-  const selectableOrders = useMemo(() => {
-    const map = new Map<string, TProduksiOrder>();
-    for (const order of orders) {
-      const orderId = getOrderPrimaryKey(order).trim();
-      if (!orderId || map.has(orderId)) continue;
-      map.set(orderId, order);
-    }
-    return Array.from(map.values());
-  }, [orders]);
-
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
@@ -195,16 +162,14 @@ export default function ReturnsPage() {
   }, [items, searchTerm, orderById, productById]);
 
   const resetForm = () => {
-    setFormData({ order_id: getOrderPrimaryKey(selectableOrders[0]) || "", alasan: "", bukti: null });
-    setSelectedBuktiFile(null);
+    setFormData({ order_id: getOrderPrimaryKey(orders[0]) || "", alasan: "" });
     setEditData(null);
   };
 
   const openFormModal = (item?: TReturnOrder) => {
     if (item) {
       setEditData(item);
-      setFormData({ order_id: item.order_id ?? "", alasan: item.alasan ?? "", bukti: item.bukti ?? null });
-      setSelectedBuktiFile(null);
+      setFormData({ order_id: item.order_id ?? "", alasan: item.alasan ?? "" });
     } else {
       resetForm();
     }
@@ -226,16 +191,7 @@ export default function ReturnsPage() {
 
     setIsSubmitting(true);
     try {
-      let buktiPath = formData.bukti;
-      if (selectedBuktiFile) {
-        buktiPath = await uploadReturnBukti(selectedBuktiFile, editData?.bukti);
-      }
-
-      const payload = {
-        order_id: formData.order_id,
-        alasan: formData.alasan.trim() || null,
-        bukti: buktiPath,
-      };
+      const payload = { order_id: formData.order_id, alasan: formData.alasan.trim() || null };
 
       if (editData) {
         const response = await apiFetch(`/api/logistics/returns/${getOrderPrimaryKey(editData)}`, {
@@ -330,16 +286,15 @@ export default function ReturnsPage() {
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Order</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Produk</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Alasan</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Bukti</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
               <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
             ) : filteredItems.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
             ) : (
               filteredItems.map((item) => {
                 const order = orderById[item.order_id ?? ""];
@@ -350,7 +305,6 @@ export default function ReturnsPage() {
                     <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{getOrderPrimaryKey(order) || "Order tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{productName}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.alasan ?? "-"}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.bukti ? getStorageFileName(item.bukti) : "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="inline-flex items-center gap-2">
@@ -390,14 +344,10 @@ export default function ReturnsPage() {
               required
               value={formData.order_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, order_id: event.target.value }))}
-              disabled={selectableOrders.length === 0}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
-              <option value="" disabled>{selectableOrders.length === 0 ? "Tidak ada order tersedia" : "Pilih order"}</option>
-              {formData.order_id && !selectableOrders.some((order) => getOrderPrimaryKey(order) === formData.order_id) ? (
-                <option value={formData.order_id}>{formData.order_id} - Order tersimpan</option>
-              ) : null}
-              {selectableOrders.map((order) => {
+              <option value="" disabled>Pilih order</option>
+              {orders.map((order) => {
                 const productName = productById[order.product_id ?? ""] ?? "Produk";
                 const orderId = getOrderPrimaryKey(order);
                 return <option key={orderId} value={orderId}>{orderId} - {productName}</option>;
@@ -413,45 +363,6 @@ export default function ReturnsPage() {
               onChange={(event) => setFormData((prev) => ({ ...prev, alasan: event.target.value }))}
               className="w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             />
-          </label>
-
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-slate-700">Upload Bukti (JPG/PNG/WEBP/PDF, maks. 5MB)</span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                if (!file) {
-                  setSelectedBuktiFile(null);
-                  return;
-                }
-
-                if (!ACCEPTED_BUKTI_TYPES.includes(file.type)) {
-                  alert("Format file tidak didukung. Gunakan JPG, PNG, WEBP, atau PDF.");
-                  event.target.value = "";
-                  setSelectedBuktiFile(null);
-                  return;
-                }
-
-                if (file.size > MAX_BUKTI_SIZE) {
-                  alert("Ukuran file maksimal 5MB.");
-                  event.target.value = "";
-                  setSelectedBuktiFile(null);
-                  return;
-                }
-
-                setSelectedBuktiFile(file);
-              }}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-slate-700 focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
-            />
-            <p className="text-xs text-slate-500">
-              {selectedBuktiFile
-                ? `File dipilih: ${selectedBuktiFile.name}`
-                : formData.bukti
-                  ? `File saat ini: ${getStorageFileName(formData.bukti)}`
-                  : "Belum ada file bukti."}
-            </p>
           </label>
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">

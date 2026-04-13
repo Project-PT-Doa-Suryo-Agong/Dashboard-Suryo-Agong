@@ -260,6 +260,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (role) {
+      finalResponse.cookies.set("role", role, {
+        domain: cookieDomain,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+
     return finalResponse;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal Server Error";

@@ -426,64 +426,52 @@ export interface Database {
     Tables: {
       t_packing: {
         Row: {
-          id: string;
-          order_id: string | null;
+          order_id: string;
           status: LogisticsPackingStatus | null;
           created_at: string | null;
         };
         Insert: {
-          id?: string;
-          order_id?: string | null;
+          order_id: string;
           status?: LogisticsPackingStatus | null;
           created_at?: string | null;
         };
         Update: {
-          id?: string;
-          order_id?: string | null;
+          order_id?: string;
           status?: LogisticsPackingStatus | null;
         };
         Relationships: [];
       };
       t_logistik_manifest: {
         Row: {
-          id: string;
-          order_id: string | null;
+          order_id: string;
           resi: string | null;
           created_at: string | null;
         };
         Insert: {
-          id?: string;
-          order_id?: string | null;
+          order_id: string;
           resi?: string | null;
           created_at?: string | null;
         };
         Update: {
-          id?: string;
-          order_id?: string | null;
+          order_id?: string;
           resi?: string | null;
         };
         Relationships: [];
       };
       t_return_order: {
         Row: {
-          id: string;
-          order_id: string | null;
+          order_id: string;
           alasan: string | null;
-          bukti: string | null;
           created_at: string | null;
         };
         Insert: {
-          id?: string;
-          order_id?: string | null;
+          order_id: string;
           alasan?: string | null;
-          bukti?: string | null;
           created_at?: string | null;
         };
         Update: {
-          id?: string;
-          order_id?: string | null;
+          order_id?: string;
           alasan?: string | null;
-          bukti?: string | null;
         };
         Relationships: [];
       };

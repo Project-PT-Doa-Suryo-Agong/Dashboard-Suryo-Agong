@@ -29,14 +29,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const alasan = requireString(input, "alasan", { maxLen: 255, optional: true });
     if (!alasan.ok) return fail(ErrorCode.VALIDATION_ERROR, alasan.message, 400);
   }
-  if ("bukti" in input) {
-    const bukti = requireString(input, "bukti", { maxLen: 500, optional: true });
-    if (!bukti.ok) return fail(ErrorCode.VALIDATION_ERROR, bukti.message, 400);
-  }
   const payload = {
     ...input,
     ...(typeof input.alasan === "string" ? { alasan: input.alasan.trim() || null } : {}),
-    ...(typeof input.bukti === "string" ? { bukti: input.bukti.trim() || null } : {}),
   };
 
   const { data, error } = await updateReturnOrder(auth.ctx.supabase, id, payload);

@@ -58,14 +58,6 @@ function getOrderPrimaryKey(value: { order_id?: string | null; id?: string | nul
   return value?.order_id ?? value?.id ?? "";
 }
 
-function getPackingPrimaryKey(value: { id?: string | null } | null | undefined): string {
-  return value?.id ?? "";
-}
-
-function getPackingActionId(value: { id?: string | null; order_id?: string | null } | null | undefined): string {
-  return getPackingPrimaryKey(value).trim() || (value?.order_id ?? "").trim();
-}
-
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const raw = await response.text();
   let payload: ApiSuccess<T> | ApiError;
@@ -76,11 +68,7 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
     throw new Error(fallback || "Respons server tidak valid.");
   }
   if (!response.ok || !payload.success) {
-    const message = payload.success
-      ? "Terjadi kesalahan."
-      : typeof payload.error.details === "string"
-        ? `${payload.error.message} (${payload.error.details})`
-        : payload.error.message;
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
     throw new Error(message);
   }
   return payload;
@@ -240,20 +228,10 @@ export default function PackingPage() {
     setIsSubmitting(true);
     try {
       if (editData) {
-        const actionId = getPackingActionId(editData);
-        if (!actionId) {
-          throw new Error("Data packing tidak punya ID yang bisa diupdate.");
-        }
-
-        const payload = {
-          status: formData.status,
-          ...(formData.order_id !== (editData.order_id ?? "") ? { order_id: formData.order_id } : {}),
-        };
-
-        const response = await apiFetch(`/api/logistics/packing/${actionId}`, {
+        const response = await apiFetch(`/api/logistics/packing/${getOrderPrimaryKey(editData)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(formData),
         });
         await parseJsonResponse<PackingPayload>(response);
       } else {
@@ -367,15 +345,12 @@ export default function PackingPage() {
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Data packing tidak ditemukan.</td>
               </tr>
             ) : (
-              filteredItems.map((item, index) => {
+              filteredItems.map((item) => {
                 const order = orderById[item.order_id ?? ""];
                 const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
-                const packingId = getPackingPrimaryKey(item).trim();
-                const actionId = getPackingActionId(item);
-                const rowKey = packingId || `${item.order_id ?? "no-order"}-${item.created_at ?? "no-date"}-${index}`;
                 return (
-                  <tr key={rowKey} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{shortId(packingId || item.order_id)}</td>
+                  <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
+                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{shortId(getOrderPrimaryKey(item))}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderPrimaryKey(order) || item.order_id || "Order tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{productName}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
@@ -397,8 +372,8 @@ export default function PackingPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openDeleteModal(actionId)}
-                          disabled={isSubmitting || !actionId}
+                          onClick={() => openDeleteModal(getOrderPrimaryKey(item))}
+                          disabled={isSubmitting}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                         >
                           <Trash2 size={15} />

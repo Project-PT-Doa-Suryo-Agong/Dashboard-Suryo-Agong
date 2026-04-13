@@ -122,6 +122,9 @@ export function useUpdateAttendance() {
     setLoading(true);
     setError(null);
     try {
+      if (!id || typeof id !== "string") {
+        throw new Error("ID attendance tidak valid.");
+      }
       const response = await apiFetch(`/api/hr/attendance/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -137,7 +140,35 @@ export function useUpdateAttendance() {
     }
   }, []);
 
-  return { update, loading, error };
+  const updateByIdentity = useCallback(async (
+    source: { source_employee_id: string; source_tanggal: string },
+    input: Record<string, unknown>,
+  ) => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!source.source_employee_id || !source.source_tanggal) {
+        throw new Error("Identitas data attendance tidak lengkap.");
+      }
+      const response = await apiFetch("/api/hr/attendance", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...source,
+          ...input,
+        }),
+      });
+      const payload = await parseJsonResponse<{ attendance: TAttendance }>(response);
+      return payload.data.attendance;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal update attendance.");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { update, updateByIdentity, loading, error };
 }
 
 /**
@@ -151,6 +182,9 @@ export function useDeleteAttendance() {
     setLoading(true);
     setError(null);
     try {
+      if (!id || typeof id !== "string") {
+        throw new Error("ID attendance tidak valid.");
+      }
       const response = await apiFetch(`/api/hr/attendance/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -165,5 +199,27 @@ export function useDeleteAttendance() {
     }
   }, []);
 
-  return { remove, loading, error };
+  const removeByIdentity = useCallback(async (source: { source_employee_id: string; source_tanggal: string }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!source.source_employee_id || !source.source_tanggal) {
+        throw new Error("Identitas data attendance tidak lengkap.");
+      }
+      const response = await apiFetch(`/api/hr/attendance`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(source),
+      });
+      await parseJsonResponse<null>(response);
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menghapus attendance.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { remove, removeByIdentity, loading, error };
 }

@@ -30,15 +30,13 @@ export async function POST(request: Request) {
   }
 
   const input = body as Record<string, unknown>;
-  const orderId = requireUUID(input, "order_id", { optional: true });
+  const orderId = requireUUID(input, "order_id");
   if (!orderId.ok) return fail(ErrorCode.VALIDATION_ERROR, orderId.message, 400);
+  if (!orderId.data) return fail(ErrorCode.VALIDATION_ERROR, "order_id wajib diisi.", 400);
   const status = requireString(input, "status", { optional: true });
   if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);
   if (status.data !== null && !["pending", "packed", "shipped"].includes(status.data)) {
     return fail(ErrorCode.VALIDATION_ERROR, "status harus pending, packed, atau shipped.", 400);
-  }
-  if (!("order_id" in input) && !("status" in input)) {
-    return fail(ErrorCode.VALIDATION_ERROR, "Minimal satu field packing harus diisi.", 400);
   }
 
   const payload: TPackingInsert = {

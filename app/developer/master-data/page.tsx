@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Truck, Package, Tags, ArrowRight, ChevronRight, Database } from 'lucide-react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { apiFetch } from '@/lib/utils/api-fetch';
+import type { ApiError, ApiSuccess } from '@/types/api';
 
 const MASTER_DATA_CARDS = [
   {
@@ -39,6 +40,37 @@ type CardKey = (typeof MASTER_DATA_CARDS)[number]['key'];
 
 type MasterDataCounts = Record<CardKey, number>;
 
+type ProductsListPayload = {
+  produk: Array<{ id: string }>;
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type VendorsListPayload = {
+  vendor: Array<{ id: string }>;
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type VariantsListPayload = {
+  varian: Array<{ id: string }>;
+};
+
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? 'Terjadi kesalahan.' : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
+
 export default function MasterDataPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -49,30 +81,32 @@ export default function MasterDataPage() {
       setIsLoading(true);
       setErrorMessage(null);
       try {
-        const supabase = createSupabaseBrowserClient();
-        const [vendorCountResult, produkCountResult, varianCountResult] = await Promise.all([
-          (supabase as unknown as { schema: (schema: string) => typeof supabase })
-            .schema('core')
-            .from('m_vendor')
-            .select('id', { count: 'exact', head: true }),
-          (supabase as unknown as { schema: (schema: string) => typeof supabase })
-            .schema('core')
-            .from('m_produk')
-            .select('id', { count: 'exact', head: true }),
-          (supabase as unknown as { schema: (schema: string) => typeof supabase })
-            .schema('core')
-            .from('m_varian')
-            .select('id', { count: 'exact', head: true }),
+        const [vendorsResponse, productsResponse, variantsResponse] = await Promise.all([
+          apiFetch('/api/core/vendors?page=1&limit=1', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+          }),
+          apiFetch('/api/core/products?page=1&limit=1', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+          }),
+          apiFetch('/api/core/variants', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+          }),
         ]);
 
-        if (vendorCountResult.error) throw new Error(vendorCountResult.error.message);
-        if (produkCountResult.error) throw new Error(produkCountResult.error.message);
-        if (varianCountResult.error) throw new Error(varianCountResult.error.message);
+        const vendorsPayload = await parseJsonResponse<VendorsListPayload>(vendorsResponse);
+        const productsPayload = await parseJsonResponse<ProductsListPayload>(productsResponse);
+        const variantsPayload = await parseJsonResponse<VariantsListPayload>(variantsResponse);
 
         setCounts({
-          vendor: vendorCountResult.count ?? 0,
-          produk: produkCountResult.count ?? 0,
-          varian: varianCountResult.count ?? 0,
+          vendor: vendorsPayload.data.meta.total ?? 0,
+          produk: productsPayload.data.meta.total ?? 0,
+          varian: variantsPayload.data.varian?.length ?? 0,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Gagal memuat jumlah master data.';

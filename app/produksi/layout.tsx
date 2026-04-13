@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Sidebar from '@/components/sidebar';
 import Topbar from '@/components/topbar';
-import { useProfile } from '@/hooks/use-profile';
 
 const navItems = [
   { label: 'Dashboard Produksi', href: '/produksi', icon: 'LayoutDashboard' },
@@ -25,8 +24,6 @@ export default function ProduksiLayout({
   children: React.ReactNode;
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const { name, role } = useProfile();
-  const topbarUser = name || role ? { name: name ?? '', role: role ?? '' } : undefined;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light font-display">
@@ -54,7 +51,7 @@ export default function ProduksiLayout({
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Production Dashboard"
-          user={topbarUser}
+          user={{ name: 'Ahmad Kasim', role: 'Production Head' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

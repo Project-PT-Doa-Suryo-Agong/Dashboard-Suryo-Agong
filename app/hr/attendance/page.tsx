@@ -52,7 +52,7 @@ export default function AttendancePage() {
   const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
   const [editData, setEditData] = useState<AttendanceItem | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ employee_id: string; tanggal: string } | null>(null);
 
   const [formData, setFormData] = useState<{
     employee_id: string;
@@ -68,8 +68,8 @@ export default function AttendancePage() {
   const { data: items, loading: isLoadingAttendance, refresh: refreshAttendance } = useAttendance();
   const { data: rawKaryawan, loading: isLoadingKaryawan } = useKaryawan();
   const { insert } = useInsertAttendance();
-  const { update } = useUpdateAttendance();
-  const { remove } = useDeleteAttendance();
+  const { updateByIdentity } = useUpdateAttendance();
+  const { removeByIdentity } = useDeleteAttendance();
 
   const isLoading = isLoadingAttendance || isLoadingKaryawan;
 
@@ -147,13 +147,13 @@ export default function AttendancePage() {
     resetForm();
   };
 
-  const openDeleteModal = (id: string) => {
-    setDeleteId(id);
+  const openDeleteModal = (target: { employee_id: string; tanggal: string }) => {
+    setDeleteTarget(target);
     setIsDeleteModalOpen(true);
   };
 
   const closeDeleteModal = () => {
-    setDeleteId(null);
+    setDeleteTarget(null);
     setIsDeleteModalOpen(false);
   };
 
@@ -180,7 +180,20 @@ export default function AttendancePage() {
 
     try {
       if (editData) {
-        const result = await update(editData.id, payload);
+        const sourceEmployeeId = editData.employee_id;
+        const sourceTanggal = editData.tanggal;
+        if (!sourceEmployeeId || !sourceTanggal) {
+          throw new Error("Identitas data presensi lama tidak lengkap.");
+        }
+
+        const result = await updateByIdentity(
+          {
+            source_employee_id: sourceEmployeeId,
+            source_tanggal: sourceTanggal,
+          },
+          payload,
+        );
+
         if (!result) throw new Error("Gagal update presensi.");
       } else {
         const result = await insert(payload);
@@ -198,12 +211,15 @@ export default function AttendancePage() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteTarget) return;
     if (isSubmitting) return;
     setIsSubmitting(true);
     
     try {
-      const success = await remove(deleteId);
+      const success = await removeByIdentity({
+        source_employee_id: deleteTarget.employee_id,
+        source_tanggal: deleteTarget.tanggal,
+      });
       if (!success) throw new Error("Gagal menghapus presensi.");
       refreshAttendance();
     } catch (error) {
@@ -322,11 +338,14 @@ export default function AttendancePage() {
                 </td>
               </tr>
             ) : filteredItems.length > 0 ? (
-              filteredItems.map((item) => {
+              filteredItems.map((item, index) => {
                 const employee = employeeById[item.employee_id ?? ""];
                 const employeeName = employee?.nama ?? "Karyawan tidak ditemukan";
                 return (
-                  <tr key={item.id} className="border-t border-slate-100">
+                  <tr
+                    key={`${item.employee_id ?? "unknown"}-${item.tanggal ?? "no-date"}-${index}`}
+                    className="border-t border-slate-100"
+                  >
                     <td className="px-4 py-3 text-sm font-medium text-slate-900">
                       {employeeName}
                     </td>
@@ -355,7 +374,16 @@ export default function AttendancePage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openDeleteModal(item.id)}
+                          onClick={() => {
+                            if (!item.employee_id || !item.tanggal) {
+                              alert("Identitas data presensi tidak lengkap. Muat ulang halaman lalu coba lagi.");
+                              return;
+                            }
+                            openDeleteModal({
+                              employee_id: item.employee_id,
+                              tanggal: item.tanggal,
+                            });
+                          }}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50"
                           aria-label={`Hapus presensi ${employeeName}`}
                         >
