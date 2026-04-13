@@ -139,58 +139,30 @@ types/
 ```
 
 
-## Catatan Migrasi Hybrid Backend (Menunggu Penyesuaian Frontend)
+## Catatan Frontend (Pending)
 
-Saat ini, migrasi arsitektur *Hybrid* (Fase 1 hingga Fase 4) di sisi server/backend telah **mencapai 100%**. Namun untuk mewujudkan perampingan ini sepenuhnya, pihak Frontend wajib menyelesaikan transisi pemanggilan data dengan rincian berikut:
+Bagian di bawah ini sudah difilter. Poin yang backend-nya sudah selesai dan tidak lagi relevan untuk action frontend telah dihapus.
 
-### 1. Refactor API Call (Migrasi ke supabase.schema().from())
-**Konteks Fase 2 & 3**: Hampir seluruh endpoint app/api/... konvensional (untuk operasi CRUD sederhana) dan layer service-nya telah **dihapus**. 
-**Tindakan Frontend**: Gantikan fetch('/api/...') dengan memanggil langsung via client Supabase. Modul-modul UI yang harus disesuaikan:
-- **Core / HR:** app/hr/attendance/page.tsx, app/hr/warnings/page.tsx
-- **Logistik:** app/logistik/manifest/page.tsx, app/logistik/packing/page.tsx, app/logistik/returns/page.tsx
-- **Sales/Creative:** Halaman content, jadwal live, affiliator. *(Catatan: Sales Order tetap via Next.js API).*
-- **Finance:** app/finance/cashflow/page.tsx. *(Catatan: Payroll & Reimburse tetap via Next.js API).*
-- **Management:** app/management/kpi/page.tsx. *(Catatan: Budget request tetap via Next.js API).*
-- **Produksi:** Semua operasi produksi (QC, Pesanan) tetap via Next.js API untuk orkestrasi workflow.
+### 1. HR - Form Tambah Karyawan
+- Penambahan karyawan harus memakai endpoint `POST /api/hr/employees`.
+- Payload create yang wajib dipakai frontend: `{ email, password, nama, role, posisi, divisi, status, gaji_pokok, phone }`.
+- Endpoint lama `/api/hr/karyawan` dan `/api/hr/karyawan/:id` sudah tersedia sebagai alias kompatibilitas, tetapi target utama tetap `employees`.
 
-### 2. Penyesuaian Auth Endpoints (Migrasi Fase 1)
-**Konteks Fase 1**: Folder app/api/auth (yang melayani rute login, logout, dan session) dinilai berlebihan dan telah **dihapus**.
-**Tindakan Frontend**: Rute autentikasi mandiri (seperti di page.tsx login) kini wajib langsung berhubungan dengan Supabase API (supabase.auth.signInWithPassword(...)).
+### 2. Logistik - Kontrak API Baru
+- Untuk `POST /api/logistics/manifest`, `POST /api/logistics/packing`, dan `POST /api/logistics/returns`, field `order_id` sekarang wajib diisi (UUID valid).
+- Endpoint read logistik saat ini mengembalikan data tabel utama; frontend tetap melakukan mapping order dan produk dari sumber masing-masing (`/api/production/orders` dan `/api/core/products`).
 
-### 3. Standarisasi Tipe Role Backend (Cleanup Kritis)
-**Konteks Audit Akhir**: RLS dan sistem keamanan telah dirampingkan. Role CEO, Human Resource, Management & Strategy, dsb. sudah tidak dikenali oleh guard JWT di Backend.
-**Tindakan Frontend**: Pastikan state UI anda hanya merujuk pada standar baku 8 lowercase ini: developer, management, finance, hr, produksi, logistik, creative, office. Ubah seluruh kode kondisi seperti if (role === 'CEO') menjadi if (role === 'Management & Strategy').
+### 3. Finance - Reimbursement Bukti
+- Alur upload bukti di frontend: upload file ke storage, lalu kirim path/url via field `bukti` ke endpoint reimbursement.
+- Jika DB belum punya kolom yang dibutuhkan, jalankan SQL `supabase/add_kolom_reimburse.sql`.
 
-### 4. Instalasi Supabase Realtime (Fitur Fase 4)
-**Konteks Fase 4**: Agar panel dashboard terasa kekinian, Publication Realtime telah diaktifkan di database backend untuk tabel antrean dinamis.
-**Tindakan Frontend**: Tim frontend kini bisa menulis *custom hooks* (menggunakan supabase.channel('...').on('postgres_changes', ...).subscribe()) untuk merefleksikan pembaruan *live* di tabel:
-   - logistics.t_packing
-   - finance.t_reimbursement
-   - production.t_produksi_order
+### 4. Sales - Insert Sales Order
+- Frontend tidak perlu menghitung `total_price` manual saat create order.
+- Backend sudah menghitung otomatis berdasarkan `harga varian x quantity`.
 
-### 5. Adaptasi Direct Upload Storage (Fitur Fase 4)
-**Konteks Fase 4**: File gambar/dokumen tidak perlu transit merepotkan server utama. Bucket storage reimbursements (private) dan products (public) telah dikonfigurasi lengkap dengan perisai RLS-nya.
-**Tindakan Frontend**: Hapus fungsi *form-data api upload* lama, gantikan dengan mengeksekusi langsung await supabase.storage.from('products').upload(...) dari browser.
-
-### 6. Catatan Pembaruan Backend (Finance & Sales Logic)
-**Konteks Pembaruan**: Seluruh business logic, perbaikan error CRUD, parameter perhitungan biaya, dropdown relasi, serta otomatisasi trigger telah diselesaikan di Backend.
-**Tindakan Frontend**:
-1. **Total Price Otomatis (Sales)**: Saat *Insert Sales Order*, `total_price` tidak lagi wajib dikirim/dihitung oleh frontend. Backend otomatis menghitung `Harga Varian × QTY`.
-2. **Otomatisasi Gaji Pokok (Payroll)**: Saat input Payroll, jika nominal `total` dibiarkan kosong/0, backend akan otomatis mengambil `gaji_pokok` berdasarkan karyawan yang dipilih.
-3. **Perbaikan Relasi Karyawan**: RLS telah diperbaiki. Halaman Finance (*Payroll/Reimburse*) sekarang dijamin dapat me-load karyawan HR tanpa error.
-4. **Trigger Otomatis Anggaran (Budget)**: Jika Budget di-*approve*, data *Cashflow* akan tercipta otomatis. Frontend dilarang memanggil API POST `/api/finance/cashflow` secara implisit/ganda saat menyetujui anggaran.
-5. **Keamanan Payload API Finance**: Parameter `...input` yang disebar sembarangan telah difilter ketat di API. Jika ada form field frontend yang berlebihan, backend akan otomatis membuangnya.
-
-### 7. Catatan Pembaruan Backend (HR & Produksi)
-**Konteks Pembaruan**: RLS Produksi dan HR Attendance, perbaikan endpoint Order (Crash 500), serta logika Create M_Karyawan yang terstruktur telah rampung.
-**Tindakan Frontend**:
-1. **Alur Create Karyawan Baru (Sangat Penting)**: Halaman `app/hr/karyawan/page.tsx` saat ini di-hardcode dengan `useInsertKaryawan` (Supabase Direct) dan `<select>` "Profile_id". **Harap ubah ini.** Penambahan Karyawan *wajib* memanggil API endpoint via **POST `/api/hr/employees`** dengan payload: `{ email, password, nama, role, posisi, divisi, status, gaji_pokok, phone }`. Ini diwajibkan karena backend bertugas menyiapkan akun (auth) secara terpusat! Update dan Delete boleh tetap dengan direct API, namun Insert wajib via endpoint.
-2. **Perbaikan RLS Delete/Update HR (Attendance)**: Role 'HR & Operation Manager' tidak lagi tertolak saat ingin mengupdate atau mendelete *Attendance* berkat penyetelan nama role RLS yang diselaraskan dengan backend policy terbaru.
-3. **Unexpected JSON Token (Crash Server Order)**: Endpoint `/api/production/orders` dan QC telah direvisi total. Backend tak lagi crash bila Frontend menyisipkan ekstra-parameter. `...input` telah kami potong ke model *strict map constraint*.
-4. **RLS Issue Add/Delete Order (Produksi)**: Sistem sekarang dapat memproses CRUD dan *Add Sales Order* dari role 'Produksi' dan 'Produksi & Quality Control'. *Security Guards* di API level Next.js (`requireLevel`) juga diekstensikan mencakup role kelas `operational` yang sebelumnya dilupakan untuk Produksi.
-5. **Reimbursement Bukti Upload**: File SQL `supabase/add_kolom_reimburse.sql` telah dibuat. **Penting:** Jalankan script ini di menu SQL Editor Supabase Anda untuk menyuntikkan kolom `bukti` dan `keterangan` ke tabel `t_reimbursement`. Untuk alur Frontend: upload bukti ke `supabase.storage`, lalu ambil URL/Path nya. Lempar path tersebut via Fetch `POST /api/finance/reimburse` (field JSON: `"bukti": "url..."`) menuju Backend, *bukan di-insert secara direct dari browser*.
-
-*(Silakan hapus poin catatan 6 & 7 ini jika penyesuaian UX/UI frontend & testing sudah diselesaikan).*
+### 5. Auth dan Role UI
+- Pastikan login frontend menggunakan Supabase Auth secara langsung.
+- Pastikan mapping role di UI konsisten dengan role yang dipakai backend dan data `core.profiles`.
 
 ## Getting Started
 

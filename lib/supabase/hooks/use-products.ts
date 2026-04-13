@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fetchApi } from "@/lib/http/client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/utils/api-fetch";
+import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MProduk } from "@/types/supabase";
 import type { UseTableOptions } from "@/lib/supabase/hooks";
 
@@ -11,18 +12,19 @@ type QueryMeta = {
   total: number;
 };
 
-type QueryResult<T> = {
-  data: T[];
-  loading: boolean;
-  error: string | null;
+type ProductListPayload = {
+  produk: MProduk[];
   meta: QueryMeta;
-  refresh: () => void;
 };
 
-type MutationResult = {
-  loading: boolean;
-  error: string | null;
-};
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
 
 // ─── Products (core.m_produk) ──────────────────────────────────────────────────
 
@@ -33,67 +35,54 @@ type MutationResult = {
  * const { data, loading, meta, refresh } = useProducts({ page: 1, limit: 50 });
  */
 export function useProducts(options?: UseTableOptions) {
-  const { page = 1, limit = 200, enabled = true } = options ?? {};
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? 200;
 
   const [data, setData] = useState<MProduk[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
-  const refreshRef = useRef(0);
+  const [meta, setMeta] = useState<QueryMeta>({ page, limit, total: 0 });
+  const [refreshSeed, setRefreshSeed] = useState(0);
 
   const fetchData = useCallback(async () => {
-    if (!enabled) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError(null);
-
     try {
-      const res = await fetchApi<{ produk: MProduk[]; meta?: QueryMeta }>(
-        `/api/core/products?page=${page}&limit=${limit}`,
-      );
-      setData(res.produk ?? []);
-      setTotal(res.meta?.total ?? (res.produk?.length ?? 0));
+      const response = await apiFetch(`/api/core/products?page=${page}&limit=${limit}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<ProductListPayload>(response);
+      setData(payload.data.produk ?? []);
+      setMeta(payload.data.meta ?? { page, limit, total: 0 });
     } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuat data produk.");
       setData([]);
-      setTotal(0);
-      setError(err instanceof Error ? err.message : "Gagal memuat produk.");
+      setMeta({ page, limit, total: 0 });
     } finally {
       setLoading(false);
     }
-  }, [enabled, page, limit]);
+  }, [page, limit]);
 
   useEffect(() => {
     void fetchData();
-  }, [fetchData, refreshRef.current]);
+  }, [fetchData, refreshSeed]);
 
   const refresh = useCallback(() => {
-    refreshRef.current += 1;
-    void fetchData();
-  }, [fetchData]);
+    setRefreshSeed((prev) => prev + 1);
+  }, []);
 
-  return {
-    data,
-    loading,
-    error,
-    meta: { page, limit, total },
-    refresh,
-  } as QueryResult<MProduk>;
+  return useMemo(() => ({ data, loading, error, meta, refresh }), [data, loading, error, meta, refresh]);
 }
 
 /**
  * Fetch a single product by ID.
  */
 export function useProduct(id: string | null) {
-  const { data, loading, error } = useProducts({ enabled: Boolean(id), limit: 200 });
-  const row = useMemo(() => {
-    if (!id) return null;
-    return data.find((item) => item.id === id) ?? null;
-  }, [data, id]);
-
-  return { data: row, loading, error };
+  const { data, loading, error, refresh } = useProducts({ page: 1, limit: 200 });
+  const row = useMemo(() => (id ? data.find((item) => item.id === id) ?? null : null), [id, data]);
+  return { data: row, loading, error, refresh };
 }
 
 /**
@@ -107,26 +96,26 @@ export function useInsertProduct() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const insert = useCallback(async (input: Record<string, unknown>): Promise<MProduk | null> => {
+  const insert = useCallback(async (input: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchApi<{ produk: MProduk }>("/api/core/products", {
+      const response = await apiFetch("/api/core/products", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      return res.produk ?? null;
+      const payload = await parseJsonResponse<{ produk: MProduk }>(response);
+      return payload.data.produk;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal membuat produk.");
+      setError(err instanceof Error ? err.message : "Gagal menambah produk.");
       return null;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  return { insert, loading, error } as MutationResult & {
-    insert: (input: Record<string, unknown>) => Promise<MProduk | null>;
-  };
+  return { insert, loading, error };
 }
 
 /**
@@ -136,15 +125,20 @@ export function useUpdateProduct() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const update = useCallback(async (id: string, input: Record<string, unknown>): Promise<MProduk | null> => {
+  const update = useCallback(async (id: string, input: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchApi<{ produk: MProduk }>(`/api/core/products/${id}`, {
+      if (!id || typeof id !== "string") {
+        throw new Error("ID produk tidak valid.");
+      }
+      const response = await apiFetch(`/api/core/products/${id}`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      return res.produk ?? null;
+      const payload = await parseJsonResponse<{ produk: MProduk }>(response);
+      return payload.data.produk;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal update produk.");
       return null;
@@ -153,9 +147,7 @@ export function useUpdateProduct() {
     }
   }, []);
 
-  return { update, loading, error } as MutationResult & {
-    update: (id: string, input: Record<string, unknown>) => Promise<MProduk | null>;
-  };
+  return { update, loading, error };
 }
 
 /**
@@ -165,11 +157,18 @@ export function useDeleteProduct() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const remove = useCallback(async (id: string): Promise<boolean> => {
+  const remove = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      await fetchApi<null>(`/api/core/products/${id}`, { method: "DELETE" });
+      if (!id || typeof id !== "string") {
+        throw new Error("ID produk tidak valid.");
+      }
+      const response = await apiFetch(`/api/core/products/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menghapus produk.");
@@ -179,7 +178,5 @@ export function useDeleteProduct() {
     }
   }, []);
 
-  return { remove, loading, error } as MutationResult & {
-    remove: (id: string) => Promise<boolean>;
-  };
+  return { remove, loading, error };
 }

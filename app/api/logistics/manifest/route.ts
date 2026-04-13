@@ -30,14 +30,11 @@ export async function POST(request: Request) {
   }
 
   const input = body as Record<string, unknown>;
-  const orderId = requireUUID(input, "order_id", { optional: true });
+  const orderId = requireUUID(input, "order_id");
   if (!orderId.ok) return fail(ErrorCode.VALIDATION_ERROR, orderId.message, 400);
+  if (!orderId.data) return fail(ErrorCode.VALIDATION_ERROR, "order_id wajib diisi.", 400);
   const resi = requireString(input, "resi", { maxLen: 120, optional: true });
   if (!resi.ok) return fail(ErrorCode.VALIDATION_ERROR, resi.message, 400);
-
-  if (!("order_id" in input) && !("resi" in input)) {
-    return fail(ErrorCode.VALIDATION_ERROR, "Minimal satu field manifest harus diisi.", 400);
-  }
 
   const payload: TLogistikManifestInsert = {
     ...input,

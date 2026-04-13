@@ -7,7 +7,6 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MProduk, TReturnOrder, TSalesOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
-import { getStorageFileName, uploadReturnBukti } from "@/lib/utils/upload-return-bukti";
 
 type ReturnsListPayload = {
   returns: TReturnOrder[];
@@ -96,7 +95,6 @@ export default function ReturnsPage() {
     alasan: "",
     foto_bukti_url: null,
   });
-  const [selectedBuktiFile, setSelectedBuktiFile] = useState<File | null>(null);
 
   const fetchReturns = async () => {
     try {
@@ -121,10 +119,9 @@ export default function ReturnsPage() {
         cache: "no-store",
       });
       const payload = await parseJsonResponse<OrdersListPayload>(response);
-      const list = pickOrders(payload.data);
-      const firstOrderId = getOrderPrimaryKey(list[0]);
+      const list = payload.data.orders ?? [];
       setOrders(list);
-      setFormData((prev) => ({ ...prev, order_id: prev.order_id || firstOrderId || "" }));
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || getOrderPrimaryKey(list[0]) || "" }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data pesanan.";
       alert(message);
@@ -139,7 +136,7 @@ export default function ReturnsPage() {
         cache: "no-store",
       });
       const payload = await parseJsonResponse<ProductsListPayload>(response);
-      setProducts(pickProducts(payload.data));
+      setProducts(payload.data.produk ?? []);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
       alert(message);
@@ -173,16 +170,6 @@ export default function ReturnsPage() {
     () => Object.fromEntries(products.map((product) => [product.id, product.nama_produk])) as Record<string, string>,
     [products],
   );
-
-  const selectableOrders = useMemo(() => {
-    const map = new Map<string, TProduksiOrder>();
-    for (const order of orders) {
-      const orderId = getOrderPrimaryKey(order).trim();
-      if (!orderId || map.has(orderId)) continue;
-      map.set(orderId, order);
-    }
-    return Array.from(map.values());
-  }, [orders]);
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -336,16 +323,15 @@ export default function ReturnsPage() {
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Order</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Produk</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Alasan</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Bukti</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
               <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
             ) : filteredItems.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
             ) : (
               filteredItems.map((item) => {
                 const order = orderById[item.order_id ?? ""];
@@ -395,7 +381,6 @@ export default function ReturnsPage() {
               required
               value={formData.order_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, order_id: event.target.value }))}
-              disabled={selectableOrders.length === 0}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
               <option value="" disabled>{selectableOrders.length === 0 ? "Tidak ada order tersedia" : "Pilih order"}</option>

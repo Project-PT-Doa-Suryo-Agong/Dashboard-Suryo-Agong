@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fetchApi } from "@/lib/http/client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/utils/api-fetch";
+import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MVarian } from "@/types/supabase";
 import type { UseTableOptions } from "@/lib/supabase/hooks";
 
@@ -11,18 +12,18 @@ type QueryMeta = {
   total: number;
 };
 
-type QueryResult<T> = {
-  data: T[];
-  loading: boolean;
-  error: string | null;
-  meta: QueryMeta;
-  refresh: () => void;
+type VariantListPayload = {
+  varian: MVarian[];
 };
 
-type MutationResult = {
-  loading: boolean;
-  error: string | null;
-};
+async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
+  const payload = (await response.json()) as ApiSuccess<T> | ApiError;
+  if (!response.ok || !payload.success) {
+    const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
+    throw new Error(message);
+  }
+  return payload;
+}
 
 // ─── Variants (core.m_varian) ──────────────────────────────────────────────────
 
@@ -33,70 +34,57 @@ type MutationResult = {
  * const { data, loading, refresh } = useVariants({ filters: [["product_id", productId]] });
  */
 export function useVariants(options?: UseTableOptions) {
-  const { page = 1, limit = 200, enabled = true, filters = [] } = options ?? {};
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? 200;
+  const productId = options?.filters?.find(([col]) => col === "product_id")?.[1];
 
   const [data, setData] = useState<MVarian[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
-  const refreshRef = useRef(0);
-  const filtersKey = JSON.stringify(filters);
+  const [meta, setMeta] = useState<QueryMeta>({ page, limit, total: 0 });
+  const [refreshSeed, setRefreshSeed] = useState(0);
 
   const fetchData = useCallback(async () => {
-    if (!enabled) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError(null);
-
     try {
-      const parsedFilters = JSON.parse(filtersKey) as Array<[string, string]>;
-      const productId = parsedFilters.find(([col]) => col === "product_id")?.[1];
-      const qs = productId ? `?product_id=${encodeURIComponent(productId)}` : "";
-
-      const res = await fetchApi<{ varian: MVarian[] }>(`/api/core/variants${qs}`);
-      setData(res.varian ?? []);
-      setTotal(res.varian?.length ?? 0);
+      const query = productId ? `?product_id=${encodeURIComponent(productId)}` : "";
+      const response = await apiFetch(`/api/core/variants${query}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<VariantListPayload>(response);
+      const rows = payload.data.varian ?? [];
+      setData(rows);
+      setMeta({ page, limit, total: rows.length });
     } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuat data varian.");
       setData([]);
-      setTotal(0);
-      setError(err instanceof Error ? err.message : "Gagal memuat varian.");
+      setMeta({ page, limit, total: 0 });
     } finally {
       setLoading(false);
     }
-  }, [enabled, filtersKey]);
+  }, [page, limit, productId]);
 
   useEffect(() => {
     void fetchData();
-  }, [fetchData, refreshRef.current]);
+  }, [fetchData, refreshSeed]);
 
   const refresh = useCallback(() => {
-    refreshRef.current += 1;
-    void fetchData();
-  }, [fetchData]);
+    setRefreshSeed((prev) => prev + 1);
+  }, []);
 
-  return {
-    data,
-    loading,
-    error,
-    meta: { page, limit, total },
-    refresh,
-  } as QueryResult<MVarian>;
+  return useMemo(() => ({ data, loading, error, meta, refresh }), [data, loading, error, meta, refresh]);
 }
 
 /**
  * Fetch a single variant by ID.
  */
 export function useVariant(id: string | null) {
-  const { data, loading, error } = useVariants({ enabled: Boolean(id), limit: 200 });
-  const row = useMemo(() => {
-    if (!id) return null;
-    return data.find((item) => item.id === id) ?? null;
-  }, [data, id]);
-
-  return { data: row, loading, error };
+  const { data, loading, error, refresh } = useVariants({ page: 1, limit: 200 });
+  const row = useMemo(() => (id ? data.find((item) => item.id === id) ?? null : null), [id, data]);
+  return { data: row, loading, error, refresh };
 }
 
 /**
@@ -106,26 +94,26 @@ export function useInsertVariant() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const insert = useCallback(async (input: Record<string, unknown>): Promise<MVarian | null> => {
+  const insert = useCallback(async (input: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchApi<{ varian: MVarian }>("/api/core/variants", {
+      const response = await apiFetch("/api/core/variants", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      return res.varian ?? null;
+      const payload = await parseJsonResponse<{ varian: MVarian }>(response);
+      return payload.data.varian;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal membuat varian.");
+      setError(err instanceof Error ? err.message : "Gagal menambah varian.");
       return null;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  return { insert, loading, error } as MutationResult & {
-    insert: (input: Record<string, unknown>) => Promise<MVarian | null>;
-  };
+  return { insert, loading, error };
 }
 
 /**
@@ -135,15 +123,20 @@ export function useUpdateVariant() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const update = useCallback(async (id: string, input: Record<string, unknown>): Promise<MVarian | null> => {
+  const update = useCallback(async (id: string, input: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchApi<{ varian: MVarian }>(`/api/core/variants/${id}`, {
+      if (!id || typeof id !== "string") {
+        throw new Error("ID varian tidak valid.");
+      }
+      const response = await apiFetch(`/api/core/variants/${id}`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      return res.varian ?? null;
+      const payload = await parseJsonResponse<{ varian: MVarian }>(response);
+      return payload.data.varian;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal update varian.");
       return null;
@@ -152,9 +145,7 @@ export function useUpdateVariant() {
     }
   }, []);
 
-  return { update, loading, error } as MutationResult & {
-    update: (id: string, input: Record<string, unknown>) => Promise<MVarian | null>;
-  };
+  return { update, loading, error };
 }
 
 /**
@@ -164,11 +155,18 @@ export function useDeleteVariant() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const remove = useCallback(async (id: string): Promise<boolean> => {
+  const remove = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      await fetchApi<null>(`/api/core/variants/${id}`, { method: "DELETE" });
+      if (!id || typeof id !== "string") {
+        throw new Error("ID varian tidak valid.");
+      }
+      const response = await apiFetch(`/api/core/variants/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      await parseJsonResponse<null>(response);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menghapus varian.");
@@ -178,7 +176,5 @@ export function useDeleteVariant() {
     }
   }, []);
 
-  return { remove, loading, error } as MutationResult & {
-    remove: (id: string) => Promise<boolean>;
-  };
+  return { remove, loading, error };
 }

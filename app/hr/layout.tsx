@@ -19,7 +19,6 @@ export default function CreativeLayout({
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { name, role } = useProfile();
-  const topbarUser = name || role ? { name: name ?? '', role: role ?? '' } : undefined;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light font-display">
@@ -46,7 +45,7 @@ export default function CreativeLayout({
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Human Resource Dashboard"
-          user={topbarUser}
+          user={{ name: name ?? '...', role: role ?? '' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

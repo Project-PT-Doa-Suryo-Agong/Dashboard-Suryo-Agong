@@ -10,9 +10,37 @@ function expireCookie(response: NextResponse, name: string, domain?: string) {
   });
 }
 
+import { createServerClient } from "@supabase/ssr";
+import { env } from "@/lib/env";
+
 export async function POST(request: Request) {
   const response = ok(null, "Logout berhasil.") as NextResponse;
   const cookieDomain = getCookieDomain();
+
+  // Call Supabase signOut to clear the session securely
+  const supabase = createServerClient(
+    env.supabaseUrl,
+    env.supabaseAnonKey,
+    {
+      cookies: {
+        get(name: string) {
+          return request.headers.get("cookie")?.split(';').find(c => c.trim().startsWith(`${name}=`))?.split('=')[1];
+        },
+        set(name: string, value: string, options: Record<string, unknown>) {
+          // ignore
+        },
+        remove(name: string, options: Record<string, unknown>) {
+          // ignore
+        },
+      },
+    }
+  );
+
+  try {
+    await supabase.auth.signOut();
+  } catch (err) {
+    // ignore signout errors
+  }
 
   const projectRef = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF;
   const authCookieBase = projectRef

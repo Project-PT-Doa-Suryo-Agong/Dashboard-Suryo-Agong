@@ -36,25 +36,35 @@ export async function createSupabaseServerClient() {
         return cookieStore.get(name)?.value;
       },
       set(name: string, value: string, options: Record<string, unknown>) {
-        cookieStore.set({
-          name,
-          value,
-          ...(options as object),
-          domain: cookiePolicy.domain,
-          sameSite: cookiePolicy.sameSite,
-          secure: cookiePolicy.secure,
-        });
+        try {
+          cookieStore.set({
+            name,
+            value,
+            ...(options as object),
+            domain: cookiePolicy.domain,
+            sameSite: cookiePolicy.sameSite,
+            secure: cookiePolicy.secure,
+          });
+        } catch {
+          // The `set` method was called from a Server Component or GET route.
+          // Ignore the error.
+        }
       },
       remove(name: string, options: Record<string, unknown>) {
-        cookieStore.set({
-          name,
-          value: "",
-          ...(options as object),
-          domain: cookiePolicy.domain,
-          sameSite: cookiePolicy.sameSite,
-          secure: cookiePolicy.secure,
-          maxAge: 0,
-        });
+        try {
+          cookieStore.set({
+            name,
+            value: "",
+            ...(options as object),
+            domain: cookiePolicy.domain,
+            sameSite: cookiePolicy.sameSite,
+            secure: cookiePolicy.secure,
+            maxAge: 0,
+          });
+        } catch {
+          // The `remove` method was called from a Server Component or GET route.
+          // Ignore the error.
+        }
       },
     },
   });
