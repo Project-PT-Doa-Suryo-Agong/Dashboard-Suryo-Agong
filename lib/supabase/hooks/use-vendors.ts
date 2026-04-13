@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchApi } from "@/lib/http/client";
 import type { MVendor } from "@/types/supabase";
