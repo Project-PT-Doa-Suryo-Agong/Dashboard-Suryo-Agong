@@ -352,10 +352,11 @@ export default function ProduksiDashboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  pesanan_berjalan_rows.map((item) => {
+                  pesanan_berjalan_rows.map((item, index) => {
                     const displayStatus = getOrderStatus(item.status);
+                    const rowKey = item.id || `${item.product_id ?? "no-product"}-${item.created_at ?? "no-date"}-${index}`;
                     return (
-                      <tr key={item.id}>
+                      <tr key={rowKey}>
                         <td className="py-3 pr-2 text-sm font-semibold text-slate-800 break-all">{item.id}</td>
                         <td className="py-3 pr-2 text-sm text-slate-700 wrap-break-word">
                           {productById[item.product_id ?? ""] ?? "Produk tidak ditemukan"}
@@ -404,12 +405,13 @@ export default function ProduksiDashboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  hasil_qc_terbaru_rows.map((item) => {
+                  hasil_qc_terbaru_rows.map((item, index) => {
                     const relatedOrder = orderById[item.produksi_order_id ?? ""];
                     const displayStatus = getQcStatus(item.hasil);
+                    const rowKey = item.id || `${item.produksi_order_id ?? "no-order"}-${item.created_at ?? "no-date"}-${index}`;
 
                     return (
-                      <tr key={item.id}>
+                      <tr key={rowKey}>
                         <td className="py-3 pr-2 text-sm font-semibold text-slate-800 break-all">
                           {relatedOrder?.id ?? item.produksi_order_id ?? "-"}
                         </td>
