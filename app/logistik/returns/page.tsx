@@ -5,9 +5,8 @@ import { Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { MProduk, TReturnOrder, TSalesOrder } from "@/types/supabase";
+import type { MProduk, TProduksiOrder, TReturnOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
-import { getStorageFileName, uploadReturnBukti } from "@/lib/utils/upload-return-bukti";
 
 type ReturnsListPayload = {
   returns: TReturnOrder[];
@@ -17,7 +16,7 @@ type ReturnsListPayload = {
 type ReturnPayload = { return: TReturnOrder | null };
 
 type OrdersListPayload = {
-  orders: TSalesOrder[];
+  orders: TProduksiOrder[];
   meta: { page: number; limit: number; total: number };
 };
 
@@ -77,7 +76,7 @@ const ACCEPTED_BUKTI_TYPES = ["image/jpeg", "image/png", "image/webp", "applicat
 
 export default function ReturnsPage() {
   const [items, setItems] = useState<TReturnOrder[]>([]);
-  const [orders, setOrders] = useState<TSalesOrder[]>([]);
+  const [orders, setOrders] = useState<TProduksiOrder[]>([]);
   const [products, setProducts] = useState<MProduk[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -91,12 +90,12 @@ export default function ReturnsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
+  const [formData, setFormData] = useState<{ order_id: string; alasan: string }>({
   const [formData, setFormData] = useState<{ order_id: string; alasan: string; foto_bukti_url: string | null }>({
     order_id: "",
     alasan: "",
     foto_bukti_url: null,
   });
-  const [selectedBuktiFile, setSelectedBuktiFile] = useState<File | null>(null);
 
   const fetchReturns = async () => {
     try {
@@ -115,16 +114,15 @@ export default function ReturnsPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await apiFetch("/api/sales/orders?page=1&limit=200", {
+      const response = await apiFetch("/api/production/orders?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });
       const payload = await parseJsonResponse<OrdersListPayload>(response);
-      const list = pickOrders(payload.data);
-      const firstOrderId = getOrderPrimaryKey(list[0]);
+      const list = payload.data.orders ?? [];
       setOrders(list);
-      setFormData((prev) => ({ ...prev, order_id: prev.order_id || firstOrderId || "" }));
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || getOrderPrimaryKey(list[0]) || "" }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data pesanan.";
       alert(message);
@@ -139,7 +137,7 @@ export default function ReturnsPage() {
         cache: "no-store",
       });
       const payload = await parseJsonResponse<ProductsListPayload>(response);
-      setProducts(pickProducts(payload.data));
+      setProducts(payload.data.produk ?? []);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
       alert(message);
@@ -165,7 +163,7 @@ export default function ReturnsPage() {
         orders
           .map((order) => [getOrderPrimaryKey(order), order] as const)
           .filter(([orderId]) => !!orderId),
-      ) as Record<string, TSalesOrder>,
+      ) as Record<string, TProduksiOrder>,
     [orders],
   );
 
@@ -174,29 +172,22 @@ export default function ReturnsPage() {
     [products],
   );
 
-  const selectableOrders = useMemo(() => {
-    const map = new Map<string, TProduksiOrder>();
-    for (const order of orders) {
-      const orderId = getOrderPrimaryKey(order).trim();
-      if (!orderId || map.has(orderId)) continue;
-      map.set(orderId, order);
-    }
-    return Array.from(map.values());
-  }, [orders]);
-
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
     return items.filter((item) => {
       const order = orderById[item.order_id ?? ""];
+      const productName = productById[order?.product_id ?? ""] ?? "";
       return (
         getOrderPrimaryKey(order).toLowerCase().includes(keyword) ||
+        productName.toLowerCase().includes(keyword) ||
         (item.alasan ?? "").toLowerCase().includes(keyword)
       );
     });
   }, [items, searchTerm, orderById, productById]);
 
   const resetForm = () => {
+    setFormData({ order_id: getOrderPrimaryKey(orders[0]) || "", alasan: "" });
     setFormData({ order_id: getOrderPrimaryKey(selectableOrders[0]) || "", alasan: "", foto_bukti_url: null });
     setSelectedBuktiFile(null);
     setEditData(null);
@@ -205,6 +196,7 @@ export default function ReturnsPage() {
   const openFormModal = (item?: TReturnOrder) => {
     if (item) {
       setEditData(item);
+      setFormData({ order_id: item.order_id ?? "", alasan: item.alasan ?? "" });
       setFormData({ order_id: item.order_id ?? "", alasan: item.alasan ?? "", foto_bukti_url: item.foto_bukti_url ?? null });
       setSelectedBuktiFile(null);
     } else {
@@ -225,13 +217,10 @@ export default function ReturnsPage() {
       alert("Order wajib dipilih.");
       return;
     }
-    if (!formData.alasan.trim()) {
-      alert("Alasan retur wajib diisi.");
-      return;
-    }
 
     setIsSubmitting(true);
     try {
+      const payload = { order_id: formData.order_id, alasan: formData.alasan.trim() || null };
       let fotoBuktiUrl = formData.foto_bukti_url;
       if (selectedBuktiFile) {
         fotoBuktiUrl = await uploadReturnBukti(selectedBuktiFile, editData?.foto_bukti_url);
@@ -244,7 +233,7 @@ export default function ReturnsPage() {
       };
 
       if (editData) {
-        const response = await apiFetch(`/api/logistics/returns/${getReturnPrimaryKey(editData)}`, {
+        const response = await apiFetch(`/api/logistics/returns/${getOrderPrimaryKey(editData)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -336,24 +325,24 @@ export default function ReturnsPage() {
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Order</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Produk</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Alasan</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Bukti</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
               <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
             ) : filteredItems.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
             ) : (
               filteredItems.map((item) => {
                 const order = orderById[item.order_id ?? ""];
+                const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
                 return (
-                  <tr key={getReturnPrimaryKey(item) || getOrderPrimaryKey(item)} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{getReturnPrimaryKey(item).slice(0, 8).toUpperCase()}</td>
+                  <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
+                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{getOrderPrimaryKey(item).slice(0, 8).toUpperCase()}</td>
                     <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{getOrderPrimaryKey(order) || "Order tidak ditemukan"}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">-</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{productName}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.alasan ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.foto_bukti_url ? getStorageFileName(item.foto_bukti_url) : "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
@@ -370,7 +359,7 @@ export default function ReturnsPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openDeleteModal(getReturnPrimaryKey(item))}
+                          onClick={() => openDeleteModal(getOrderPrimaryKey(item))}
                           disabled={isSubmitting}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                         >
@@ -395,16 +384,18 @@ export default function ReturnsPage() {
               required
               value={formData.order_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, order_id: event.target.value }))}
-              disabled={selectableOrders.length === 0}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
+              <option value="" disabled>Pilih order</option>
+              {orders.map((order) => {
+                const productName = productById[order.product_id ?? ""] ?? "Produk";
               <option value="" disabled>{selectableOrders.length === 0 ? "Tidak ada order tersedia" : "Pilih order"}</option>
               {formData.order_id && !selectableOrders.some((order) => getOrderPrimaryKey(order) === formData.order_id) ? (
                 <option value={formData.order_id}>{formData.order_id} - Order tersimpan</option>
               ) : null}
               {selectableOrders.map((order) => {
                 const orderId = getOrderPrimaryKey(order);
-                return <option key={orderId} value={orderId}>{orderId}</option>;
+                return <option key={orderId} value={orderId}>{orderId} - {productName}</option>;
               })}
             </select>
           </label>

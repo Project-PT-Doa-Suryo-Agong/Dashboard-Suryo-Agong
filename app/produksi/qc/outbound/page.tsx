@@ -57,7 +57,7 @@ const statusBadgeClass: Record<ProductionQcResult, string> = {
 };
 
 const CRUD_PRIMARY_BUTTON_CLASS =
-  "inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC934B]/30 disabled:opacity-50";
 const CRUD_EDIT_BUTTON_CLASS =
   "inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 disabled:opacity-50";
 const CRUD_DELETE_BUTTON_CLASS =
@@ -71,6 +71,10 @@ function formatDate(value: string): string {
     month: "short",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function getQcPrimaryKey(value: { produksi_order_id?: string | null; id?: string | null } | null | undefined): string {
+  return value?.produksi_order_id ?? value?.id ?? "";
 }
 
 export default function QcOutboundPage() {
@@ -158,8 +162,7 @@ export default function QcOutboundPage() {
       const matchStatus = filterStatus === "all" || item.hasil === filterStatus;
       const matchSearch =
         normalizedSearch.length === 0 ||
-        item.id.toLowerCase().includes(normalizedSearch) ||
-        (order?.id ?? "").toLowerCase().includes(normalizedSearch);
+        (order?.id ?? item.produksi_order_id ?? "").toLowerCase().includes(normalizedSearch);
 
       return matchStatus && matchSearch;
     });
@@ -219,7 +222,9 @@ export default function QcOutboundPage() {
       };
 
       if (editData) {
-        const response = await apiFetch(`/api/production/qc-outbound/${editData.id}`, {
+        const primaryKey = getQcPrimaryKey(editData);
+        if (!primaryKey) throw new Error("Order ID QC outbound tidak ditemukan.");
+        const response = await apiFetch(`/api/production/qc-outbound/${primaryKey}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -267,8 +272,8 @@ export default function QcOutboundPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">QC Outbound (Produk Jadi)</h1>
-        <p className="text-sm md:text-base text-slate-300">Inspeksi akhir kualitas produk jadi sebelum diserahkan ke gudang/logistik.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">QC Outbound (Produk Jadi)</h1>
+        <p className="text-sm md:text-base text-slate-600">Inspeksi akhir kualitas produk jadi sebelum diserahkan ke gudang/logistik.</p>
       </section>
 
       <section className="flex flex-col gap-3 md:gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -279,15 +284,15 @@ export default function QcOutboundPage() {
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Cari ID inspeksi atau produksi order..."
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-slate-100 focus:ring-2 focus:ring-slate-500/20"
+              placeholder="Cari produksi order..."
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
             />
           </div>
 
           <select
             value={filterStatus}
             onChange={(event) => setFilterStatus(event.target.value as "all" | ProductionQcResult)}
-            className="w-full sm:w-56 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-100 focus:ring-2 focus:ring-slate-500/20"
+            className="w-full sm:w-56 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
           >
             <option value="all">Semua Status</option>
             <option value="pass">Lolos QC / Siap Kirim</option>
@@ -315,7 +320,6 @@ export default function QcOutboundPage() {
           <table className="w-full min-w-max">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">ID Inspeksi</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Produksi Order</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</th>
@@ -325,16 +329,15 @@ export default function QcOutboundPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Memuat data...</td>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={4}>Memuat data...</td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Tidak ada data inspeksi yang sesuai filter.</td>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={4}>Tidak ada data inspeksi yang sesuai filter.</td>
                 </tr>
               ) : (
                 filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.id}</td>
+                  <tr key={getQcPrimaryKey(item)} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-72">{orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan"}</td>
                     <td className="px-4 md:px-6 py-3">
@@ -355,7 +358,14 @@ export default function QcOutboundPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openDeleteModal(item.id)}
+                          onClick={() => {
+                            const primaryKey = getQcPrimaryKey(item);
+                            if (!primaryKey) {
+                              alert("Order ID QC outbound tidak ditemukan.");
+                              return;
+                            }
+                            openDeleteModal(primaryKey);
+                          }}
                           disabled={isSubmitting}
                           className={CRUD_DELETE_BUTTON_CLASS}
                         >

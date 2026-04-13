@@ -23,16 +23,18 @@ type ProfilesListPayload = {
   };
 };
 
-type DashboardStats = {
-  totalUsers: number;
-  totalProduk: number;
-  totalVarian: number;
-  totalVendor: number;
-};
-
 type ProductsListPayload = {
   produk: Array<{ id: string }>;
-  meta?: {
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type VendorsListPayload = {
+  vendor: Array<{ id: string }>;
+  meta: {
     page: number;
     limit: number;
     total: number;
@@ -43,13 +45,11 @@ type VariantsListPayload = {
   varian: Array<{ id: string }>;
 };
 
-type VendorsListPayload = {
-  vendor: Array<{ id: string }>;
-  meta?: {
-    page: number;
-    limit: number;
-    total: number;
-  };
+type DashboardStats = {
+  totalUsers: number;
+  totalProduk: number;
+  totalVarian: number;
+  totalVendor: number;
 };
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
@@ -93,7 +93,7 @@ export default function DeveloperDashboard() {
       setIsLoading(true);
       setErrorMessage(null);
       try {
-        const [profilesResponse, produkResponse, varianResponse, vendorResponse] = await Promise.all([
+        const [profilesResponse, productsResponse, variantsResponse, vendorsResponse] = await Promise.all([
           apiFetch('/api/profiles?page=1&limit=1', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
@@ -117,15 +117,15 @@ export default function DeveloperDashboard() {
         ]);
 
         const profilesPayload = await parseJsonResponse<ProfilesListPayload>(profilesResponse);
-        const produkPayload = await parseJsonResponse<ProductsListPayload>(produkResponse);
-        const varianPayload = await parseJsonResponse<VariantsListPayload>(varianResponse);
-        const vendorPayload = await parseJsonResponse<VendorsListPayload>(vendorResponse);
+        const productsPayload = await parseJsonResponse<ProductsListPayload>(productsResponse);
+        const variantsPayload = await parseJsonResponse<VariantsListPayload>(variantsResponse);
+        const vendorsPayload = await parseJsonResponse<VendorsListPayload>(vendorsResponse);
 
         setStats({
           totalUsers: profilesPayload.data.meta.total ?? 0,
-          totalProduk: produkPayload.data.meta?.total ?? produkPayload.data.produk?.length ?? 0,
-          totalVarian: varianPayload.data.varian?.length ?? 0,
-          totalVendor: vendorPayload.data.meta?.total ?? vendorPayload.data.vendor?.length ?? 0,
+          totalProduk: productsPayload.data.meta.total ?? 0,
+          totalVarian: variantsPayload.data.varian?.length ?? 0,
+          totalVendor: vendorsPayload.data.meta.total ?? 0,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Gagal memuat statistik developer.';

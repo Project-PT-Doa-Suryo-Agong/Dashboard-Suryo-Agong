@@ -27,7 +27,6 @@ export default function DeveloperLayout({
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { name, role } = useProfile();
-  const topbarUser = name || role ? { name: name ?? '', role: role ?? '' } : undefined;
 
   return (
     <div className="flex min-h-screen bg-background-light font-display">
@@ -53,7 +52,7 @@ export default function DeveloperLayout({
       <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
         <Topbar
           title="Developer Dashboard"
-          user={topbarUser}
+          user={{ name: name ?? '...', role: role ?? '' }}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
         />
 

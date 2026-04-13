@@ -90,7 +90,7 @@ const statusBadgeClass: Record<ProductionStatus, string> = {
 };
 
 const CRUD_PRIMARY_BUTTON_CLASS =
-  "inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC934B]/30 disabled:opacity-50";
 const CRUD_EDIT_BUTTON_CLASS =
   "inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 disabled:opacity-50";
 const CRUD_DELETE_BUTTON_CLASS =
@@ -348,8 +348,8 @@ export default function ProductionOrdersPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Pesanan Produksi (Orders)</h1>
-        <p className="text-sm md:text-base text-slate-300">Kelola dan pantau antrean proses manufaktur produk.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Pesanan Produksi (Orders)</h1>
+        <p className="text-sm md:text-base text-slate-600">Kelola dan pantau antrean proses manufaktur produk.</p>
       </section>
 
       <section className="flex flex-col gap-3 md:gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -361,14 +361,14 @@ export default function ProductionOrdersPage() {
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Cari ID pesanan, produk, atau vendor..."
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-slate-100 focus:ring-2 focus:ring-slate-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
             />
           </div>
 
           <select
             value={filterStatus}
             onChange={(event) => setFilterStatus(event.target.value as "all" | ProductionStatus)}
-            className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-100 focus:ring-2 focus:ring-slate-500/20"
+            className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
           >
             <option value="all">Semua Status</option>
             <option value="draft">Draft</option>
@@ -476,7 +476,7 @@ export default function ProductionOrdersPage() {
               required
               value={formData.product_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, product_id: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-100 focus:ring-2 focus:ring-slate-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
             >
               <option value="" disabled>Pilih produk</option>
               {produkList.map((product) => (
@@ -492,7 +492,7 @@ export default function ProductionOrdersPage() {
               required
               value={formData.vendor_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, vendor_id: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-100 focus:ring-2 focus:ring-slate-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
             >
               <option value="" disabled>Pilih vendor</option>
               {vendorList.map((vendor) => (
@@ -510,7 +510,7 @@ export default function ProductionOrdersPage() {
               type="number"
               value={formData.quantity}
               onChange={(event) => setFormData((prev) => ({ ...prev, quantity: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-100 focus:ring-2 focus:ring-slate-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
             />
           </div>
 
@@ -520,7 +520,7 @@ export default function ProductionOrdersPage() {
               id="status-order"
               value={formData.status}
               onChange={(event) => setFormData((prev) => ({ ...prev, status: event.target.value as ProductionStatus }))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-100 focus:ring-2 focus:ring-slate-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
             >
               <option value="draft">Draft</option>
               <option value="ongoing">Berjalan</option>

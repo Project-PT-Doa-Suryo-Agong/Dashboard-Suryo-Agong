@@ -36,7 +36,37 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if ("bukti" in input) {
     const bukti = requireString(input, "bukti", { optional: true });
     if (!bukti.ok) return fail(ErrorCode.VALIDATION_ERROR, bukti.message, 400);
-    payload.bukti = bukti.data;
+    
+    let finalBukti = bukti.data ?? null;
+
+    if (finalBukti && finalBukti.startsWith("data:image")) {
+      const matches = finalBukti.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, "base64");
+        const ext = mimeType.split("/")[1] || "png";
+        
+        const fileId = id; // use reimburse id or just timestamp
+        const fileName = `${fileId}-${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await auth.ctx.supabase.storage
+          .from("reimbursements")
+          .upload(fileName, buffer, {
+            contentType: mimeType,
+            upsert: true
+          });
+
+        if (uploadError) {
+          return fail(ErrorCode.DB_ERROR, "Gagal upload bukti reimburse ke storage.", 500, uploadError.message);
+        }
+
+        // Simpan path-nya saja (karena bucket private)
+        finalBukti = fileName;
+      }
+    }
+    
+    payload.bukti = finalBukti;
   }
   if ("status" in input) {
     const status = requireString(input, "status");

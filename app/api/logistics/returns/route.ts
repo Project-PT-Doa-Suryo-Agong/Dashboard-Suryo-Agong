@@ -31,6 +31,7 @@ export async function POST(request: Request) {
 
   const input = body as Record<string, unknown>;
   const orderId = requireUUID(input, "order_id");
+  const orderId = requireUUID(input, "order_id");
   if (!orderId.ok) return fail(ErrorCode.VALIDATION_ERROR, orderId.message, 400);
   const alasan = requireString(input, "alasan", { maxLen: 255 });
   if (!alasan.ok) return fail(ErrorCode.VALIDATION_ERROR, alasan.message, 400);
