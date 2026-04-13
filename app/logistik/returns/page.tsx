@@ -5,8 +5,9 @@ import { Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { MProduk, TProduksiOrder, TReturnOrder } from "@/types/supabase";
+import type { TReturnOrder, TSalesOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type ReturnsListPayload = {
   returns: TReturnOrder[];
@@ -16,12 +17,7 @@ type ReturnsListPayload = {
 type ReturnPayload = { return: TReturnOrder | null };
 
 type OrdersListPayload = {
-  orders: TProduksiOrder[];
-  meta: { page: number; limit: number; total: number };
-};
-
-type ProductsListPayload = {
-  produk: MProduk[];
+  orders: TSalesOrder[];
   meta: { page: number; limit: number; total: number };
 };
 
@@ -33,12 +29,6 @@ function pickOrders(data: unknown): TSalesOrder[] {
   if (!data || typeof data !== "object") return [];
   const source = data as Record<string, unknown>;
   return asArray<TSalesOrder>(source.orders ?? source.order ?? source.data);
-}
-
-function pickProducts(data: unknown): MProduk[] {
-  if (!data || typeof data !== "object") return [];
-  const source = data as Record<string, unknown>;
-  return asArray<MProduk>(source.produk ?? source.products ?? source.data);
 }
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
@@ -73,11 +63,42 @@ function getReturnPrimaryKey(value: { id?: string | null } | null | undefined): 
 
 const MAX_BUKTI_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_BUKTI_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const RETURN_BUKTI_BUCKET = "returns";
+
+function buildUploadPath(file: File): string {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+  const random = Math.random().toString(36).slice(2, 10);
+  return `${Date.now()}-${random}.${ext}`;
+}
+
+async function uploadReturnBukti(file: File, oldPath?: string | null): Promise<string> {
+  const supabase = createSupabaseBrowserClient();
+  const uploadPath = buildUploadPath(file);
+
+  if (oldPath) {
+    await supabase.storage.from(RETURN_BUKTI_BUCKET).remove([oldPath]);
+  }
+
+  const { error } = await supabase.storage
+    .from(RETURN_BUKTI_BUCKET)
+    .upload(uploadPath, file, { upsert: false, cacheControl: "3600" });
+
+  if (error) {
+    throw new Error(`Gagal upload bukti retur: ${error.message}`);
+  }
+
+  return uploadPath;
+}
+
+function getStorageFileName(path: string | null | undefined): string {
+  if (!path) return "-";
+  const parts = path.split("/");
+  return parts[parts.length - 1] || path;
+}
 
 export default function ReturnsPage() {
   const [items, setItems] = useState<TReturnOrder[]>([]);
-  const [orders, setOrders] = useState<TProduksiOrder[]>([]);
-  const [products, setProducts] = useState<MProduk[]>([]);
+  const [orders, setOrders] = useState<TSalesOrder[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -88,14 +109,14 @@ export default function ReturnsPage() {
   const [editData, setEditData] = useState<TReturnOrder | null>(null);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedReturnId, setSelectedReturnId] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<{ order_id: string; alasan: string }>({
   const [formData, setFormData] = useState<{ order_id: string; alasan: string; foto_bukti_url: string | null }>({
     order_id: "",
     alasan: "",
     foto_bukti_url: null,
   });
+  const [selectedBuktiFile, setSelectedBuktiFile] = useState<File | null>(null);
 
   const fetchReturns = async () => {
     try {
@@ -114,32 +135,18 @@ export default function ReturnsPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await apiFetch("/api/production/orders?page=1&limit=200", {
+      const response = await apiFetch("/api/sales/orders?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });
       const payload = await parseJsonResponse<OrdersListPayload>(response);
-      const list = payload.data.orders ?? [];
+      const list = pickOrders(payload.data);
+      const firstOrderId = getOrderPrimaryKey(list[0]);
       setOrders(list);
-      setFormData((prev) => ({ ...prev, order_id: prev.order_id || getOrderPrimaryKey(list[0]) || "" }));
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || firstOrderId || "" }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat data pesanan.";
-      alert(message);
-    }
-  };
-
-  const fetchProducts = async () => {
-    try {
-      const response = await apiFetch("/api/core/products?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<ProductsListPayload>(response);
-      setProducts(payload.data.produk ?? []);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
+      const message = error instanceof Error ? error.message : "Gagal memuat data sales order.";
       alert(message);
     }
   };
@@ -148,7 +155,7 @@ export default function ReturnsPage() {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchReturns(), fetchOrders(), fetchProducts()]);
+        await Promise.all([fetchReturns(), fetchOrders()]);
       } finally {
         setIsLoading(false);
       }
@@ -163,31 +170,33 @@ export default function ReturnsPage() {
         orders
           .map((order) => [getOrderPrimaryKey(order), order] as const)
           .filter(([orderId]) => !!orderId),
-      ) as Record<string, TProduksiOrder>,
+      ) as Record<string, TSalesOrder>,
     [orders],
   );
 
-  const productById = useMemo(
-    () => Object.fromEntries(products.map((product) => [product.id, product.nama_produk])) as Record<string, string>,
-    [products],
-  );
+  const selectableOrders = useMemo(() => {
+    const map = new Map<string, TSalesOrder>();
+    for (const order of orders) {
+      const orderId = getOrderPrimaryKey(order).trim();
+      if (!orderId || map.has(orderId)) continue;
+      map.set(orderId, order);
+    }
+    return Array.from(map.values());
+  }, [orders]);
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
     return items.filter((item) => {
       const order = orderById[item.order_id ?? ""];
-      const productName = productById[order?.product_id ?? ""] ?? "";
       return (
         getOrderPrimaryKey(order).toLowerCase().includes(keyword) ||
-        productName.toLowerCase().includes(keyword) ||
         (item.alasan ?? "").toLowerCase().includes(keyword)
       );
     });
-  }, [items, searchTerm, orderById, productById]);
+  }, [items, searchTerm, orderById]);
 
   const resetForm = () => {
-    setFormData({ order_id: getOrderPrimaryKey(orders[0]) || "", alasan: "" });
     setFormData({ order_id: getOrderPrimaryKey(selectableOrders[0]) || "", alasan: "", foto_bukti_url: null });
     setSelectedBuktiFile(null);
     setEditData(null);
@@ -196,8 +205,11 @@ export default function ReturnsPage() {
   const openFormModal = (item?: TReturnOrder) => {
     if (item) {
       setEditData(item);
-      setFormData({ order_id: item.order_id ?? "", alasan: item.alasan ?? "" });
-      setFormData({ order_id: item.order_id ?? "", alasan: item.alasan ?? "", foto_bukti_url: item.foto_bukti_url ?? null });
+      setFormData({
+        order_id: item.order_id ?? "",
+        alasan: item.alasan ?? "",
+        foto_bukti_url: item.foto_bukti_url ?? null,
+      });
       setSelectedBuktiFile(null);
     } else {
       resetForm();
@@ -217,10 +229,13 @@ export default function ReturnsPage() {
       alert("Order wajib dipilih.");
       return;
     }
+    if (!formData.alasan.trim()) {
+      alert("Alasan retur wajib diisi.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const payload = { order_id: formData.order_id, alasan: formData.alasan.trim() || null };
       let fotoBuktiUrl = formData.foto_bukti_url;
       if (selectedBuktiFile) {
         fotoBuktiUrl = await uploadReturnBukti(selectedBuktiFile, editData?.foto_bukti_url);
@@ -233,7 +248,7 @@ export default function ReturnsPage() {
       };
 
       if (editData) {
-        const response = await apiFetch(`/api/logistics/returns/${getOrderPrimaryKey(editData)}`, {
+        const response = await apiFetch(`/api/logistics/returns/${getReturnPrimaryKey(editData)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -258,22 +273,22 @@ export default function ReturnsPage() {
     }
   };
 
-  const openDeleteModal = (orderId: string) => {
-    setSelectedOrderId(orderId);
+  const openDeleteModal = (returnId: string) => {
+    setSelectedReturnId(returnId);
     setIsDeleteModalOpen(true);
   };
 
   const closeDeleteModal = () => {
-    setSelectedOrderId(null);
+    setSelectedReturnId(null);
     setIsDeleteModalOpen(false);
   };
 
   const handleDelete = async () => {
-    if (!selectedOrderId || isSubmitting) return;
+    if (!selectedReturnId || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      const response = await apiFetch(`/api/logistics/returns/${selectedOrderId}`, {
+      const response = await apiFetch(`/api/logistics/returns/${selectedReturnId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
@@ -292,7 +307,7 @@ export default function ReturnsPage() {
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Manajemen Retur Barang</h1>
-        <p className="text-sm md:text-base text-slate-200">Kelola pengajuan pengembalian barang berbasis referensi order produksi.</p>
+        <p className="text-sm md:text-base text-slate-200">Kelola pengajuan pengembalian barang berdasarkan sales order.</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -302,7 +317,7 @@ export default function ReturnsPage() {
             type="text"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Cari order / produk / alasan..."
+            placeholder="Cari order / alasan..."
             className="w-full rounded-xl border border-slate-300 bg-slate-200 py-2.5 pl-10 pr-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
           />
         </div>
@@ -323,8 +338,8 @@ export default function ReturnsPage() {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">ID Retur</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Order</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Produk</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Alasan</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Bukti</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
               <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
             </tr>
@@ -335,14 +350,14 @@ export default function ReturnsPage() {
             ) : filteredItems.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
             ) : (
-              filteredItems.map((item) => {
+              filteredItems.map((item, index) => {
+                const returnId = getReturnPrimaryKey(item);
+                const rowKey = returnId || `${item.order_id ?? "no-order"}-${item.created_at ?? "no-date"}-${index}`;
                 const order = orderById[item.order_id ?? ""];
-                const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
                 return (
-                  <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{getOrderPrimaryKey(item).slice(0, 8).toUpperCase()}</td>
-                    <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{getOrderPrimaryKey(order) || "Order tidak ditemukan"}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{productName}</td>
+                  <tr key={rowKey} className="border-t border-slate-100">
+                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{returnId ? returnId.slice(0, 8).toUpperCase() : "-"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{getOrderPrimaryKey(order) || item.order_id || "Order tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.alasan ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.foto_bukti_url ? getStorageFileName(item.foto_bukti_url) : "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
@@ -359,8 +374,8 @@ export default function ReturnsPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openDeleteModal(getOrderPrimaryKey(item))}
-                          disabled={isSubmitting}
+                          onClick={() => openDeleteModal(returnId)}
+                          disabled={isSubmitting || !returnId}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                         >
                           <Trash2 size={15} />
@@ -384,18 +399,16 @@ export default function ReturnsPage() {
               required
               value={formData.order_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, order_id: event.target.value }))}
+              disabled={selectableOrders.length === 0}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
-              <option value="" disabled>Pilih order</option>
-              {orders.map((order) => {
-                const productName = productById[order.product_id ?? ""] ?? "Produk";
               <option value="" disabled>{selectableOrders.length === 0 ? "Tidak ada order tersedia" : "Pilih order"}</option>
               {formData.order_id && !selectableOrders.some((order) => getOrderPrimaryKey(order) === formData.order_id) ? (
                 <option value={formData.order_id}>{formData.order_id} - Order tersimpan</option>
               ) : null}
               {selectableOrders.map((order) => {
                 const orderId = getOrderPrimaryKey(order);
-                return <option key={orderId} value={orderId}>{orderId} - {productName}</option>;
+                return <option key={orderId} value={orderId}>{orderId}</option>;
               })}
             </select>
           </label>
