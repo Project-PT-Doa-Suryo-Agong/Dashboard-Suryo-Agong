@@ -460,18 +460,30 @@ export interface Database {
       };
       t_return_order: {
         Row: {
-          order_id: string;
-          alasan: string | null;
+          id: string;
+          order_id: string | null;
+          alasan: string;
+          status: string | null;
+          foto_bukti_url: string | null;
           created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          order_id: string;
-          alasan?: string | null;
+          id?: string;
+          order_id?: string | null;
+          alasan: string;
+          status?: string | null;
+          foto_bukti_url?: string | null;
           created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          order_id?: string;
-          alasan?: string | null;
+          id?: string;
+          order_id?: string | null;
+          alasan?: string;
+          status?: string | null;
+          foto_bukti_url?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [];
       };

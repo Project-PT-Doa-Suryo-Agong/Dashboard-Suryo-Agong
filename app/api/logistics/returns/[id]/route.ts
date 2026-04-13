@@ -26,13 +26,32 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!orderId.ok) return fail(ErrorCode.VALIDATION_ERROR, orderId.message, 400);
   }
   if ("alasan" in input) {
-    const alasan = requireString(input, "alasan", { maxLen: 255, optional: true });
+    const alasan = requireString(input, "alasan", { maxLen: 255 });
     if (!alasan.ok) return fail(ErrorCode.VALIDATION_ERROR, alasan.message, 400);
   }
+  if ("foto_bukti_url" in input) {
+    const fotoBuktiUrl = requireString(input, "foto_bukti_url", { maxLen: 500, optional: true });
+    if (!fotoBuktiUrl.ok) return fail(ErrorCode.VALIDATION_ERROR, fotoBuktiUrl.message, 400);
+  }
+  if ("bukti" in input) {
+    const buktiCompat = requireString(input, "bukti", { maxLen: 500, optional: true });
+    if (!buktiCompat.ok) return fail(ErrorCode.VALIDATION_ERROR, buktiCompat.message, 400);
+  }
+
+  const resolvedFotoBukti =
+    typeof input.foto_bukti_url === "string"
+      ? input.foto_bukti_url.trim() || null
+      : typeof input.bukti === "string"
+        ? input.bukti.trim() || null
+        : undefined;
+
   const payload = {
     ...input,
-    ...(typeof input.alasan === "string" ? { alasan: input.alasan.trim() || null } : {}),
+    ...(typeof input.alasan === "string" ? { alasan: input.alasan.trim() } : {}),
+    ...(resolvedFotoBukti !== undefined ? { foto_bukti_url: resolvedFotoBukti } : {}),
   };
+
+  delete (payload as Record<string, unknown>).bukti;
 
   const { data, error } = await updateReturnOrder(auth.ctx.supabase, id, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update data retur.", 500, error.message);
