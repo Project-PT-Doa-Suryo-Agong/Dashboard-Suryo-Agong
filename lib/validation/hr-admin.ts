@@ -1,6 +1,18 @@
 import { SYSTEM_ROLE_TO_CORE_ROLE, isSystemRoleKey, isValidCoreRole } from "./profiles-admin";
 import type { CoreUserRole, HrEmployeeStatus } from "@/types/supabase";
 
+const ALLOWED_CREATE_EMPLOYEE_FIELDS = new Set([
+  "email",
+  "password",
+  "nama",
+  "role",
+  "posisi",
+  "divisi",
+  "gaji_pokok",
+  "phone",
+  "status",
+]);
+
 function validateOptionalString(
   key: string,
   value: unknown,
@@ -34,9 +46,31 @@ export function parseCreateEmployeeInput(payload: unknown):
 
   const body = payload as Record<string, unknown>;
 
+  if ("profile_id" in body) {
+    return {
+      ok: false,
+      message: "profile_id tidak digunakan lagi. Gunakan field email, password, dan role.",
+    };
+  }
+
+  const unknownFields = Object.keys(body).filter((key) => !ALLOWED_CREATE_EMPLOYEE_FIELDS.has(key));
+  if (unknownFields.length > 0) {
+    return {
+      ok: false,
+      message: `Field tidak dikenali: ${unknownFields.join(", ")}.`,
+    };
+  }
+
   if (typeof body.email !== "string" || body.email.trim() === "") {
     return { ok: false, message: "email wajib diisi." };
   }
+
+  const normalizedEmail = body.email.trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(normalizedEmail)) {
+    return { ok: false, message: "format email tidak valid." };
+  }
+
   if (typeof body.password !== "string" || body.password.length < 6) {
     return { ok: false, message: "password minimal 6 karakter." };
   }
@@ -71,10 +105,14 @@ export function parseCreateEmployeeInput(payload: unknown):
 
   let gaji_pokok: number | null | undefined = undefined;
   if (body.gaji_pokok !== undefined && body.gaji_pokok !== null) {
-    if (typeof body.gaji_pokok !== "number") {
+    const parsedSalary = Number(body.gaji_pokok);
+    if (Number.isNaN(parsedSalary)) {
       return { ok: false, message: "gaji_pokok harus berupa angka." };
     }
-    gaji_pokok = body.gaji_pokok;
+    if (parsedSalary < 0) {
+      return { ok: false, message: "gaji_pokok tidak boleh kurang dari 0." };
+    }
+    gaji_pokok = parsedSalary;
   }
 
   let status: HrEmployeeStatus | null | undefined = undefined;
@@ -88,7 +126,7 @@ export function parseCreateEmployeeInput(payload: unknown):
   return {
     ok: true,
     data: {
-      email: body.email.trim(),
+      email: normalizedEmail,
       password: body.password,
       nama: body.nama.trim(),
       role: finalRole,

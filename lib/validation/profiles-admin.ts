@@ -14,7 +14,7 @@ type SystemRoleKey =
   | "office"
   | "developer";
 
-const USER_ROLES: SystemRoleKey[] = [
+export const USER_ROLES: SystemRoleKey[] = [
   'management',
   'finance',
   'hr',
@@ -36,7 +36,7 @@ export const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
   developer: "Developer",
 };
 
-const VALID_CORE_ROLES: CoreUserRole[] = [
+export const VALID_CORE_ROLES: CoreUserRole[] = [
   "Developer",
   "Management & Strategy",
   "Finance & Administration",

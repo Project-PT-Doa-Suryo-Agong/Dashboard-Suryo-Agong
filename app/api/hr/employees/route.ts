@@ -51,6 +51,21 @@ export async function POST(request: Request) {
   });
 
   if (error) {
+    const lowerMessage = (error.message ?? "").toLowerCase();
+    if (
+      lowerMessage.includes("already") ||
+      lowerMessage.includes("exists") ||
+      lowerMessage.includes("duplicate") ||
+      lowerMessage.includes("unique")
+    ) {
+      return fail(
+        ErrorCode.VALIDATION_ERROR,
+        "Email sudah terdaftar. Gunakan email lain.",
+        409,
+        error.message,
+      );
+    }
+
     return fail(ErrorCode.DB_ERROR, "Gagal menambahkan karyawan baru.", 500, error.message);
   }
 

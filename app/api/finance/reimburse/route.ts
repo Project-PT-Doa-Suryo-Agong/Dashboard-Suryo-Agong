@@ -16,7 +16,52 @@ export async function GET(request: Request) {
 
   const { data, error, meta } = await listReimbursement(auth.ctx.supabase, page, limit, employeeId);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data reimburse.", 500, error.message);
-  return ok({ reimburse: data, meta });
+
+  const reimbursements = data ?? [];
+  const buktiPaths = Array.from(
+    new Set(
+      reimbursements
+        .map((item) => item.bukti)
+        .filter(
+          (path): path is string =>
+            typeof path === "string" && path.trim().length > 0 && !/^https?:\/\//i.test(path),
+        ),
+    ),
+  );
+
+  const signedUrlByPath: Record<string, string> = {};
+  if (buktiPaths.length > 0) {
+    const { data: signedUrls, error: signedError } = await auth.ctx.supabase.storage
+      .from("reimbursements")
+      .createSignedUrls(buktiPaths, 60 * 60);
+
+    if (signedError) {
+      return fail(ErrorCode.DB_ERROR, "Gagal membuat signed URL bukti reimburse.", 500, signedError.message);
+    }
+
+    for (const item of signedUrls ?? []) {
+      if (item.path && item.signedUrl) {
+        signedUrlByPath[item.path] = item.signedUrl;
+      }
+    }
+  }
+
+  const enriched = reimbursements.map((item) => {
+    const rawPath = item.bukti;
+    const buktiUrl =
+      typeof rawPath === "string" && rawPath.length > 0
+        ? /^https?:\/\//i.test(rawPath)
+          ? rawPath
+          : signedUrlByPath[rawPath] ?? null
+        : null;
+
+    return {
+      ...item,
+      bukti_url: buktiUrl,
+    };
+  });
+
+  return ok({ reimburse: enriched, meta });
 }
 
 export async function POST(request: Request) {

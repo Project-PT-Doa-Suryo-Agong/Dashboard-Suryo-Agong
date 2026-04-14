@@ -147,20 +147,29 @@ Bagian di bawah ini sudah difilter. Poin yang backend-nya sudah selesai dan tida
 - Penambahan karyawan harus memakai endpoint `POST /api/hr/employees`.
 - Payload create yang wajib dipakai frontend: `{ email, password, nama, role, posisi, divisi, status, gaji_pokok, phone }`.
 - Endpoint lama `/api/hr/karyawan` dan `/api/hr/karyawan/:id` sudah tersedia sebagai alias kompatibilitas, tetapi target utama tetap `employees`.
+- Untuk dropdown role/divisi, frontend bisa mengambil referensi dari endpoint baru `GET /api/hr/roles`.
+- Input gaji pokok di frontend perlu dibetulkan agar tidak auto-terisi `0` saat field dikosongkan user.
+- Endpoint create employee sekarang melakukan validasi field ketat: `profile_id` tidak diterima lagi, field di luar kontrak akan ditolak, dan konflik email dikembalikan sebagai error 409.
 
 ### 2. Logistik - Kontrak API Baru
 - Untuk `POST /api/logistics/manifest`, `POST /api/logistics/packing`, dan `POST /api/logistics/returns`, field `order_id` sekarang wajib diisi (UUID valid).
-- Endpoint read logistik saat ini mengembalikan data tabel utama; frontend tetap melakukan mapping order dan produk dari sumber masing-masing (`/api/production/orders` dan `/api/core/products`).
+- Endpoint read logistik sekarang sudah mengembalikan data ter-enrich: `order`, `variant`, dan `product` di setiap row.
+- Frontend disarankan memakai field enrich tersebut untuk tampilan read, dan tetap memakai data source order saat membangun dropdown insert/update.
 
 ### 3. Finance - Reimbursement Bukti
 - Alur upload bukti di frontend: upload file ke storage, lalu kirim path/url via field `bukti` ke endpoint reimbursement.
+- Endpoint `GET /api/finance/reimburse` sekarang sudah menyertakan `bukti_url` (signed URL) untuk path private, jadi frontend bisa langsung render preview tanpa generate URL manual.
 - Jika DB belum punya kolom yang dibutuhkan, jalankan SQL `supabase/add_kolom_reimburse.sql`.
 
-### 4. Sales - Insert Sales Order
+### 4. Finance - Payroll Periode Tanggal
+- Backend payroll sekarang menerima input tanggal penuh (`YYYY-MM-DD`) dan menormalkannya ke periode bulan di server.
+- Frontend bisa aman migrasi input periode payroll dari month/text ke date field tanpa ubah kontrak endpoint.
+
+### 5. Sales - Insert Sales Order
 - Frontend tidak perlu menghitung `total_price` manual saat create order.
 - Backend sudah menghitung otomatis berdasarkan `harga varian x quantity`.
 
-### 5. Auth dan Role UI
+### 6. Auth dan Role UI
 - Pastikan login frontend menggunakan Supabase Auth secara langsung.
 - Pastikan mapping role di UI konsisten dengan role yang dipakai backend dan data `core.profiles`.
 

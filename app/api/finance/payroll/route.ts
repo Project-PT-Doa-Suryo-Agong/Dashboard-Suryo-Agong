@@ -5,6 +5,28 @@ import { requireNumber, requireString, requireUUID } from "@/lib/validation/body
 import type { TPayrollHistoryInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 
+function normalizePayrollMonth(value: string): string | null {
+  const trimmed = value.trim();
+
+  // Backward-compatible with legacy month input (YYYY-MM).
+  if (/^\d{4}-\d{2}$/.test(trimmed)) {
+    return `${trimmed}-01`;
+  }
+
+  // New frontend input can send full date (YYYY-MM-DD).
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [year, month] = trimmed.split("-");
+    return `${year}-${month}-01`;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const year = parsed.getUTCFullYear();
+  const month = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}-01`;
+}
+
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
@@ -31,6 +53,10 @@ export async function POST(request: Request) {
   if (!employeeId.ok) return fail(ErrorCode.VALIDATION_ERROR, employeeId.message, 400);
   const bulan = requireString(input, "bulan", { maxLen: 20 });
   if (!bulan.ok) return fail(ErrorCode.VALIDATION_ERROR, bulan.message, 400);
+  const normalizedBulan = bulan.data ? normalizePayrollMonth(bulan.data) : null;
+  if (!normalizedBulan) {
+    return fail(ErrorCode.VALIDATION_ERROR, "bulan harus berupa tanggal valid.", 400);
+  }
   
   // Total can be explicitly set or fetched strictly from m_karyawan's gaji_pokok
   const total = requireNumber(input, "total", { min: 0, optional: true });
@@ -48,7 +74,7 @@ export async function POST(request: Request) {
 
   const payload: TPayrollHistoryInsert = {
     employee_id: employeeId.data,
-    bulan: bulan.data,
+    bulan: normalizedBulan,
     total: finalTotal,
   };
 
