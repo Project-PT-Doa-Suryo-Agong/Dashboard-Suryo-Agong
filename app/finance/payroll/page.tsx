@@ -70,13 +70,14 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
-function toMonthInput(value: string | null): string {
+function toDateInput(value: string | null): string {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export default function FinancePayrollPage() {
@@ -218,7 +219,7 @@ export default function FinancePayrollPage() {
     setEditData(item);
     setFormData({
       employee_id: item.employee_id ?? "",
-      bulan: toMonthInput(item.bulan),
+      bulan: toDateInput(item.bulan),
       total: String(item.total ?? ""),
     });
     setIsFormModalOpen(true);
@@ -261,7 +262,7 @@ export default function FinancePayrollPage() {
     try {
       const payload = {
         employee_id: formData.employee_id,
-        bulan: `${formData.bulan}-01`,
+        bulan: formData.bulan,
         total: parsedTotal,
       };
 
@@ -478,10 +479,10 @@ export default function FinancePayrollPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Periode Bulan</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tanggal Payroll</label>
             <input
               required
-              type="month"
+              type="date"
               value={formData.bulan}
               onChange={(event) => setFormData((prev) => ({ ...prev, bulan: event.target.value }))}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
