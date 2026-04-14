@@ -5,7 +5,7 @@ import { CheckCircle2, Plus, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { LogisticsPackingStatus, MProduk, TPacking, TProduksiOrder } from "@/types/supabase";
+import type { LogisticsPackingStatus, TPacking, TSalesOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 
 type FilterStatus = "all" | LogisticsPackingStatus;
@@ -18,12 +18,7 @@ type PackingListPayload = {
 type PackingPayload = { packing: TPacking | null };
 
 type OrdersListPayload = {
-  orders: TProduksiOrder[];
-  meta: { page: number; limit: number; total: number };
-};
-
-type ProductsListPayload = {
-  produk: MProduk[];
+  orders: TSalesOrder[];
   meta: { page: number; limit: number; total: number };
 };
 
@@ -37,16 +32,10 @@ function pickPacking(data: unknown): TPacking[] {
   return asArray<TPacking>(source.packing ?? source.packings ?? source.data);
 }
 
-function pickOrders(data: unknown): TProduksiOrder[] {
+function pickOrders(data: unknown): TSalesOrder[] {
   if (!data || typeof data !== "object") return [];
   const source = data as Record<string, unknown>;
-  return asArray<TProduksiOrder>(source.orders ?? source.order ?? source.data);
-}
-
-function pickProducts(data: unknown): MProduk[] {
-  if (!data || typeof data !== "object") return [];
-  const source = data as Record<string, unknown>;
-  return asArray<MProduk>(source.produk ?? source.products ?? source.data);
+  return asArray<TSalesOrder>(source.orders ?? source.order ?? source.data);
 }
 
 function shortId(id: string | null | undefined) {
@@ -88,8 +77,7 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
 
 export default function PackingPage() {
   const [items, setItems] = useState<TPacking[]>([]);
-  const [orders, setOrders] = useState<TProduksiOrder[]>([]);
-  const [products, setProducts] = useState<MProduk[]>([]);
+  const [orders, setOrders] = useState<TSalesOrder[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
@@ -125,7 +113,7 @@ export default function PackingPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await apiFetch("/api/production/orders?page=1&limit=200", {
+      const response = await apiFetch("/api/sales/orders?page=1&limit=200", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -140,26 +128,11 @@ export default function PackingPage() {
     }
   };
 
-  const fetchProducts = async () => {
-    try {
-      const response = await apiFetch("/api/core/products?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<ProductsListPayload>(response);
-      setProducts(pickProducts(payload.data));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gagal memuat daftar produk.";
-      alert(message);
-    }
-  };
-
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchPacking(), fetchOrders(), fetchProducts()]);
+        await Promise.all([fetchPacking(), fetchOrders()]);
       } finally {
         setIsLoading(false);
       }
@@ -174,13 +147,8 @@ export default function PackingPage() {
         orders
           .map((order) => [getOrderPrimaryKey(order), order] as const)
           .filter(([orderId]) => !!orderId),
-      ) as Record<string, TProduksiOrder>,
+      ) as Record<string, TSalesOrder>,
     [orders],
-  );
-
-  const productById = useMemo(
-    () => Object.fromEntries(products.map((product) => [product.id, product.nama_produk])) as Record<string, string>,
-    [products],
   );
 
   const filteredItems = useMemo(() => {
@@ -188,14 +156,11 @@ export default function PackingPage() {
 
     return items.filter((item) => {
       const order = orderById[item.order_id ?? ""];
-      const productName = productById[order?.product_id ?? ""] ?? "";
-      const matchesSearch =
-        getOrderPrimaryKey(order).toLowerCase().includes(keyword) ||
-        productName.toLowerCase().includes(keyword);
+      const matchesSearch = getOrderPrimaryKey(order).toLowerCase().includes(keyword);
       const matchesStatus = filterStatus === "all" ? true : item.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
-  }, [items, searchTerm, filterStatus, orderById, productById]);
+  }, [items, searchTerm, filterStatus, orderById]);
 
   const resetForm = () => {
     setFormData({ order_id: getOrderPrimaryKey(orders[0]) || "", status: "pending" });
@@ -347,12 +312,11 @@ export default function PackingPage() {
             ) : (
               filteredItems.map((item) => {
                 const order = orderById[item.order_id ?? ""];
-                const productName = productById[order?.product_id ?? ""] ?? "Produk tidak ditemukan";
                 return (
                   <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
                     <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{shortId(getOrderPrimaryKey(item))}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderPrimaryKey(order) || item.order_id || "Order tidak ditemukan"}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{productName}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">-</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${statusBadgeClass(item.status ?? "pending")}`}>
@@ -404,10 +368,9 @@ export default function PackingPage() {
                 <option value={formData.order_id}>{formData.order_id} - Order tersimpan</option>
               ) : null}
               {orders.map((order) => {
-                const productName = productById[order.product_id ?? ""] ?? "Produk";
                 const orderId = getOrderPrimaryKey(order);
                 return (
-                  <option key={orderId} value={orderId}>{orderId} - {productName}</option>
+                  <option key={orderId} value={orderId}>{orderId}</option>
                 );
               })}
             </select>
