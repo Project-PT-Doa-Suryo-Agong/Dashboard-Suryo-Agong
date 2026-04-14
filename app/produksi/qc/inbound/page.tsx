@@ -57,7 +57,7 @@ const statusBadgeClass: Record<ProductionQcResult, string> = {
 };
 
 const CRUD_PRIMARY_BUTTON_CLASS =
-  "inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC934B]/30 disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC934B]/30 disabled:opacity-50";
 const CRUD_EDIT_BUTTON_CLASS =
   "inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 disabled:opacity-50";
 const CRUD_DELETE_BUTTON_CLASS =
@@ -272,8 +272,8 @@ export default function QcInboundPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">QC Inbound (Bahan Baku Masuk)</h1>
-        <p className="text-sm md:text-base text-slate-600">Inspeksi kualitas bahan baku dari supplier sebelum masuk ke gudang utama.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">QC Inbound (Bahan Baku Masuk)</h1>
+        <p className="text-sm md:text-base text-slate-300">Inspeksi kualitas bahan baku dari supplier sebelum masuk ke gudang utama.</p>
       </section>
 
       <section className="flex flex-col gap-3 md:gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -285,14 +285,14 @@ export default function QcInboundPage() {
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Cari produksi order..."
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-[#BC934B]/20"
             />
           </div>
 
           <select
             value={filterStatus}
             onChange={(event) => setFilterStatus(event.target.value as "all" | ProductionQcResult)}
-            className="w-full sm:w-56 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            className="w-full sm:w-56 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-[#BC934B]/20"
           >
             <option value="all">Semua Status</option>
             <option value="pass">Lolos QC</option>
@@ -391,7 +391,7 @@ export default function QcInboundPage() {
               required
               value={formData.produksi_order_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, produksi_order_id: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20"
             >
               <option value="" disabled>Pilih produksi order</option>
               {orders.map((order) => (
@@ -406,7 +406,7 @@ export default function QcInboundPage() {
               id="status-qc-inbound"
               value={formData.hasil}
               onChange={(event) => setFormData((prev) => ({ ...prev, hasil: event.target.value as ProductionQcResult }))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20"
             >
               <option value="pass">Lolos QC</option>
               <option value="reject">Ditolak</option>

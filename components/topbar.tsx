@@ -16,6 +16,8 @@ interface TopbarProps {
 export default function Topbar({ title = 'Dashboard Overview', user, onMenuClick }: TopbarProps) {
   const name = user?.name?.trim() ?? '';
   const role = user?.role?.trim() ?? '';
+  const displayName = name || 'Pengguna';
+  const displayRole = role || 'Tanpa role';
   const avatar = user?.avatar;
   const initials = name
     .split(' ')
@@ -30,7 +32,7 @@ export default function Topbar({ title = 'Dashboard Overview', user, onMenuClick
         <button
           type="button"
           onClick={onMenuClick}
-          className="md:hidden inline-flex items-center justify-center h-9 md:h-10 w-9 md:w-10 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+          className="md:hidden inline-flex items-center justify-center h-9 md:h-10 w-9 md:w-10 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
           aria-label="Open sidebar menu"
         >
           <Menu size={16} />
@@ -38,13 +40,13 @@ export default function Topbar({ title = 'Dashboard Overview', user, onMenuClick
         <h2 className="text-sm md:text-lg lg:text-xl font-bold text-slate-800 truncate">{title}</h2>
       </div>
       
-      <div className="flex items-center gap-2 md:gap-4 lg:gap-6 flex-shrink-0">
+      <div className="flex items-center gap-2 md:gap-4 lg:gap-6 shrink-0">
         
         {/* User Profile */}
         <div className="flex items-center gap-2 md:gap-3">
-          <div className="text-right hidden sm:block">
-            {name ? <p className="text-xs md:text-sm font-bold text-slate-900 leading-none">{name}</p> : null}
-            {role ? <p className="text-[10px] md:text-xs text-slate-500">{role}</p> : null}
+          <div className="text-right block">
+            <p className="text-xs md:text-sm font-bold text-slate-900 leading-none">{displayName}</p>
+            <p className="text-[10px] md:text-xs text-slate-500">{displayRole}</p>
           </div>
           <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-slate-200 text-slate-700 overflow-hidden flex items-center justify-center text-xs font-semibold">
             {avatar ? (

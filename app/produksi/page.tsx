@@ -250,8 +250,8 @@ export default function ProduksiDashboardPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-4 md:space-y-6 lg:space-y-8">
       <section className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Dashboard Utama Produksi</h1>
-        <p className="text-sm md:text-base text-slate-600">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Dashboard Utama Produksi</h1>
+        <p className="text-sm md:text-base text-slate-300">
           Command Center untuk monitoring pesanan dan kualitas dari inbound sampai outbound.
         </p>
       </section>
@@ -301,20 +301,20 @@ export default function ProduksiDashboardPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-base md:text-lg font-bold text-slate-900">Quick Links</h2>
+        <h2 className="text-base md:text-lg font-bold text-slate-200">Quick Links</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {quick_links.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="group rounded-xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[#BC934B]"
+              className="group rounded-xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-slate-400"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1.5 min-w-0">
                   <p className="text-sm md:text-base font-bold text-slate-900">{item.title}</p>
                   <p className="text-xs md:text-sm text-slate-600">{item.description}</p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:text-[#BC934B] group-hover:translate-x-0.5 shrink-0" />
+                <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:text-slate-700 group-hover:translate-x-0.5 shrink-0" />
               </div>
             </Link>
           ))}
@@ -404,12 +404,13 @@ export default function ProduksiDashboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  hasil_qc_terbaru_rows.map((item) => {
+                  hasil_qc_terbaru_rows.map((item, index) => {
                     const relatedOrder = orderById[item.produksi_order_id ?? ""];
                     const displayStatus = getQcStatus(item.hasil);
+                    const rowKey = item.id || `${item.produksi_order_id ?? "no-order"}-${item.created_at ?? "no-date"}-${index}`;
 
                     return (
-                      <tr key={item.id}>
+                      <tr key={rowKey}>
                         <td className="py-3 pr-2 text-sm font-semibold text-slate-800 break-all">
                           {relatedOrder?.id ?? item.produksi_order_id ?? "-"}
                         </td>
