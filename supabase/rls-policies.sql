@@ -468,20 +468,22 @@ CREATE POLICY "Logistik and strategic can insert packing"
 ON logistics.t_packing FOR INSERT
 TO authenticated
 WITH CHECK (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik')
+  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
 );
 
 CREATE POLICY "Logistik and strategic can update packing"
 ON logistics.t_packing FOR UPDATE
 TO authenticated
 USING (
-  core.get_user_role() IN ('Developer', 'CEO', 'Logistik')
+  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
 );
 
-CREATE POLICY "Strategic can delete packing"
+CREATE POLICY "Logistik and strategic can delete packing"
 ON logistics.t_packing FOR DELETE
 TO authenticated
-USING (core.is_strategic());
+USING (
+  core.get_user_role() IN ('Developer', 'CEO', 'Logistik', 'Produksi')
+);
 
 --  logistics.t_logistik_manifest 
 

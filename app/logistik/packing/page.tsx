@@ -43,6 +43,9 @@ type OrdersListPayload = {
   meta: { page: number; limit: number; total: number };
 };
 
+const ORDER_FETCH_LIMIT = 200;
+const ORDER_FETCH_MAX_PAGES = 50;
+
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -134,15 +137,34 @@ export default function PackingPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await apiFetch("/api/sales/orders?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<OrdersListPayload>(response);
-      const list = pickOrders(payload.data);
-      setOrders(list);
-      setFormData((prev) => ({ ...prev, order_id: prev.order_id || getOrderPrimaryKey(list[0]) || "" }));
+      const allOrders: TSalesOrder[] = [];
+
+      for (let page = 1; page <= ORDER_FETCH_MAX_PAGES; page += 1) {
+        const response = await apiFetch(`/api/sales/orders?page=${page}&limit=${ORDER_FETCH_LIMIT}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
+        const payload = await parseJsonResponse<OrdersListPayload>(response);
+        const pageOrders = pickOrders(payload.data);
+        allOrders.push(...pageOrders);
+
+        const total = payload.data.meta?.total ?? 0;
+        if (pageOrders.length < ORDER_FETCH_LIMIT || allOrders.length >= total) {
+          break;
+        }
+      }
+
+      const dedupedOrders = Array.from(
+        new Map(
+          allOrders
+            .map((order) => [getOrderPrimaryKey(order), order] as const)
+            .filter(([orderId]) => !!orderId),
+        ).values(),
+      );
+
+      setOrders(dedupedOrders);
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || getOrderPrimaryKey(dedupedOrders[0]) || "" }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data pesanan.";
       alert(message);
