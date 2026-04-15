@@ -1,11 +1,11 @@
 import type { TLogistikManifest, TPacking, TReturnOrder } from "@/types/supabase";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("logistics");
+const schema = (client: DbClient, schemaName: string) => (client as unknown as SchemaClient).schema(schemaName);
 
 type SalesOrderLite = {
   id: string;
@@ -35,6 +35,17 @@ type LogisticsRowWithOrder = {
   order_id: string | null;
   [key: string]: unknown;
 };
+
+function toBaseRows<T extends LogisticsRowWithOrder>(rows: T[]): T[] {
+  return rows.map((row) => {
+    const { order, variant, product, ...base } = row as T & {
+      order?: unknown;
+      variant?: unknown;
+      product?: unknown;
+    };
+    return base as T;
+  });
+}
 
 function readClient(client: DbClient) {
   return supabaseAdmin as unknown as DbClient;
@@ -110,11 +121,13 @@ async function enrichLogisticsRows<T extends LogisticsRowWithOrder>(client: DbCl
   const enriched = rows.map((row) => {
     const order = row.order_id ? orderById.get(row.order_id) ?? null : null;
     const variant = order?.varian_id ? variantById.get(order.varian_id) ?? null : null;
+    const product = variant?.product_id ? productById.get(variant.product_id) ?? null : null;
 
     return {
       ...row,
       order,
       variant,
+      product,
     };
   });
 

@@ -42,6 +42,11 @@ type OrdersListPayload = {
   meta: { page: number; limit: number; total: number };
 };
 
+type VariantsListPayload = {
+  varian: VariantLite[];
+  meta?: { page: number; limit: number; total: number };
+};
+
 const ORDER_FETCH_LIMIT = 200;
 const ORDER_FETCH_MAX_PAGES = 50;
 
@@ -57,6 +62,10 @@ function pickOrders(data: unknown): TSalesOrder[] {
 
 function getOrderPrimaryKey(value: { order_id?: string | null; id?: string | null } | null | undefined): string {
   return value?.order_id ?? value?.id ?? "";
+}
+
+function getOrderVariantId(value: { varian_id?: string | null } | null | undefined): string {
+  return value?.varian_id ?? "";
 }
 
 function toTimestamp(value: string | null | undefined): number {
@@ -112,7 +121,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
 export default function ManifestPage() {
   const [items, setItems] = useState<ManifestItem[]>([]);
   const [orders, setOrders] = useState<TSalesOrder[]>([]);
-  const [variants, setVariants] = useState<VariantItem[]>([]);
+  const [variants, setVariants] = useState<VariantLite[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -219,6 +228,22 @@ export default function ManifestPage() {
     [orders],
   );
 
+  const variantNameById = useMemo(
+    () =>
+      Object.fromEntries(
+        variants
+          .map((variant) => [variant.id, variant.nama_varian ?? ""] as const)
+          .filter(([variantId]) => !!variantId),
+      ) as Record<string, string>,
+    [variants],
+  );
+
+  const resolveVariantName = (item: ManifestItem): string => {
+    const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
+    const variantId = getOrderVariantId(order);
+    return item.variant?.nama_varian ?? variantNameById[variantId] ?? "Varian tidak ditemukan";
+  };
+
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
@@ -229,6 +254,7 @@ export default function ManifestPage() {
         (item.resi ?? "").toLowerCase().includes(keyword) ||
         getOrderPrimaryKey(order).toLowerCase().includes(keyword) ||
         (item.order_id ?? "").toLowerCase().includes(keyword) ||
+        variantName.includes(keyword) ||
         (item.product?.nama_produk ?? "").toLowerCase().includes(keyword)
       );
     });
@@ -404,7 +430,7 @@ export default function ManifestPage() {
                 return (
                   <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderPrimaryKey(order) || item.order_id || "Order tidak ditemukan"}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{item.product?.nama_produk ?? "Produk tidak ditemukan"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{resolveVariantName(item)}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.resi ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateTimeFormatter.format(new Date(item.created_at)) : "-"}</td>
                     <td className="px-4 py-3 text-center">
