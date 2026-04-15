@@ -9,17 +9,41 @@ import type { TReturnOrder, TSalesOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
+type ProductLite = {
+  id: string;
+  nama_produk: string | null;
+  kategori: string | null;
+  foto_url: string | null;
+};
+
+type VariantLite = {
+  id: string;
+  product_id: string | null;
+  nama_varian: string | null;
+  sku: string | null;
+  harga: number | null;
+};
+
+type ReturnItem = TReturnOrder & {
+  order?: TSalesOrder | null;
+  variant?: VariantLite | null;
+  product?: ProductLite | null;
+};
+
 type ReturnsListPayload = {
-  returns: TReturnOrder[];
+  returns: ReturnItem[];
   meta: { page: number; limit: number; total: number };
 };
 
-type ReturnPayload = { return: TReturnOrder | null };
+type ReturnPayload = { return: ReturnItem | null };
 
 type OrdersListPayload = {
   orders: TSalesOrder[];
   meta: { page: number; limit: number; total: number };
 };
+
+const ORDER_FETCH_LIMIT = 200;
+const ORDER_FETCH_MAX_PAGES = 50;
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -97,7 +121,7 @@ function getStorageFileName(path: string | null | undefined): string {
 }
 
 export default function ReturnsPage() {
-  const [items, setItems] = useState<TReturnOrder[]>([]);
+  const [items, setItems] = useState<ReturnItem[]>([]);
   const [orders, setOrders] = useState<TSalesOrder[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -135,15 +159,34 @@ export default function ReturnsPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await apiFetch("/api/sales/orders?page=1&limit=200", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const payload = await parseJsonResponse<OrdersListPayload>(response);
-      const list = pickOrders(payload.data);
-      const firstOrderId = getOrderPrimaryKey(list[0]);
-      setOrders(list);
+      const allOrders: TSalesOrder[] = [];
+
+      for (let page = 1; page <= ORDER_FETCH_MAX_PAGES; page += 1) {
+        const response = await apiFetch(`/api/sales/orders?page=${page}&limit=${ORDER_FETCH_LIMIT}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
+        const payload = await parseJsonResponse<OrdersListPayload>(response);
+        const pageOrders = pickOrders(payload.data);
+        allOrders.push(...pageOrders);
+
+        const total = payload.data.meta?.total ?? 0;
+        if (pageOrders.length < ORDER_FETCH_LIMIT || allOrders.length >= total) {
+          break;
+        }
+      }
+
+      const dedupedOrders = Array.from(
+        new Map(
+          allOrders
+            .map((order) => [getOrderPrimaryKey(order), order] as const)
+            .filter(([orderId]) => !!orderId),
+        ).values(),
+      );
+
+      const firstOrderId = getOrderPrimaryKey(dedupedOrders[0]);
+      setOrders(dedupedOrders);
       setFormData((prev) => ({ ...prev, order_id: prev.order_id || firstOrderId || "" }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data sales order.";
@@ -165,13 +208,25 @@ export default function ReturnsPage() {
   }, []);
 
   const orderById = useMemo(
-    () =>
-      Object.fromEntries(
-        orders
-          .map((order) => [getOrderPrimaryKey(order), order] as const)
-          .filter(([orderId]) => !!orderId),
-      ) as Record<string, TSalesOrder>,
-    [orders],
+    () => {
+      const map = new Map<string, TSalesOrder>();
+
+      for (const order of orders) {
+        const orderId = getOrderPrimaryKey(order).trim();
+        if (!orderId || map.has(orderId)) continue;
+        map.set(orderId, order);
+      }
+
+      for (const item of items) {
+        const orderId = item.order_id?.trim() ?? "";
+        if (orderId && item.order) {
+          map.set(orderId, item.order);
+        }
+      }
+
+      return Object.fromEntries(map) as Record<string, TSalesOrder>;
+    },
+    [orders, items],
   );
 
   const selectableOrders = useMemo(() => {
@@ -188,10 +243,11 @@ export default function ReturnsPage() {
     const keyword = searchTerm.trim().toLowerCase();
 
     return items.filter((item) => {
-      const order = orderById[item.order_id ?? ""];
+      const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
       return (
         getOrderPrimaryKey(order).toLowerCase().includes(keyword) ||
-        (item.alasan ?? "").toLowerCase().includes(keyword)
+        (item.alasan ?? "").toLowerCase().includes(keyword) ||
+        (item.product?.nama_produk ?? "").toLowerCase().includes(keyword)
       );
     });
   }, [items, searchTerm, orderById]);
@@ -299,7 +355,7 @@ export default function ReturnsPage() {
       alert(message);
     } finally {
       setIsSubmitting(false);
-      closeDeleteModal();
+      closeDeleteModal()
     }
   };
 
@@ -346,18 +402,19 @@ export default function ReturnsPage() {
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
             ) : filteredItems.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
             ) : (
               filteredItems.map((item, index) => {
                 const returnId = getReturnPrimaryKey(item);
                 const rowKey = returnId || `${item.order_id ?? "no-order"}-${item.created_at ?? "no-date"}-${index}`;
-                const order = orderById[item.order_id ?? ""];
+                const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
                 return (
                   <tr key={rowKey} className="border-t border-slate-100">
                     <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{returnId ? returnId.slice(0, 8).toUpperCase() : "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{getOrderPrimaryKey(order) || item.order_id || "Order tidak ditemukan"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{item.product?.nama_produk ?? "Produk tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.alasan ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.foto_bukti_url ? getStorageFileName(item.foto_bukti_url) : "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
