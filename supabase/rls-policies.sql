@@ -383,10 +383,12 @@ USING (
   core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control')
 );
 
-CREATE POLICY "Strategic can delete production orders"
+CREATE POLICY "Produksi and strategic can delete production orders"
 ON production.t_produksi_order FOR DELETE
 TO authenticated
-USING (core.is_strategic());
+USING (
+  core.get_user_role() IN ('Developer', 'CEO', 'Produksi', 'Produksi & Quality Control')
+);
 
 --  production.t_qc_inbound 
 

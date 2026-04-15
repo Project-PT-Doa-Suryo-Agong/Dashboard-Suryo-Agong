@@ -45,3 +45,4 @@ database.md
 # supabase
 supabase/.temp
 *.webm
+/supabase
