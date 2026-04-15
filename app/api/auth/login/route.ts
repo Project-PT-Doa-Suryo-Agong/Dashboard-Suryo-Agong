@@ -229,17 +229,22 @@ export async function POST(request: NextRequest) {
       (typeof data.user?.app_metadata?.role === "string"
         ? data.user.app_metadata.role
         : null);
+    let displayName =
+      (typeof data.user?.user_metadata?.nama === "string" ? data.user.user_metadata.nama : null) ??
+      (typeof data.user?.user_metadata?.full_name === "string" ? data.user.user_metadata.full_name : null) ??
+      null;
 
     let profile = null;
-    if (!role && data.user?.id) {
+    if (data.user?.id) {
       const res = await supabase
         .schema("core")
         .from("profiles")
-        .select("role")
+        .select("role, nama")
         .eq("id", data.user.id)
         .maybeSingle();
       profile = res.data;
-      role = typeof profile?.role === "string" ? profile.role : null;
+      if (!role) role = typeof profile?.role === "string" ? profile.role : null;
+      if (!displayName) displayName = typeof profile?.nama === "string" ? profile.nama : null;
     }
 
     const subdomain = mapRoleToSubdomain(role);
@@ -265,6 +270,16 @@ export async function POST(request: NextRequest) {
         domain: cookieDomain,
         path: "/",
         maxAge: 60 * 60 * 24 * 30, // 30 days
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+
+    if (displayName) {
+      finalResponse.cookies.set("display_name", displayName, {
+        domain: cookieDomain,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
       });

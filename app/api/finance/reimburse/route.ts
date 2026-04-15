@@ -4,6 +4,7 @@ import { listReimbursement, createReimbursement } from "@/lib/services/finance.s
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import type { TReimbursementInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -92,16 +93,16 @@ export async function POST(request: Request) {
 
   let finalBukti = bukti.data ?? null;
 
-  if (finalBukti && finalBukti.startsWith("data:image")) {
-    const matches = finalBukti.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+  if (finalBukti && finalBukti.startsWith("data:")) {
+    const matches = finalBukti.match(/^data:([A-Za-z0-9.+\/-]+);base64,(.+)$/);
     if (matches && matches.length === 3) {
       const mimeType = matches[1];
       const base64Data = matches[2];
       const buffer = Buffer.from(base64Data, "base64");
-      const ext = mimeType.split("/")[1] || "png";
+      const ext = mimeType.split("/")[1]?.toLowerCase() || "bin";
       const fileName = `${employeeId.data}-${Date.now()}.${ext}`;
 
-      const { error: uploadError } = await auth.ctx.supabase.storage
+      const { error: uploadError } = await supabaseAdmin.storage
         .from("reimbursements")
         .upload(fileName, buffer, {
           contentType: mimeType,

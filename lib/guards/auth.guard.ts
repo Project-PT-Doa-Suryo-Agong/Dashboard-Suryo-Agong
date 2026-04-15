@@ -32,8 +32,12 @@ export async function requireAuth(): Promise<
   }
 
   const { data: profile } = await getProfileById(supabase, data.user.id);
+  const fallbackRole =
+    (typeof data.user.user_metadata?.role === "string" ? data.user.user_metadata.role : null) ??
+    (typeof data.user.app_metadata?.role === "string" ? data.user.app_metadata.role : null);
+  const resolvedRole = profile?.role ?? fallbackRole;
   const access = buildAccessSummary({
-    role: profile?.role ?? null,
+    role: resolvedRole,
     division: null,
     fullName: profile?.nama ?? null,
     jobTitle: (data.user.user_metadata?.job_title as string | undefined) ?? null,
@@ -43,7 +47,7 @@ export async function requireAuth(): Promise<
     ok: true,
     ctx: {
       userId: data.user.id,
-      role: profile?.role ?? null,
+      role: resolvedRole,
       division: null,
       jabatan: access.jabatan,
       accessLevel: access.level,

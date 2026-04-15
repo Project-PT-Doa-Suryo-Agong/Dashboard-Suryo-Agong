@@ -3,6 +3,7 @@ import { requireLevel } from "@/lib/guards/auth.guard";
 import { updateReimbursement, deleteReimbursement } from "@/lib/services/finance.service";
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import { ErrorCode } from "@/lib/http/error-codes";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -39,18 +40,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     
     let finalBukti = bukti.data ?? null;
 
-    if (finalBukti && finalBukti.startsWith("data:image")) {
-      const matches = finalBukti.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (finalBukti && finalBukti.startsWith("data:")) {
+      const matches = finalBukti.match(/^data:([A-Za-z0-9.+\/-]+);base64,(.+)$/);
       if (matches && matches.length === 3) {
         const mimeType = matches[1];
         const base64Data = matches[2];
         const buffer = Buffer.from(base64Data, "base64");
-        const ext = mimeType.split("/")[1] || "png";
+        const ext = mimeType.split("/")[1]?.toLowerCase() || "bin";
         
         const fileId = id; // use reimburse id or just timestamp
         const fileName = `${fileId}-${Date.now()}.${ext}`;
 
-        const { error: uploadError } = await auth.ctx.supabase.storage
+        const { error: uploadError } = await supabaseAdmin.storage
           .from("reimbursements")
           .upload(fileName, buffer, {
             contentType: mimeType,

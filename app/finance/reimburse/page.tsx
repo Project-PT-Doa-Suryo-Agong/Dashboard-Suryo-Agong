@@ -6,7 +6,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import { apiFetch } from "@/lib/utils/api-fetch";
-import { getStorageFileName, uploadReimburseBukti } from "@/lib/utils/upload-reimburse-bukti";
+import { getStorageFileName } from "@/lib/utils/upload-reimburse-bukti";
 import type {
   FinanceReimburseStatus,
   MKaryawan,
@@ -64,6 +64,21 @@ function formatDate(dateValue: string): string {
     month: "short",
     year: "numeric",
   }).format(new Date(dateValue));
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("Gagal membaca file bukti."));
+    };
+    reader.onerror = () => reject(new Error("Gagal membaca file bukti."));
+    reader.readAsDataURL(file);
+  });
 }
 
 export default function FinanceReimbursePage() {
@@ -225,7 +240,7 @@ export default function FinanceReimbursePage() {
     try {
       let buktiPath = formData.bukti;
       if (selectedBuktiFile) {
-        buktiPath = await uploadReimburseBukti(selectedBuktiFile, editData?.bukti);
+        buktiPath = await fileToDataUrl(selectedBuktiFile);
       }
 
       const payload = {

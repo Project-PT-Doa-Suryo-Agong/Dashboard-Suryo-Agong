@@ -67,5 +67,8 @@ export async function POST(request: Request) {
   expireCookie(response, "role");
   if (cookieDomain) expireCookie(response, "role", cookieDomain);
 
+  expireCookie(response, "display_name");
+  if (cookieDomain) expireCookie(response, "display_name", cookieDomain);
+
   return response;
 }
