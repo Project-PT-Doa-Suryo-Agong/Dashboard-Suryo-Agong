@@ -123,7 +123,7 @@ export default function DeveloperDashboard() {
                 {val(stats.totalUsers)}
               </p>
             </div>
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500 md:h-10 md:w-10 lg:h-12 lg:w-12">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500 text-white md:h-10 md:w-10 lg:h-12 lg:w-12">
               <Users className="h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
             </span>
           </div>
@@ -140,7 +140,7 @@ export default function DeveloperDashboard() {
                 {val(stats.totalProduk)}
               </p>
             </div>
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500 md:h-10 md:w-10 lg:h-12 lg:w-12">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white md:h-10 md:w-10 lg:h-12 lg:w-12">
               <Package className="h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
             </span>
           </div>
@@ -157,7 +157,7 @@ export default function DeveloperDashboard() {
                 {val(stats.totalVarian)}
               </p>
             </div>
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-500 md:h-10 md:w-10 lg:h-12 lg:w-12">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white md:h-10 md:w-10 lg:h-12 lg:w-12">
               <Tags className="h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
             </span>
           </div>
@@ -174,7 +174,7 @@ export default function DeveloperDashboard() {
                 {val(stats.totalVendor)}
               </p>
             </div>
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-500 md:h-10 md:w-10 lg:h-12 lg:w-12">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500 text-white md:h-10 md:w-10 lg:h-12 lg:w-12">
               <Truck className="h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
             </span>
           </div>
@@ -194,7 +194,7 @@ export default function DeveloperDashboard() {
         >
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-start md:gap-4">
             <div className="min-w-0 space-y-3 md:space-y-4">
-              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500 md:h-10 md:w-10 lg:h-12 lg:w-12">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white md:h-10 md:w-10 lg:h-12 lg:w-12">
                 <UserCog className="h-5 w-5 md:h-6 md:w-6 lg:h-7 lg:w-7" />
               </span>
               <h2 className="text-sm font-bold text-slate-900 md:text-base lg:text-lg">
@@ -215,7 +215,7 @@ export default function DeveloperDashboard() {
         >
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-start md:gap-4">
             <div className="min-w-0 space-y-3 md:space-y-4">
-              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-500 md:h-10 md:w-10 lg:h-12 lg:w-12">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white md:h-10 md:w-10 lg:h-12 lg:w-12">
                 <Server className="h-5 w-5 md:h-6 md:w-6 lg:h-7 lg:w-7" />
               </span>
               <h2 className="text-sm font-bold text-slate-900 md:text-base lg:text-lg">

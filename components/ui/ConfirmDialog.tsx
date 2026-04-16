@@ -31,8 +31,8 @@ export default function ConfirmDialog({
 
   const iconClassName =
     variant === 'danger'
-      ? 'bg-red-100 text-red-600'
-      : 'bg-amber-100 text-[#BC934B]';
+      ? 'bg-yellow-500 text-black border border-slate-500'
+      : 'bg-amber-500 text-white border border-slate-500';
 
   return (
     <Modal
