@@ -201,7 +201,7 @@ export default function DeveloperDashboard() {
                 Pengelolaan User
               </h2>
               <p className="text-xs leading-relaxed text-slate-600 md:text-sm lg:text-base">
-                Kelola data user enterprise, role akses, dan validasi profil pada skema core.profiles.
+                Kelola data user enterprise, role akses, dan validasi profil
               </p>
             </div>
             <ArrowRight className="h-5 w-5 shrink-0 text-slate-400 transition-all group-hover:translate-x-1 group-hover:text-indigo-500 md:h-6 md:w-6" />
