@@ -8,6 +8,7 @@ import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MVendor } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { useProfile } from "@/hooks/use-profile";
+import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type VendorsListPayload = {
   vendor: MVendor[];
@@ -254,26 +255,10 @@ export default function OfficeVendorsPage() {
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{vendor.kontak ?? "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{formatDate(vendor.updated_at)}</td>
                     <td className="px-4 md:px-6 py-3">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(vendor)}
-                          disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(vendor)}
-                          disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Hapus
-                        </button>
-                      </div>
+                      <RowActions>
+                        <EditButton onClick={() => openEditModal(vendor)} disabled={isSubmitting} />
+                        <DeleteButton onClick={() => openDeleteModal(vendor)} disabled={isSubmitting} />
+                      </RowActions>
                     </td>
                   </tr>
                 ))

@@ -7,6 +7,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { getStorageFileName } from "@/lib/utils/upload-reimburse-bukti";
+import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 import type {
   FinanceReimburseStatus,
   MKaryawan,
@@ -439,24 +440,10 @@ export default function FinanceReimbursePage() {
                               </button>
                             </>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(item)}
-                            disabled={isSubmitting}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 text-amber-600 transition hover:bg-amber-50 disabled:opacity-50"
-                            aria-label="Edit reimburse"
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openDeleteModal(item.id)}
-                            disabled={isSubmitting}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                            aria-label="Hapus reimburse"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <RowActions>
+                            <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
+                            <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
+                          </RowActions>
                         </div>
                       </td>
                     </tr>

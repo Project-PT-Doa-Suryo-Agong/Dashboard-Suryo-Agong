@@ -7,6 +7,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { ProductionQcResult, TProduksiOrder, TQCInbound } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type QcInboundListPayload = {
   qc_inbound: TQCInbound[];

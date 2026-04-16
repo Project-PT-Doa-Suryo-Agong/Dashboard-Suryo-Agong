@@ -6,6 +6,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 import type {
   MProduk,
   MVendor,
@@ -433,26 +434,10 @@ export default function ProductionOrdersPage() {
                       </span>
                     </td>
                     <td className="px-4 md:px-6 py-3">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(item)}
-                          disabled={isSubmitting}
-                          className={CRUD_EDIT_BUTTON_CLASS}
-                        >
-                          <Edit3 className="h-4 w-4" />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(item.id)}
-                          disabled={isSubmitting}
-                          className={CRUD_DELETE_BUTTON_CLASS}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Hapus
-                        </button>
-                      </div>
+                      <RowActions>
+                        <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
+                        <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
+                      </RowActions>
                     </td>
                   </tr>
                 ))

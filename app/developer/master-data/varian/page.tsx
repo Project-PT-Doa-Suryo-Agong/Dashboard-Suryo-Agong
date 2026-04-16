@@ -20,6 +20,8 @@ import {
   useDeleteVariant,
 } from "@/lib/supabase/hooks/index";
 import { useProducts } from "@/lib/supabase/hooks/use-products";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 
 const formatRupiah = (value: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -36,6 +38,10 @@ export default function VarianPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Delete confirm state ──
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetName, setDeleteTargetName] = useState("");
 
   // ── Supabase Direct ──
   const { data: varianList, loading: isLoading, error: variantReadError, refresh: refreshVariants } = useVariants();
@@ -105,12 +111,22 @@ export default function VarianPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = async (id: string) => {
-    if (isSubmitting) return;
+  const openDeleteDialog = (variant: MVarian) => {
+    setDeleteTargetId(variant.id);
+    setDeleteTargetName(variant.nama_varian ?? variant.sku ?? "varian ini");
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteTargetId(null);
+    setDeleteTargetName("");
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTargetId || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      const success = await remove(id);
+      const success = await remove(deleteTargetId);
       if (!success) throw new Error("Gagal menghapus varian.");
       refreshVariants();
     } catch (error) {
@@ -118,6 +134,7 @@ export default function VarianPage() {
       alert(message);
     } finally {
       setIsSubmitting(false);
+      closeDeleteDialog();
     }
   };
 
@@ -324,24 +341,10 @@ export default function VarianPage() {
                     <td className="px-6 py-4 text-sm font-medium text-slate-800">{v.nama_varian ?? "-"}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">{formatRupiah(v.harga ?? 0)}</td>
                     <td className="px-6 py-4 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <button
-                          onClick={() => handleEdit(v)}
-                          disabled={isSubmitting}
-                          className="p-2 rounded-lg text-slate-400 hover:text-orange-500 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          title="Edit Varian"
-                        >
-                          <Edit size={15} />
-                        </button>
-                        <button
-                          onClick={() => void handleDelete(v.id)}
-                          disabled={isSubmitting}
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          title="Hapus Varian"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
+                      <RowActions>
+                        <EditButton onClick={() => handleEdit(v)} disabled={isSubmitting} />
+                        <DeleteButton onClick={() => openDeleteDialog(v)} disabled={isSubmitting} />
+                      </RowActions>
                     </td>
                   </tr>
                 ))
@@ -366,6 +369,18 @@ export default function VarianPage() {
         </div>
 
       </section>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={deleteTargetId !== null}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDelete}
+        title="Hapus Varian Produk"
+        description={`Apakah kamu yakin ingin menghapus varian "${deleteTargetName}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText={isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+        cancelText="Batal"
+        variant="danger"
+      />
     </div>
   );
 }

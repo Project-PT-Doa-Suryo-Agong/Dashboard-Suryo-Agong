@@ -7,6 +7,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { CoreUserRole, HrEmployeeStatus, MKaryawan } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 import {
   useKaryawan,
   useInsertKaryawan,
@@ -377,24 +378,10 @@ export default function KaryawanPage() {
                     <Badge status={item.status} />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(item)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-amber-200 text-amber-600 transition hover:bg-amber-50"
-                        aria-label={`Edit data ${item.nama}`}
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openDeleteModal(item.id)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50"
-                        aria-label={`Hapus data ${item.nama}`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                    <RowActions>
+                      <EditButton onClick={() => openEditModal(item)} />
+                      <DeleteButton onClick={() => openDeleteModal(item.id)} />
+                    </RowActions>
                   </td>
                 </tr>
               ))

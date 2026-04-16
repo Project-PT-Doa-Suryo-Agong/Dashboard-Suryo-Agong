@@ -9,6 +9,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MKaryawan, TPayrollHistory } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type EmployeeOption = {
   id: string;
@@ -422,26 +423,10 @@ export default function FinancePayrollPage() {
                       <td className="px-4 md:px-6 py-3 text-sm font-semibold text-right text-slate-900 whitespace-nowrap">{formatRupiah(item.total ?? 0)}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(item)}
-                            disabled={isSubmitting}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 text-amber-600 transition hover:bg-amber-50 disabled:opacity-50"
-                            aria-label="Edit payroll"
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openDeleteModal(item.id)}
-                            disabled={isSubmitting}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                            aria-label="Hapus payroll"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                        <RowActions>
+                          <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
+                          <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
+                        </RowActions>
                       </td>
                     </tr>
                   );

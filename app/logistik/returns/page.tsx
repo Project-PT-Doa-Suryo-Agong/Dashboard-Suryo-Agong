@@ -7,6 +7,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { TReturnOrder, TSalesOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type ProductLite = {
   id: string;
@@ -501,33 +502,11 @@ export default function ReturnsPage() {
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="inline-flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openDetailModal(item)}
-                          disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-sky-600 bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
-                        >
-                          <Eye size={15} />
-                          Detail
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openFormModal(item)}
-                          disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-600 bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-yellow-500 hover:text-white disabled:opacity-50"
-                        >
-                          <RefreshCcw size={15} />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(returnId)}
-                          disabled={isSubmitting || !returnId}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-600 bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-orange-600 hover:text-white disabled:opacity-50"
-                        >
-                          <Trash2 size={15} />
-                          Hapus
-                        </button>
+                        <RowActions>
+                          <DetailButton onClick={() => openDetailModal(item)} label="Detail" />
+                          <EditButton onClick={() => openFormModal(item)} label="Edit" />
+                          <DeleteButton onClick={() => openDeleteModal(returnId)} disabled={isSubmitting || !returnId} label="Hapus" />
+                        </RowActions>
                       </div>
                     </td>
                   </tr>

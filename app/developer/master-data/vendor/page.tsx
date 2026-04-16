@@ -18,6 +18,8 @@ import {
   useUpdateVendor,
   useDeleteVendor,
 } from "@/lib/supabase/hooks/index";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 
 export default function VendorPage() {
   const [namaVendor, setNamaVendor] = useState("");
@@ -25,6 +27,10 @@ export default function VendorPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Delete confirm state ──
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetName, setDeleteTargetName] = useState("");
 
   // ── Supabase Direct ──
   const { data: vendorList, loading: isLoading, error: readError, refresh } = useVendors();
@@ -69,12 +75,22 @@ export default function VendorPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = async (id: string) => {
-    if (isSubmitting) return;
+  const openDeleteDialog = (vendor: MVendor) => {
+    setDeleteTargetId(vendor.id);
+    setDeleteTargetName(vendor.nama_vendor ?? "vendor ini");
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteTargetId(null);
+    setDeleteTargetName("");
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTargetId || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      const success = await remove(id);
+      const success = await remove(deleteTargetId);
       if (!success) throw new Error("Gagal menghapus vendor.");
       refresh();
     } catch (error) {
@@ -82,6 +98,7 @@ export default function VendorPage() {
       alert(message);
     } finally {
       setIsSubmitting(false);
+      closeDeleteDialog();
     }
   };
 
@@ -234,24 +251,10 @@ export default function VendorPage() {
                     <td className="px-6 py-4 text-sm text-slate-600">{v.kontak ?? "-"}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{v.created_at ? v.created_at.split("T")[0] : "-"}</td>
                     <td className="px-6 py-4 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <button
-                          onClick={() => handleEdit(v)}
-                          disabled={isSubmitting}
-                          className="p-2 rounded-lg text-slate-400 hover:text-[#BC934B] hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          title="Edit Vendor"
-                        >
-                          <Edit size={15} />
-                        </button>
-                        <button
-                          onClick={() => void handleDelete(v.id)}
-                          disabled={isSubmitting}
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          title="Hapus Vendor"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
+                      <RowActions>
+                        <EditButton onClick={() => handleEdit(v)} disabled={isSubmitting} />
+                        <DeleteButton onClick={() => openDeleteDialog(v)} disabled={isSubmitting} />
+                      </RowActions>
                     </td>
                   </tr>
                 ))
@@ -275,6 +278,17 @@ export default function VendorPage() {
         </div>
       </section>
 
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={deleteTargetId !== null}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDelete}
+        title="Hapus Vendor"
+        description={`Apakah kamu yakin ingin menghapus vendor "${deleteTargetName}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText={isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+        cancelText="Batal"
+        variant="danger"
+      />
     </div>
   );
 }

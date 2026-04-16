@@ -5,6 +5,7 @@ import { Pencil, Trash2, UserPlus, Users2 } from 'lucide-react';
 import type { ApiError, ApiSuccess } from '@/types/api';
 import type { CoreUserRole, Profile } from '@/types/supabase';
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type UserRole = CoreUserRole;
 
@@ -369,24 +370,10 @@ export default function DeveloperUsersPage() {
 										}).format(new Date(user.created_at)) : '-'}</span>
 									</td>
 									<td className="sticky right-0 z-10 border-b border-slate-100 bg-white px-3 py-2 text-xs hover:bg-slate-50/70 md:px-4 md:py-3">
-										<div className="flex items-center gap-1 md:gap-2">
-											<button
-												type="button"
-												onClick={() => handleEdit(user)}
-												className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 transition-colors hover:bg-slate-100 whitespace-nowrap md:px-2.5 md:py-1.5 md:text-xs"
-											>
-												<Pencil size={12} />
-												<span className="hidden md:inline">Edit</span>
-											</button>
-											<button
-												type="button"
-												onClick={() => void handleDelete(user.id)}
-												className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-700 transition-colors hover:bg-rose-100 whitespace-nowrap md:px-2.5 md:py-1.5 md:text-xs"
-											>
-												<Trash2 size={12} />
-												<span className="hidden md:inline">Hapus</span>
-											</button>
-										</div>
+										<RowActions>
+											<EditButton onClick={() => handleEdit(user)} />
+											<DeleteButton onClick={() => void handleDelete(user.id)} />
+										</RowActions>
 									</td>
 								</tr>
 							))
