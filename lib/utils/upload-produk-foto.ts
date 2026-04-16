@@ -1,6 +1,6 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-const BUCKET = "produk-foto";
+const BUCKET = "products";
 
 /**
  * Upload a product photo to Supabase Storage and return its public URL.
@@ -44,7 +44,7 @@ export function extractStoragePath(publicUrl: string | null | undefined): string
   if (!publicUrl) return null;
   try {
     const url = new URL(publicUrl);
-    // path: /storage/v1/object/public/produk-foto/<filename>
+    // path: /storage/v1/object/public/products/<filename>
     const parts = url.pathname.split("/");
     const bucketIdx = parts.indexOf(BUCKET);
     if (bucketIdx === -1) return null;
