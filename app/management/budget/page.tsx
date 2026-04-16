@@ -7,6 +7,7 @@ import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { ManagementBudgetStatus, TBudgetRequest } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type BudgetRequestFilterStatus = "all" | ManagementBudgetStatus;
 

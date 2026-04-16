@@ -14,6 +14,7 @@ import Modal from '@/components/ui/Modal';
 import type { ApiError, ApiSuccess } from '@/types/api';
 import type { TContentPlanner } from '@/types/supabase';
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 
 type Platform = 'TikTok' | 'Instagram' | 'YouTube Shorts' | 'LinkedIn' | 'Twitter / X' | 'Lainnya';
 
@@ -352,28 +353,10 @@ export default function ContentPlannerPage() {
                     }).format(new Date(item.created_at)) : '-'}
                   </td>
                   <td className="px-4 py-4 md:px-6">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(item)}
-                        disabled={isSubmitting}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
-                        title="Edit Content"
-                      >
-                        <Pencil size={14} />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDelete(item.id)}
-                        disabled={isSubmitting}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
-                        title="Delete Content"
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </button>
-                    </div>
+                    <RowActions>
+                      <EditButton onClick={() => handleOpenEdit(item)} disabled={isSubmitting} />
+                      <DeleteButton onClick={() => handleOpenDelete(item.id)} disabled={isSubmitting} />
+                    </RowActions>
                   </td>
                 </tr>
                 ))

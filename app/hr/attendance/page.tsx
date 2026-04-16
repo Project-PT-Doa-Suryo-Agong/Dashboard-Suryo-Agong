@@ -5,6 +5,7 @@ import { Pencil, Search, Trash2, UserCheck } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { HrAttendanceStatus, MKaryawan, TAttendance } from "@/types/supabase";
+import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 import {
   useAttendance,
   useInsertAttendance,
@@ -363,33 +364,19 @@ export default function AttendancePage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(item)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-amber-200 text-amber-600 transition hover:bg-amber-50"
-                          aria-label={`Edit presensi ${employeeName}`}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!item.employee_id || !item.tanggal) {
-                              alert("Identitas data presensi tidak lengkap. Muat ulang halaman lalu coba lagi.");
-                              return;
-                            }
-                            openDeleteModal({
-                              employee_id: item.employee_id,
-                              tanggal: item.tanggal,
-                            });
-                          }}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50"
-                          aria-label={`Hapus presensi ${employeeName}`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      <RowActions>
+                        <EditButton onClick={() => openEditModal(item)} />
+                        <DeleteButton onClick={() => {
+                          if (!item.employee_id || !item.tanggal) {
+                            alert("Identitas data presensi tidak lengkap. Muat ulang halaman lalu coba lagi.");
+                            return;
+                          }
+                          openDeleteModal({
+                            employee_id: item.employee_id,
+                            tanggal: item.tanggal,
+                          });
+                        }} />
+                      </RowActions>
                     </td>
                   </tr>
                 );

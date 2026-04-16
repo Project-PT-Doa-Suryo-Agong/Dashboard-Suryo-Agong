@@ -26,6 +26,8 @@ import {
   uploadProdukFoto,
   extractStoragePath,
 } from "@/lib/utils/upload-produk-foto";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 
 const KATEGORI_LIST = [
   "Pakaian",
@@ -43,6 +45,10 @@ export default function ProdukPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // ── Delete confirm state ──
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteTargetName, setDeleteTargetName] = useState("");
 
   // ── Foto state ──
   const [fotoFile, setFotoFile] = useState<File | null>(null);
@@ -132,12 +138,22 @@ export default function ProdukPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = async (id: string) => {
-    if (isSubmitting) return;
+  const openDeleteDialog = (p: MProduk) => {
+    setDeleteTargetId(p.id);
+    setDeleteTargetName(p.nama_produk ?? "produk ini");
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteTargetId(null);
+    setDeleteTargetName("");
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTargetId || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      const success = await remove(id);
+      const success = await remove(deleteTargetId);
       if (!success) throw new Error("Gagal menghapus produk.");
       refresh();
     } catch (error) {
@@ -145,6 +161,7 @@ export default function ProdukPage() {
       alert(message);
     } finally {
       setIsSubmitting(false);
+      closeDeleteDialog();
     }
   };
 
@@ -454,24 +471,10 @@ export default function ProdukPage() {
                       {p.created_at ? p.created_at.split("T")[0] : "-"}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <button
-                          onClick={() => handleEdit(p)}
-                          disabled={isSubmitting}
-                          className="p-2 rounded-lg text-orange-300 hover:text-orange-400 hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          title="Edit Produk"
-                        >
-                          <Edit size={15} />
-                        </button>
-                        <button
-                          onClick={() => void handleDelete(p.id)}
-                          disabled={isSubmitting}
-                          className="p-2 rounded-lg text-red-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          title="Hapus Produk"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
+                      <RowActions>
+                        <EditButton onClick={() => handleEdit(p)} disabled={isSubmitting} />
+                        <DeleteButton onClick={() => openDeleteDialog(p)} disabled={isSubmitting} />
+                      </RowActions>
                     </td>
                   </tr>
                 ))
@@ -494,6 +497,18 @@ export default function ProdukPage() {
           </div>
         </div>
       </section>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={deleteTargetId !== null}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDelete}
+        title="Hapus Produk"
+        description={`Apakah kamu yakin ingin menghapus produk "${deleteTargetName}"? Semua varian terkait mungkin juga terpengaruh.`}
+        confirmText={isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+        cancelText="Batal"
+        variant="danger"
+      />
     </div>
   );
 }

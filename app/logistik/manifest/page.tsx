@@ -8,6 +8,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { TLogistikManifest, TSalesOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type ProductLite = {
   id: string;
@@ -441,26 +442,10 @@ export default function ManifestPage() {
                     <td className="px-4 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.resi ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateTimeFormatter.format(new Date(item.created_at)) : "-"}</td>
                     <td className="px-4 py-3 text-center">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openFormModal(item)}
-                          disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-amber-400 disabled:opacity-50"
-                        >
-                          <Truck size={15} />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(getOrderPrimaryKey(item))}
-                          disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-400 disabled:opacity-50"
-                        >
-                          <Trash2 size={15} />
-                          Hapus
-                        </button>
-                      </div>
+                      <RowActions>
+                        <EditButton onClick={() => openFormModal(item)} disabled={isSubmitting} />
+                        <DeleteButton onClick={() => openDeleteModal(getOrderPrimaryKey(item))} disabled={isSubmitting} />
+                      </RowActions>
                     </td>
                   </tr>
                 );

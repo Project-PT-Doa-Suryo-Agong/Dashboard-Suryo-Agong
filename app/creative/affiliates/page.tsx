@@ -7,6 +7,7 @@ import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MAfiliator } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type AffiliatorListPayload = {
   afiliator: MAfiliator[];
@@ -283,26 +284,10 @@ export default function AffiliatesPage() {
                     <td className="px-6 py-4 text-sm text-slate-700">{item.platform ?? "-"}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{formatDate(item.created_at)}</td>
                     <td className="px-6 py-4 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(item)}
-                          disabled={isSubmitting}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 text-amber-600 transition hover:bg-amber-50 disabled:opacity-50"
-                          aria-label="Edit affiliator"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(item.id)}
-                          disabled={isSubmitting}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                          aria-label="Hapus affiliator"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      <RowActions>
+                        <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
+                        <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
+                      </RowActions>
                     </td>
                   </tr>
                 ))

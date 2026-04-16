@@ -7,6 +7,7 @@ import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { TKPIWeekly } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type KpiListPayload = {
   kpi: TKPIWeekly[];
@@ -344,26 +345,10 @@ export default function ManagementKpiPage() {
                         </span>
                       </td>
                       <td className="px-4 md:px-6 py-3 text-right">
-                        <div className="inline-flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(item)}
-                            disabled={isSubmitting}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50 disabled:opacity-50"
-                            aria-label="Edit KPI"
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openDeleteModal(item.id)}
-                            disabled={isSubmitting}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                            aria-label="Hapus KPI"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                        <RowActions>
+                          <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
+                          <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
+                        </RowActions>
                       </td>
                     </tr>
                   );
