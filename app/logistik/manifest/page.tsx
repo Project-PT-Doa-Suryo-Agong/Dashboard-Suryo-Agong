@@ -64,6 +64,13 @@ function getOrderPrimaryKey(value: { order_id?: string | null; id?: string | nul
   return value?.order_id ?? value?.id ?? "";
 }
 
+function getOrderDisplayCode(
+  value: { order_code?: string | null; id?: string | null } | null | undefined,
+  fallbackOrderId?: string | null,
+): string {
+  return value?.order_code?.trim() || value?.id || fallbackOrderId || "Order tidak ditemukan";
+}
+
 function getOrderVariantId(value: { varian_id?: string | null } | null | undefined): string {
   return value?.varian_id ?? "";
 }
@@ -252,7 +259,7 @@ export default function ManifestPage() {
       const variantName = resolveVariantName(item).toLowerCase();
       return (
         (item.resi ?? "").toLowerCase().includes(keyword) ||
-        getOrderPrimaryKey(order).toLowerCase().includes(keyword) ||
+        getOrderDisplayCode(order, item.order_id).toLowerCase().includes(keyword) ||
         (item.order_id ?? "").toLowerCase().includes(keyword) ||
         variantName.includes(keyword) ||
         (item.product?.nama_produk ?? "").toLowerCase().includes(keyword)
@@ -357,7 +364,7 @@ export default function ManifestPage() {
       const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
 
       return {
-        order_id: getOrderPrimaryKey(order) || "Order tidak ditemukan",
+        order_id: getOrderDisplayCode(order, item.order_id),
         produk: item.product?.nama_produk ?? "Produk tidak ditemukan",
         resi: item.resi ?? "-",
         dibuat_pada: item.created_at ? dateTimeFormatter.format(new Date(item.created_at)) : "-",
@@ -429,7 +436,7 @@ export default function ManifestPage() {
                 const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
                 return (
                   <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderPrimaryKey(order) || item.order_id || "Order tidak ditemukan"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderDisplayCode(order, item.order_id)}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{resolveVariantName(item)}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.resi ?? "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateTimeFormatter.format(new Date(item.created_at)) : "-"}</td>
@@ -439,7 +446,7 @@ export default function ManifestPage() {
                           type="button"
                           onClick={() => openFormModal(item)}
                           disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-400 transition hover:bg-amber-100 disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-amber-400 disabled:opacity-50"
                         >
                           <Truck size={15} />
                           Edit
@@ -448,7 +455,7 @@ export default function ManifestPage() {
                           type="button"
                           onClick={() => openDeleteModal(getOrderPrimaryKey(item))}
                           disabled={isSubmitting}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-400 transition hover:bg-red-100 disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-red-400 disabled:opacity-50"
                         >
                           <Trash2 size={15} />
                           Hapus
@@ -479,7 +486,7 @@ export default function ManifestPage() {
               ) : null}
               {orders.map((order) => {
                 const orderId = getOrderPrimaryKey(order);
-                return <option key={orderId} value={orderId}>{orderId}</option>;
+                return <option key={orderId} value={orderId}>{getOrderDisplayCode(order, orderId)}</option>;
               })}
             </select>
           </label>

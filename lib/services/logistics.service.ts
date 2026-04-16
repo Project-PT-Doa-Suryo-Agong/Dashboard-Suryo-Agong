@@ -9,6 +9,7 @@ const schema = (client: DbClient, schemaName: string) => (client as unknown as S
 
 type SalesOrderLite = {
   id: string;
+  order_code: string | null;
   varian_id: string | null;
   affiliator_id: string | null;
   quantity: number;
@@ -62,7 +63,7 @@ async function enrichLogisticsRows<T extends LogisticsRowWithOrder>(client: DbCl
 
   const { data: orders, error: orderError } = await schema(readClient(client), "sales")
     .from("t_sales_order")
-    .select("id, varian_id, affiliator_id, quantity, total_price, created_at")
+    .select("id, order_code, varian_id, affiliator_id, quantity, total_price, created_at")
     .in("id", orderIds);
 
   if (orderError) {
@@ -245,17 +246,20 @@ export async function createReturnOrder(client: DbClient, input: Record<string, 
   return { data: data as TReturnOrder | null, error };
 }
 
-export async function updateReturnOrder(client: DbClient, orderId: string, input: Record<string, unknown>) {
+export async function updateReturnOrder(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_return_order")
     .update(input as any)
-    .eq("order_id", orderId)
+    .eq("id", id)
     .select("*")
     .maybeSingle();
   return { data: data as TReturnOrder | null, error };
 }
 
-export async function deleteReturnOrder(client: DbClient, orderId: string) {
-  const { error, count } = await db(client).from("t_return_order").delete({ count: "exact" }).eq("order_id", orderId);
+export async function deleteReturnOrder(client: DbClient, id: string) {
+  const { error, count } = await db(client)
+    .from("t_return_order")
+    .delete({ count: "exact" })
+    .eq("id", id);
   return { error, deleted: (count ?? 0) > 0 };
 }

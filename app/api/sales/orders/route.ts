@@ -5,6 +5,96 @@ import { requireNumber, requireUUID } from "@/lib/validation/body-validator";
 import type { TSalesOrderInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 
+const ORDER_CODE_PREFIX = "ORD";
+const ORDER_CODE_TIMEZONE = "Asia/Jakarta";
+
+type SalesOrderLike = {
+  id: string;
+  order_code?: string | null;
+  created_at?: string | null;
+};
+
+function getDateCodeInJakarta(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: ORDER_CODE_TIMEZONE,
+  }).formatToParts(date);
+
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  return `${day}${month}${year}`;
+}
+
+function getDateCodeFromValue(value: string | null | undefined): string {
+  if (!value) return getDateCodeInJakarta(new Date(0));
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return getDateCodeInJakarta(new Date(0));
+  return getDateCodeInJakarta(parsed);
+}
+
+function buildOrderCode(dateCode: string, sequence: number): string {
+  return `${ORDER_CODE_PREFIX}-${dateCode}-${String(sequence).padStart(6, "0")}`;
+}
+
+function parseOrderCodeSequence(orderCode: string, dateCode: string): number | null {
+  const match = orderCode.match(new RegExp(`^${ORDER_CODE_PREFIX}-${dateCode}-(\\d{6})$`));
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function ensureReadableOrderCodes<T extends SalesOrderLike>(orders: T[]): T[] {
+  const sorted = [...orders].sort((a, b) => {
+    const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (aTime !== bTime) return aTime - bTime;
+    return a.id.localeCompare(b.id);
+  });
+
+  const sequenceByDate = new Map<string, number>();
+  const fallbackCodeById = new Map<string, string>();
+
+  for (const order of sorted) {
+    const dateCode = getDateCodeFromValue(order.created_at ?? null);
+    const nextSequence = (sequenceByDate.get(dateCode) ?? 0) + 1;
+    sequenceByDate.set(dateCode, nextSequence);
+    fallbackCodeById.set(order.id, buildOrderCode(dateCode, nextSequence));
+  }
+
+  return orders.map((order) => ({
+    ...order,
+    order_code: order.order_code?.trim() || fallbackCodeById.get(order.id) || null,
+  }));
+}
+
+async function generateNextOrderCode(supabase: any): Promise<string | null> {
+  const dateCode = getDateCodeInJakarta();
+  const pattern = `${ORDER_CODE_PREFIX}-${dateCode}-%`;
+
+  const { data, error } = await (supabase as any)
+    .schema("sales")
+    .from("t_sales_order")
+    .select("order_code")
+    .ilike("order_code", pattern)
+    .order("order_code", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    const message = (error.message ?? "").toLowerCase();
+    if (message.includes("column") && message.includes("order_code")) {
+      return null;
+    }
+    throw new Error(`Gagal membuat kode order: ${error.message}`);
+  }
+
+  const latestCode = data?.[0]?.order_code;
+  const nextSequence = latestCode ? (parseOrderCodeSequence(String(latestCode), dateCode) ?? 0) + 1 : 1;
+  return buildOrderCode(dateCode, nextSequence);
+}
+
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
@@ -15,7 +105,7 @@ export async function GET(request: Request) {
 
   const { data, error, meta } = await listSalesOrder(auth.ctx.supabase, page, limit);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data sales order.", 500, error.message);
-  return ok({ orders: data, meta });
+  return ok({ orders: ensureReadableOrderCodes(data as SalesOrderLike[]), meta });
 }
 
 export async function POST(request: Request) {
@@ -42,8 +132,11 @@ export async function POST(request: Request) {
     }
   }
 
+  const generatedOrderCode = await generateNextOrderCode(auth.ctx.supabase);
+
   const payload: TSalesOrderInsert = {
     ...input,
+    ...(generatedOrderCode ? { order_code: generatedOrderCode } : {}),
     varian_id: varianId.data,
     affiliator_id: affiliatorId.data,
     quantity: quantity.data!,

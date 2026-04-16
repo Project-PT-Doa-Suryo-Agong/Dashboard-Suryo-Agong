@@ -562,6 +562,7 @@ export interface Database {
       t_sales_order: {
         Row: {
           id: string;
+          order_code: string | null;
           varian_id: string | null;
           affiliator_id: string | null;
           quantity: number;
@@ -570,6 +571,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          order_code?: string | null;
           varian_id?: string | null;
           affiliator_id?: string | null;
           quantity: number;
@@ -578,6 +580,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          order_code?: string | null;
           varian_id?: string | null;
           affiliator_id?: string | null;
           quantity?: number;

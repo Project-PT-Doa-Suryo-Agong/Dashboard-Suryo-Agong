@@ -120,18 +120,11 @@ function getStorageFileName(path: string | null | undefined): string {
   return parts[parts.length - 1] || path;
 }
 
-function toOrderDateCode(dateValue: string | null | undefined): string | null {
-  if (!dateValue) return null;
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return null;
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = String(date.getFullYear());
-  return `${dd}${mm}${yyyy}`;
-}
-
-function toReadableOrderCode(dateCode: string, sequence: number): string {
-  return `ORD-${dateCode}-${String(sequence).padStart(6, "0")}`;
+function getOrderDisplayCode(
+  value: { order_code?: string | null; id?: string | null } | null | undefined,
+  fallbackOrderId?: string | null,
+): string {
+  return value?.order_code?.trim() || value?.id || fallbackOrderId || "Order tidak ditemukan";
 }
 
 function getReturnBuktiPublicUrl(path: string | null | undefined): string | null {
@@ -267,63 +260,19 @@ export default function ReturnsPage() {
     return Array.from(map.values());
   }, [orders]);
 
-  const orderCodeById = useMemo(() => {
-    const map = new Map<string, TSalesOrder>();
-
-    for (const order of orders) {
-      const orderId = getOrderPrimaryKey(order).trim();
-      if (!orderId || map.has(orderId)) continue;
-      map.set(orderId, order);
-    }
-
-    for (const item of items) {
-      const orderId = item.order_id?.trim() ?? "";
-      if (!orderId || !item.order || map.has(orderId)) continue;
-      map.set(orderId, item.order);
-    }
-
-    const orderedItems = Array.from(map.values()).sort((a, b) => {
-      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-      if (aTime !== bTime) return aTime - bTime;
-      return getOrderPrimaryKey(a).localeCompare(getOrderPrimaryKey(b));
-    });
-
-    const sequenceByDate = new Map<string, number>();
-    const readableById: Record<string, string> = {};
-
-    for (const order of orderedItems) {
-      const orderId = getOrderPrimaryKey(order);
-      if (!orderId) continue;
-
-      const dateCode = toOrderDateCode(order.created_at);
-      if (!dateCode) {
-        readableById[orderId] = orderId;
-        continue;
-      }
-
-      const nextSequence = (sequenceByDate.get(dateCode) ?? 0) + 1;
-      sequenceByDate.set(dateCode, nextSequence);
-      readableById[orderId] = toReadableOrderCode(dateCode, nextSequence);
-    }
-
-    return readableById;
-  }, [orders, items]);
-
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
     return items.filter((item) => {
       const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
-      const orderId = getOrderPrimaryKey(order) || item.order_id || "";
-      const readableOrderCode = orderCodeById[orderId] ?? orderId;
+      const readableOrderCode = getOrderDisplayCode(order, item.order_id);
       return (
         readableOrderCode.toLowerCase().includes(keyword) ||
         (item.alasan ?? "").toLowerCase().includes(keyword) ||
         (item.product?.nama_produk ?? "").toLowerCase().includes(keyword)
       );
     });
-  }, [items, searchTerm, orderById, orderCodeById]);
+  }, [items, searchTerm, orderById]);
 
   const resetForm = () => {
     setFormData({ order_id: getOrderPrimaryKey(selectableOrders[0]) || "", alasan: "", foto_bukti_url: null });
@@ -499,8 +448,7 @@ export default function ReturnsPage() {
                 const returnId = getReturnPrimaryKey(item);
                 const rowKey = returnId || `${item.order_id ?? "no-order"}-${item.created_at ?? "no-date"}-${index}`;
                 const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
-                const orderId = getOrderPrimaryKey(order) || item.order_id || "";
-                const readableOrderCode = orderCodeById[orderId] ?? orderId ?? "Order tidak ditemukan";
+                const readableOrderCode = getOrderDisplayCode(order, item.order_id);
                 return (
                   <tr key={rowKey} className="border-t border-slate-100">
                     <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{returnId ? returnId.slice(0, 8).toUpperCase() : "-"}</td>
@@ -564,7 +512,7 @@ export default function ReturnsPage() {
               ) : null}
               {selectableOrders.map((order) => {
                 const orderId = getOrderPrimaryKey(order);
-                const readableOrderCode = orderCodeById[orderId] ?? orderId;
+                const readableOrderCode = getOrderDisplayCode(order, orderId);
                 return <option key={orderId} value={orderId}>{readableOrderCode}</option>;
               })}
             </select>
@@ -650,10 +598,7 @@ export default function ReturnsPage() {
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">Order</p>
                 <p className="text-sm font-semibold text-slate-800 break-all">
-                  {orderCodeById[getOrderPrimaryKey(detailOrder) || selectedDetailItem.order_id || ""]
-                    ?? getOrderPrimaryKey(detailOrder)
-                    ?? selectedDetailItem.order_id
-                    ?? "-"}
+                  {getOrderDisplayCode(detailOrder, selectedDetailItem.order_id)}
                 </p>
               </div>
               <div>

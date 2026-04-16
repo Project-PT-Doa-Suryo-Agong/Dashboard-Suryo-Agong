@@ -71,6 +71,13 @@ function getOrderPrimaryKey(value: { order_id?: string | null; id?: string | nul
   return value?.order_id ?? value?.id ?? "";
 }
 
+function getOrderDisplayCode(
+  value: { order_code?: string | null; id?: string | null } | null | undefined,
+  fallbackOrderId?: string | null,
+): string {
+  return value?.order_code?.trim() || value?.id || fallbackOrderId || "Order tidak ditemukan";
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const raw = await response.text();
   let payload: ApiSuccess<T> | ApiError;
@@ -198,9 +205,9 @@ export default function PackingPage() {
     const keyword = searchTerm.trim().toLowerCase();
 
     return items.filter((item) => {
-      const order = orderById[item.order_id ?? ""];
+      const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
       const matchesSearch =
-        getOrderPrimaryKey(order).toLowerCase().includes(keyword) ||
+        getOrderDisplayCode(order, item.order_id).toLowerCase().includes(keyword) ||
         (item.product?.nama_produk ?? "").toLowerCase().includes(keyword);
       const matchesStatus = filterStatus === "all" ? true : item.status === filterStatus;
       return matchesSearch && matchesStatus;
@@ -360,7 +367,7 @@ export default function PackingPage() {
                 return (
                   <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
                     <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{shortId(getOrderPrimaryKey(item))}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderPrimaryKey(order) || item.order_id || "Order tidak ditemukan"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderDisplayCode(order, item.order_id)}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.product?.nama_produk ?? "Produk tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
                     <td className="px-4 py-3 text-sm">
@@ -415,7 +422,7 @@ export default function PackingPage() {
               {orders.map((order) => {
                 const orderId = getOrderPrimaryKey(order);
                 return (
-                  <option key={orderId} value={orderId}>{orderId}</option>
+                  <option key={orderId} value={orderId}>{getOrderDisplayCode(order, orderId)}</option>
                 );
               })}
             </select>

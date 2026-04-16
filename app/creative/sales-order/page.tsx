@@ -81,6 +81,10 @@ function formatDate(value: string | null): string {
   }).format(new Date(value));
 }
 
+function getOrderDisplayCode(order: { order_code?: string | null; id?: string | null } | null | undefined): string {
+  return order?.order_code?.trim() || order?.id || "-";
+}
+
 function getVarianLabel(item: MVarian): string {
   const nama = item.nama_varian ?? "Varian tanpa nama";
   const sku = item.sku ? `SKU: ${item.sku}` : "SKU: -";
@@ -420,7 +424,7 @@ export default function SalesOrderPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/80">
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Order ID</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Order Code</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Product Variant</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Affiliator</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">Qty</th>
@@ -449,7 +453,7 @@ export default function SalesOrderPage() {
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-bold text-slate-700 font-mono">{item.id}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-slate-700 font-mono">{getOrderDisplayCode(item)}</td>
                       <td className="px-6 py-4 text-sm font-medium text-slate-800">{varian?.nama_varian ?? "-"}</td>
                       <td className="px-6 py-4 text-sm text-slate-700">{affiliator ? `${affiliator.nama} (${affiliator.platform ?? "-"})` : "-"}</td>
                       <td className="px-6 py-4 text-sm text-slate-700 text-center font-bold">{item.quantity}</td>
