@@ -66,7 +66,8 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
   }
   if (!response.ok || !payload.success) {
     const message = payload.success ? "Terjadi kesalahan." : payload.error.message;
-    throw new Error(message);
+    const details = !payload.success && typeof payload.error.details === "string" ? payload.error.details : "";
+    throw new Error(details ? `${message} (${details})` : message);
   }
   return payload;
 }
@@ -119,6 +120,56 @@ function getOrderDisplayCode(
 function isPdfFile(path: string | null | undefined): boolean {
   if (!path) return false;
   return path.toLowerCase().endsWith(".pdf");
+}
+
+function normalizeReturnStatus(value: string | null | undefined): "pending" | "diproses" | "selesai" {
+  const normalized = (value ?? "").toLowerCase();
+  if (
+    ["inspected", "processed", "diproses", "proses", "in_progress", "on_progress", "inprogress", "processing"].includes(
+      normalized,
+    )
+  ) {
+    return "diproses";
+  }
+  if (
+    [
+      "completed", "selesai", "done", "finished", "closed", "resolved",
+      "returned", "restocked", "rejected",
+    ].includes(normalized)
+  ) {
+    return "selesai";
+  }
+  return "pending";
+}
+
+function getReturnStatusUi(value: string | null | undefined): { label: string; className: string } {
+  const raw = (value ?? "").toLowerCase();
+  if (raw === "inspected") {
+    return { label: "Inspected", className: "bg-blue-500 text-white border-blue-200" };
+  }
+  if (raw === "restocked") {
+    return { label: "Restocked", className: "bg-emerald-600 text-white border-emerald-200" };
+  }
+  if (raw === "rejected") {
+    return { label: "Rejected", className: "bg-red-500 text-white border-red-200" };
+  }
+  const normalized = normalizeReturnStatus(value);
+  if (normalized === "diproses") {
+    return {
+      label: "Diproses",
+      className: "bg-orange-500 text-white border-orange-200",
+    };
+  }
+  if (normalized === "selesai") {
+    return {
+      label: "Selesai",
+      className: "bg-emerald-500 text-white border-emerald-200",
+    };
+  }
+  return {
+    label: "Pending",
+    className: "bg-red-500 text-white border-red-200",
+  };
 }
 
 export default function ReturnsPage() {
@@ -269,7 +320,7 @@ export default function ReturnsPage() {
       setFormData({
         order_id: item.order_id ?? "",
         alasan: item.alasan ?? "",
-        status: item.status ?? "pending",
+        status: normalizeReturnStatus(item.status),
         foto_bukti_url: item.foto_bukti_url ?? null,
       });
       setSelectedBuktiFile(null);
@@ -419,27 +470,34 @@ export default function ReturnsPage() {
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Order</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Produk</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Alasan</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
               <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td></tr>
             ) : filteredItems.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Data retur tidak ditemukan.</td></tr>
             ) : (
               filteredItems.map((item, index) => {
                 const returnId = getReturnPrimaryKey(item);
                 const rowKey = returnId || `${item.order_id ?? "no-order"}-${item.created_at ?? "no-date"}-${index}`;
                 const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
                 const readableOrderCode = getOrderDisplayCode(order, item.order_id);
+                const statusUi = getReturnStatusUi(item.status);
                 return (
                   <tr key={rowKey} className="border-t border-slate-100">
                     <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{returnId ? returnId.slice(0, 8).toUpperCase() : "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{readableOrderCode}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.product?.nama_produk ?? "Produk tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.alasan ?? "-"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusUi.className}`}>
+                        {statusUi.label}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="inline-flex items-center gap-2">
@@ -520,9 +578,9 @@ export default function ReturnsPage() {
               onChange={(event) => setFormData((prev) => ({ ...prev, status: event.target.value }))}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
-              <option value="pending">pending</option>
-              <option value="diproses">diproses</option>
-              <option value="selesai">selesai</option>
+              <option value="pending">Pending</option>
+              <option value="diproses">Diproses</option>
+              <option value="selesai">Selesai</option>
             </select>
           </label>
 

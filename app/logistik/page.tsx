@@ -8,7 +8,7 @@ import type { TLogistikManifest, TPacking, TReturnOrder } from "@/types/supabase
 import { apiFetch } from "@/lib/utils/api-fetch";
 
 type PackingStatus = "pending" | "packed" | "shipped";
-type ReturnStatus = "pending" | "diproses" | "selesai" | "unknown";
+type ReturnStatus = "pending" | "processed" | "completed" | "unknown";
 
 type PackingListPayload = {
   packing: TPacking[];
@@ -59,17 +59,26 @@ function getPackingStatus(status: TPacking["status"]): PackingStatus {
 }
 
 function getReturnStatus(status: TReturnOrder["status"]): ReturnStatus {
-  if (status === "pending" || status === "diproses" || status === "selesai") {
-    return status;
-  }
+  if (!status) return "unknown";
+  const normalized = String(status).toLowerCase();
+  if (normalized === "pending") return "pending";
+  if (normalized === "processed" || normalized === "diproses") return "processed";
+  if (normalized === "completed" || normalized === "selesai") return "completed";
   return "unknown";
 }
 
 function returnStatusClass(status: ReturnStatus): string {
   if (status === "pending") return "bg-red-600 text-white";
-  if (status === "diproses") return "bg-orange-600 text-white";
-  if (status === "selesai") return "bg-emerald-600 text-white";
+  if (status === "processed") return "bg-orange-600 text-white";
+  if (status === "completed") return "bg-emerald-600 text-white";
   return "bg-slate-100 text-slate-700";
+}
+
+function returnStatusLabel(status: ReturnStatus): string {
+  if (status === "pending") return "pending";
+  if (status === "processed") return "diproses";
+  if (status === "completed") return "selesai";
+  return "N/A";
 }
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
@@ -333,7 +342,7 @@ export default function LogistikDashboardPage() {
                             status,
                           )}`}
                         >
-                          {status === "unknown" ? "N/A" : status}
+                          {returnStatusLabel(status)}
                         </span>
                       </div>
                     </li>
