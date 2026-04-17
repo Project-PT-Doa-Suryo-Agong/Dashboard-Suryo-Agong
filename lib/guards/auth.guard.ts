@@ -26,6 +26,7 @@ export async function requireAuth(): Promise<
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
+    console.log("[AUTH GUARD] getUser failed:", error?.message || "No user data");
     return {
       ok: false,
       response: fail(ErrorCode.UNAUTHORIZED, "Sesi tidak valid atau belum login.", 401),
