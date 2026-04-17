@@ -1,5 +1,5 @@
-import { SearchBar } from "@/components/ui/search-bar";
 "use client";
+import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useState } from "react";
 import { Edit, PlusCircle, Save, Search, Trash2, Users } from "lucide-react";

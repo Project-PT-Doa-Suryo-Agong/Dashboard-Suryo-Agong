@@ -1,5 +1,5 @@
-import { SearchBar } from "@/components/ui/search-bar";
 "use client";
+import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useMemo, useState, useEffect } from "react";
 import { AlertTriangle, Pencil, Search, Trash2 } from "lucide-react";

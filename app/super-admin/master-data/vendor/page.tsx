@@ -1,5 +1,5 @@
-import { SearchBar } from "@/components/ui/search-bar";
 "use client";
+import { SearchBar } from "@/components/ui/search-bar";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
