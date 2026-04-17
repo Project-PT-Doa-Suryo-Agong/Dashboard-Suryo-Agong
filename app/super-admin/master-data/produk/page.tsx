@@ -199,8 +199,8 @@ export default function ProdukPage() {
           <span className="text-emerald-300 font-medium">Produk</span>
         </nav>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
-            <Package size={18} className="text-emerald-500" />
+          <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center">
+            <Package size={18} className="text-white" />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-slate-100 tracking-tight">
@@ -216,7 +216,7 @@ export default function ProdukPage() {
       {/* ── Form Section ── */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-6">
-          <PlusCircle size={18} className="text-slate-400" />
+          <PlusCircle size={18} className="text-emerald-500" />
           <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
             {editingId ? "Edit Produk" : "Tambah Produk Baru"}
           </h3>
@@ -374,7 +374,7 @@ export default function ProdukPage() {
         ) : null}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Package size={18} className="text-slate-400" />
+            <Package size={18} className="text-emerald-500" />
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
               Daftar Produk Induk
             </h3>
