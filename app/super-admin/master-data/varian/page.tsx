@@ -164,8 +164,8 @@ export default function VarianPage() {
           <span className="text-orange-300 font-medium">Varian</span>
         </nav>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center">
-            <Tag size={18} className="text-orange-500" />
+          <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center">
+            <Tag size={18} className="text-white" />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Master Data: Varian Produk</h2>
@@ -290,7 +290,7 @@ export default function VarianPage() {
         {/* Table Header Bar */}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <PackageOpen size={18} className="text-slate-400" />
+            <PackageOpen size={18} className="text-orange-500" />
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Daftar Varian</h3>
             <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold">
               {filteredVarian.length}
