@@ -224,15 +224,6 @@ export default function Sidebar(props: SidebarProps) {
     }
   };
 
-  const isPathActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + "/");
-
-  // Most-specific prefix match: pick the nav item whose href is the longest
-  // prefix of the current pathname (handles sub-pages transparently).
-  const activeHref = navItems
-    .filter((item) => isPathActive(item.href))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
-
   return (
     <>
       <aside
@@ -258,13 +249,20 @@ export default function Sidebar(props: SidebarProps) {
             <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {navItems.map((item) => {
                 const hasChildren = !!item.children?.length;
+                
+                // Leaf exact match for children
                 const isChildActive =
-                  item.children?.some((child) => isPathActive(child.href)) ?? false;
+                  item.children?.some((child) => pathname === child.href) ?? false;
+                  
+                // Group opens if manually expanded, OR parent prefix matches (for default expanding), OR child is active
                 const isGroupOpen =
                   (openGroups[item.href] ?? false) ||
-                  isPathActive(item.href) ||
+                  pathname === item.href || 
+                  pathname.startsWith(item.href + "/") ||
                   isChildActive;
-                const isActive = item.href === activeHref || isChildActive;
+                  
+                // Parent is active if child is active; leaf is active if exact match
+                const isActive = hasChildren ? isChildActive : pathname === item.href;
 
                 return (
                   <div key={item.href}>
@@ -317,9 +315,7 @@ export default function Sidebar(props: SidebarProps) {
                     {hasChildren && isGroupOpen && (
                       <div className="mt-1 ml-2 pl-3 border-l border-slate-600 space-y-0.5">
                         {item.children!.map((child) => {
-                          const isChildActive =
-                            pathname === child.href ||
-                            pathname.startsWith(child.href + "/");
+                          const isChildActive = pathname === child.href;
                           return (
                             <Link
                               key={child.href}
