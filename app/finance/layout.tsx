@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import FinanceClientLayout from "@/components/layouts/FinanceLayout";
 import SuperAdminLayout from "@/components/layouts/SuperAdminLayout";
 
@@ -7,8 +7,8 @@ export default async function FinanceLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const role = cookieStore.get("role")?.value;
+  const headerStore = await headers();
+  const role = headerStore.get("x-user-role");
 
   if (role === "super-admin") {
     return <SuperAdminLayout>{children}</SuperAdminLayout>;

@@ -255,7 +255,7 @@ export default function Sidebar(props: SidebarProps) {
             </div>
 
             {/* Navigation */}
-            <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+            <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {navItems.map((item) => {
                 const hasChildren = !!item.children?.length;
                 const isChildActive =

@@ -264,6 +264,7 @@ export async function proxy(request: NextRequest) {
   const url = request.nextUrl;
   const hostHeader = request.headers.get("host") ?? "";
   const authRootHost = resolveAuthRootHost(hostHeader);
+  const requestHeaders = new Headers(request.headers);
   let response = NextResponse.next();
 
   console.log("[PROXY] incoming:", hostHeader, request.method, url.pathname);
@@ -321,17 +322,24 @@ export async function proxy(request: NextRequest) {
     }
 
     console.log("[PROXY] BRANCH → access granted, continuing");
+    requestHeaders.set("x-user-role", role);
   }
 
   if (effectivePathname !== url.pathname) {
     console.log("[PROXY] BRANCH → rewriting", url.pathname, "→", effectivePathname);
-    const rewrite = NextResponse.rewrite(new URL(effectivePathname, request.url));
+    const rewrite = NextResponse.rewrite(new URL(effectivePathname, request.url), {
+      request: { headers: requestHeaders }
+    });
     response.cookies.getAll().forEach(c => rewrite.cookies.set(c.name, c.value));
     return rewrite;
   }
 
   console.log("[PROXY] BRANCH → passthrough (no rewrite needed)");
-  return response;
+  const passthrough = NextResponse.next({
+    request: { headers: requestHeaders }
+  });
+  response.cookies.getAll().forEach(c => passthrough.cookies.set(c.name, c.value));
+  return passthrough;
 }
 
 export const middleware = proxy;
