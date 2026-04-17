@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
 type AppRole =
-  | "developer"
+  | "super-admin"
   | "management"
   | "finance"
   | "hr"
@@ -21,7 +21,7 @@ const DEV_ROOT_HOST = "lvh.me";
 
 const VALID_SUBDOMAINS: AppRole[] = [
   "creative",
-  "developer",
+  "super-admin",
   "finance",
   "hr",
   "logistik",
@@ -31,18 +31,18 @@ const VALID_SUBDOMAINS: AppRole[] = [
 ];
 
 const ACCESS_CONTROL_LIST: ProtectedRoute[] = [
-  { prefix: "/finance", allowed: ["finance", "management"] },
-  { prefix: "/logistik", allowed: ["logistik", "management"] },
-  { prefix: "/hr", allowed: ["hr", "management"] },
-  { prefix: "/management", allowed: ["management"] },
-  { prefix: "/produksi", allowed: ["produksi", "management"] },
-  { prefix: "/creative", allowed: ["creative", "management"] },
-  { prefix: "/office", allowed: ["office", "management"] },
-  { prefix: "/developer", allowed: ["developer"] },
+  { prefix: "/finance", allowed: ["finance", "management", "super-admin"] },
+  { prefix: "/logistik", allowed: ["logistik", "management", "super-admin"] },
+  { prefix: "/hr", allowed: ["hr", "management", "super-admin"] },
+  { prefix: "/management", allowed: ["management", "super-admin"] },
+  { prefix: "/produksi", allowed: ["produksi", "management", "super-admin"] },
+  { prefix: "/creative", allowed: ["creative", "management", "super-admin"] },
+  { prefix: "/office", allowed: ["office", "management", "super-admin"] },
+  { prefix: "/super-admin", allowed: ["super-admin"] },
 ];
 
 const ROLE_DASHBOARD: Record<AppRole, string> = {
-  developer: "/developer",
+  "super-admin": "/super-admin",
   management: "/management",
   finance: "/finance",
   hr: "/hr",
@@ -60,8 +60,8 @@ function normalizeRole(input: string | null | undefined): AppRole | null {
 
   // ── Pass 1: exact slug match ──────────────────────────────────────────────
   const exactMap: Record<string, AppRole> = {
-    "developer":           "developer",
-    "senior-developer":    "developer",
+    "super-admin":         "super-admin",
+    "developer":           "super-admin",
     "ceo":                 "management",
     "management":          "management",
     "manager":             "management",
@@ -92,7 +92,7 @@ function normalizeRole(input: string | null | undefined): AppRole | null {
   if (exactMap[slug]) return exactMap[slug];
 
   // ── Pass 2: substring keyword fallback (handles arbitrary compound names) ─
-  if (slug.includes("developer"))  return "developer";
+  if (slug.includes("super-admin") || slug.includes("developer"))  return "super-admin";
   if (slug.includes("management")) return "management";
   if (slug.includes("ceo"))        return "management";
   if (slug.includes("finance"))    return "finance";
@@ -233,6 +233,12 @@ function findRouteRule(pathname: string): ProtectedRoute | null {
 function resolveRewrittenPath(pathname: string, hostHeader: string): string {
   const subdomain = hostHeader.split(".")[0]?.toLowerCase();
   if (!subdomain || !VALID_SUBDOMAINS.includes(subdomain as AppRole)) {
+    return pathname;
+  }
+
+  // Preserve absolute cross-module routing (to stop 404s on layout skips).
+  const hasValidPrefix = VALID_SUBDOMAINS.some(v => pathname === `/${v}` || pathname.startsWith(`/${v}/`));
+  if (hasValidPrefix) {
     return pathname;
   }
 
