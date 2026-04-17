@@ -44,7 +44,7 @@ const divisionOptions = [
   "Logistics & Packing",
   "Creative & Sales",
   "Office Support",
-  "Developer",
+  "Super Admin",
 ] as const;
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {

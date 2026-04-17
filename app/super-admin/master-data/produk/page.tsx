@@ -183,14 +183,14 @@ export default function ProdukPage() {
       <div>
         <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
           <Link
-            href="/developer"
+            href="/super-admin"
             className="hover:text-slate-300 text-slate-100 transition-colors"
           >
-            Developer
+            Super Admin
           </Link>
           <ChevronRight size={13} className="text-slate-30" />
           <Link
-            href="/developer/master-data"
+            href="/super-admin/master-data"
             className="hover:text-slate-300 text-slate-100 transition-colors"
           >
             Master Data

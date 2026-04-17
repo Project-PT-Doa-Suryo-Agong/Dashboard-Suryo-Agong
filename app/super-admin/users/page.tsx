@@ -17,7 +17,7 @@ type SystemRoleKey =
 	| 'logistik'
 	| 'creative'
 	| 'office'
-	| 'developer';
+	| 'super-admin';
 
 type ProfilesListPayload = {
 	profiles: Profile[];
@@ -33,7 +33,7 @@ type ProfilePayload = {
 };
 
 const ROLE_OPTIONS: Array<{ key: SystemRoleKey; label: UserRole }> = [
-	{ key: 'developer', label: 'Developer' },
+	{ key: 'super-admin', label: 'Super Admin' },
 	{ key: 'management', label: 'Management & Strategy' },
 	{ key: 'finance', label: 'Finance & Administration' },
 	{ key: 'hr', label: 'HR & Operation Manager' },
@@ -46,7 +46,7 @@ const ROLE_OPTIONS: Array<{ key: SystemRoleKey; label: UserRole }> = [
 const LABEL_TO_ROLE_KEY = new Map<UserRole, SystemRoleKey>(ROLE_OPTIONS.map((item) => [item.label, item.key]));
 
 const ROLE_BADGE_MAP: Record<UserRole, string> = {
-	Developer: 'bg-purple-100 text-purple-700 border-purple-200',
+	'Super Admin': 'bg-purple-100 text-purple-700 border-purple-200',
 	'Management & Strategy': 'bg-slate-900 text-white border-slate-900',
 	'Finance & Administration': 'bg-emerald-100 text-emerald-700 border-emerald-200',
 	'HR & Operation Manager': 'bg-sky-100 text-sky-700 border-sky-200',
@@ -72,7 +72,7 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
   return payload;
 }
 
-export default function DeveloperUsersPage() {
+export default function SuperAdminUsersPage() {
 	const [users, setUsers] = useState<Profile[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -81,7 +81,7 @@ export default function DeveloperUsersPage() {
 	const [password, setPassword] = useState('');
 	const [nama, setNama] = useState('');
 	const [phone, setPhone] = useState('');
-	const [role, setRole] = useState<SystemRoleKey>('developer');
+	const [role, setRole] = useState<SystemRoleKey>('super-admin');
 
 	const submitLabel = editingId ? 'Update User' : 'Tambah User';
 
@@ -123,7 +123,7 @@ export default function DeveloperUsersPage() {
 		setPassword('');
 		setNama('');
 		setPhone('');
-		setRole('developer');
+		setRole('super-admin');
 	};
 
 	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -176,7 +176,7 @@ export default function DeveloperUsersPage() {
 		setEditingId(user.id);
 		setNama(user.nama);
 		setPhone(user.phone ?? '');
-		setRole(LABEL_TO_ROLE_KEY.get(user.role) ?? 'developer');
+		setRole(LABEL_TO_ROLE_KEY.get(user.role) ?? 'super-admin');
 		setPassword('');
 		setEmail('');
 	};

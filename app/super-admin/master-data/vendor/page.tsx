@@ -118,9 +118,9 @@ export default function VendorPage() {
       {/* Header */}
       <div>
         <nav className="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
-          <Link href="/developer" className="hover:text-slate-300 text-slate-100 transition-colors">Developer</Link>
+          <Link href="/super-admin" className="hover:text-slate-300 text-slate-100 transition-colors">Super Admin</Link>
           <ChevronRight size={13} className="text-slate-30" />
-          <Link href="/developer/master-data" className="hover:text-slate-300 text-slate-100 transition-colors">Master Data</Link>
+          <Link href="/super-admin/master-data" className="hover:text-slate-300 text-slate-100 transition-colors">Master Data</Link>
           <ChevronRight size={13} className="text-slate-30" />
           <span className="text-blue-300 font-medium">Vendor</span>
         </nav>

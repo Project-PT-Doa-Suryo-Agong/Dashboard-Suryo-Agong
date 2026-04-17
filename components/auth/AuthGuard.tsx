@@ -28,7 +28,7 @@ type AuthGuardProps = {
  *
  * @example
  * // Protect a page — only specific roles
- * <AuthGuard allowedRoles={["Developer", "CEO", "Finance"]}>
+ * <AuthGuard allowedRoles={["Super Admin", "CEO", "Finance"]}>
  *   <FinancePage />
  * </AuthGuard>
  */

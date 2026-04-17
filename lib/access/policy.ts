@@ -37,8 +37,7 @@ export function inferAccessLevel(role: string | null): AccessLevel {
 
   // 1. Strategic level
   if (
-    normalized === "developer" ||
-    normalized.includes("senior-developer") ||
+    normalized === "super-admin" ||
     normalized.includes("ceo") ||
     normalized.includes("director") ||
     normalized.includes("strategic") ||

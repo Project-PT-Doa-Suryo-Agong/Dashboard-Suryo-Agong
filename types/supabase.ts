@@ -12,7 +12,7 @@ type Tables<S extends keyof Database, T extends keyof Database[S]["Tables"]> =
   Database[S]["Tables"][T];
 
 export type CoreUserRole =
-  | "Developer"
+  | "Super Admin"
   | "Management & Strategy"
   | "Finance & Administration"
   | "HR & Operation Manager"

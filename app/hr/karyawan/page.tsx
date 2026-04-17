@@ -39,7 +39,7 @@ const FALLBACK_DIVISI_OPTIONS = [
   "Logistics & Packing",
   "Creative & Sales",
   "Office Support",
-  "Developer",
+  "Super Admin",
   "CEO",
   "Finance",
   "HR",

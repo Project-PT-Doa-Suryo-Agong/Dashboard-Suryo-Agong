@@ -49,7 +49,7 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
   return payload;
 }
 
-export default function DeveloperDashboard() {
+export default function SuperAdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
@@ -84,7 +84,7 @@ export default function DeveloperDashboard() {
           totalVendor: vendorsPayload.data.meta.total ?? 0,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Gagal memuat statistik developer.';
+        const message = error instanceof Error ? error.message : 'Gagal memuat statistik super-admin.';
         setErrorMessage(message);
       } finally {
         setIsLoading(false);
@@ -102,7 +102,7 @@ export default function DeveloperDashboard() {
       {/* ── Header ── */}
       <section className="space-y-1 md:space-y-2">
         <h1 className="text-lg font-bold text-slate-100 md:text-2xl lg:text-3xl">
-          Developer Command Center
+          Super Admin Command Center
         </h1>
         <p className="text-xs text-slate-200 md:text-sm lg:text-base">
           Monitor performa sistem, akses modul kritikal, dan kelola konfigurasi inti enterprise dari satu tempat.
@@ -189,7 +189,7 @@ export default function DeveloperDashboard() {
 
         {/* Pengelolaan User */}
         <Link
-          href="/developer/users"
+          href="/super-admin/users"
           className="group rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-indigo-300 md:p-4 lg:p-6"
         >
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-start md:gap-4">
@@ -210,7 +210,7 @@ export default function DeveloperDashboard() {
 
         {/* Pengelolaan Database Master */}
         <Link
-          href="/developer/master-data"
+          href="/super-admin/master-data"
           className="group rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-orange-300 md:p-4 lg:p-6"
         >
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-start md:gap-4">

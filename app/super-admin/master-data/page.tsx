@@ -9,7 +9,7 @@ import type { ApiError, ApiSuccess } from '@/types/api';
 const MASTER_DATA_CARDS = [
   {
     label: 'Vendor',
-    href: '/developer/master-data/vendor',
+    href: '/super-admin/master-data/vendor',
     icon: Truck,
     description: 'Kelola daftar vendor & supplier yang digunakan dalam rantai produksi.',
     key: 'vendor',
@@ -18,7 +18,7 @@ const MASTER_DATA_CARDS = [
   },
   {
     label: 'Produk',
-    href: '/developer/master-data/produk',
+    href: '/super-admin/master-data/produk',
     icon: Package,
     description: 'Manajemen produk utama beserta kategorinya sebelum dibentuk varian.',
     key: 'produk',
@@ -27,7 +27,7 @@ const MASTER_DATA_CARDS = [
   },
   {
     label: 'Varian Produk',
-    href: '/developer/master-data/varian',
+    href: '/super-admin/master-data/varian',
     icon: Tags,
     description: 'Atur SKU, nama varian, dan harga jual untuk setiap variasi produk.',
     key: 'varian',
@@ -127,7 +127,7 @@ export default function MasterDataPage() {
       {/* Header */}
       <div className="space-y-2 md:space-y-3">
         <nav className="mb-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-400 md:mb-3 md:text-sm lg:text-base">
-          <Link href="/developer" className="text-slate-200 transition-colors hover:text-slate-300">Developer</Link>
+          <Link href="/super-admin" className="text-slate-200 transition-colors hover:text-slate-300">Super Admin</Link>
           <ChevronRight className="h-3 w-3 shrink-0 text-slate-300 md:h-4 md:w-4" />
           <span className="font-medium text-slate-50">Master Data</span>
         </nav>
