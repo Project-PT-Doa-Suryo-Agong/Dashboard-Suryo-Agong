@@ -17,9 +17,25 @@ export default function Topbar({ title = 'Dashboard Overview', user, onMenuClick
   const name = user?.name?.trim() ?? '';
   const role = user?.role?.trim() ?? '';
   const displayName = name || 'Pengguna';
+  const ROLE_LABELS: Record<string, string> = {
+    "super-admin": "Super Admin",
+    "Super Admin": "Super Admin",
+    "developer": "Super Admin",
+    "Developer": "Super Admin",
+    "management": "Management & Strategy",
+    "finance": "Finance & Administration",
+    "hr": "HR & Operation",
+    "produksi": "Produksi & QA",
+    "logistik": "Logistics",
+    "creative": "Creative",
+    "office": "Office Support"
+  };
+
   let displayRole = role || 'Tanpa role';
-  if (displayRole.toLowerCase() === 'super-admin') {
-    displayRole = 'Super Admin';
+  if (ROLE_LABELS[displayRole]) {
+    displayRole = ROLE_LABELS[displayRole];
+  } else if (ROLE_LABELS[displayRole.toLowerCase()]) {
+    displayRole = ROLE_LABELS[displayRole.toLowerCase()];
   }
   
   const avatar = user?.avatar;
