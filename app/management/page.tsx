@@ -56,9 +56,9 @@ function formatRupiah(value: number): string {
 }
 
 function budgetStatusBadgeClass(status: BudgetStatus): string {
-  if (status === "approved") return "bg-emerald-100 text-emerald-700";
-  if (status === "pending") return "bg-amber-100 text-amber-700";
-  return "bg-rose-100 text-rose-700";
+  if (status === "approved") return "bg-emerald-500 text-white";
+  if (status === "pending") return "bg-amber-500 text-white";
+  return "bg-rose-500 text-white";
 }
 
 function budgetStatusLabel(status: BudgetStatus): string {
@@ -191,7 +191,7 @@ export default function ManagementDashboardPage() {
               </p>
               <p className="text-xs md:text-sm text-slate-600">Terserap: {budgetSerapanPersen}%</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#BC934B]/15 text-[#BC934B]">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#BC934B] text-white">
               <Landmark className="h-5 w-5" />
             </span>
           </div>
@@ -205,7 +205,7 @@ export default function ManagementDashboardPage() {
               <p className="text-base md:text-2xl font-bold text-slate-900">{rataRataSkorKpi.toFixed(1)} / 100</p>
               <p className="text-xs md:text-sm text-slate-600">Berdasarkan data KPI mingguan terbaru</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500 text-white">
               <Target className="h-5 w-5" />
             </span>
           </div>
@@ -219,7 +219,7 @@ export default function ManagementDashboardPage() {
               <p className="text-base md:text-2xl font-bold text-slate-900">{totalDivisiAktif}</p>
               <p className="text-xs md:text-sm text-slate-600">Divisi unik dari data budget dan KPI</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500 text-white">
               <Users className="h-5 w-5" />
             </span>
           </div>
@@ -314,7 +314,7 @@ export default function ManagementDashboardPage() {
                       <p className="text-sm font-semibold text-slate-900 break-words">{index + 1}. {item.divisi}</p>
                       <p className="text-xs md:text-sm text-slate-600">Skor rata-rata dari catatan KPI</p>
                     </div>
-                    <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 whitespace-nowrap">
+                    <span className="inline-flex rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white whitespace-nowrap">
                       {item.score.toFixed(1)}
                     </span>
                   </div>
