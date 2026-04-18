@@ -75,6 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq("id", userId)
         .maybeSingle();
 
+      console.log('profile data:', data)
+      console.log('profile error:', error)
+
       if (error || !data) return null;
       return data as Profile;
     },
@@ -116,12 +119,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: { session: currentSession },
       } = await supabase.auth.getSession();
 
+      let hydratedSession = currentSession;
+      if (!hydratedSession) {
+        const {
+          data: { session: refreshedSession },
+        } = await supabase.auth.refreshSession();
+        hydratedSession = refreshedSession;
+      }
+
       if (!mounted) return;
 
-      setSession(currentSession);
+      setSession(hydratedSession);
 
-      if (currentSession?.user) {
-        const enriched = await buildAuthUser(currentSession.user);
+      if (hydratedSession?.user) {
+        const enriched = await buildAuthUser(hydratedSession.user);
         if (mounted) setUser(enriched);
       }
 

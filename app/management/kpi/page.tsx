@@ -6,8 +6,8 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { TKPIWeekly } from "@/types/supabase";
-import { apiFetch }
-import { SearchBar } from "@/components/ui/search-bar" from "@/lib/utils/api-fetch";
+import { SearchBar } from "@/components/ui/search-bar";
+import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type KpiListPayload = {

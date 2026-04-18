@@ -1,8 +1,9 @@
 "use client";
 import { SearchBar } from "@/components/ui/search-bar";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Edit3, Plus, Search, Trash2 } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
+import * as xlsx from "xlsx";
+import { Edit3, Plus, Search, Trash2, FileSpreadsheet } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -136,6 +137,74 @@ export default function ProductionOrdersPage() {
     quantity: "",
     status: "draft",
   });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSubmitting(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = xlsx.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = xlsx.utils.sheet_to_json<any>(ws);
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const row of data) {
+          try {
+            const namaProduk = row["Produk"] || row["produk"];
+            const namaVendor = row["Vendor"] || row["vendor"];
+            const qty = Number(row["Quantity"] || row["quantity"] || row["Qty"] || row["qty"] || row["Target"] || row["target"]);
+            const statusRaw = String(row["Status"] || row["status"] || "draft").toLowerCase();
+
+            const matchedProduct = produkList.find(p => p.nama_produk?.toLowerCase() === String(namaProduk).toLowerCase());
+            const matchedVendor = vendorList.find(v => v.nama_vendor?.toLowerCase() === String(namaVendor).toLowerCase());
+
+            if (!matchedProduct || !matchedVendor || isNaN(qty) || qty <= 0) {
+              failCount++;
+              continue;
+            }
+
+            let parsedStatus: ProductionStatus = "draft";
+            if (["ongoing", "berjalan"].includes(statusRaw)) parsedStatus = "ongoing";
+            if (["done", "selesai"].includes(statusRaw)) parsedStatus = "done";
+
+            const payload = {
+              product_id: matchedProduct.id,
+              vendor_id: matchedVendor.id,
+              quantity: Math.floor(qty),
+              status: parsedStatus
+            };
+
+            await apiFetch("/api/production/orders", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            successCount++;
+          } catch(err) {
+            failCount++;
+          }
+        }
+
+        alert(`Import selesai.\nBerhasil: ${successCount}\nGagal/Dilewati: ${failCount}\n\nPastikan kolom bernama "Produk", "Vendor", "Qty", dan "Status" benar.`);
+        await fetchOrders();
+      } catch (err) {
+        alert("Gagal membaca file Excel.");
+      } finally {
+        setIsSubmitting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
 
   const fetchOrders = async () => {
     try {
@@ -375,14 +444,31 @@ export default function ProductionOrdersPage() {
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className={`${CRUD_PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
-        >
-          <Plus className="h-4 w-4" />
-          Buat Pesanan Baru
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
+          <input
+            type="file"
+            accept=".xlsx, .xls"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleImportExcel}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-600 bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 disabled:opacity-50 w-full sm:w-auto"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Import
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className={`${CRUD_PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
+          >
+            <Plus className="h-4 w-4" />
+            Pesanan Baru
+          </button>
+        </div>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">

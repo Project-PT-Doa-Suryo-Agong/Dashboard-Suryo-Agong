@@ -10,11 +10,15 @@ export function createSupabaseBrowserClient() {
   }
 
   const resolveCookieDomain = () => {
-    if (process.env.NEXT_PUBLIC_COOKIE_DOMAIN) return process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+    const configuredDomain =
+      process.env.NEXT_PUBLIC_COOKIE_DOMAIN ?? process.env.NEXT_PUBLIC_APP_COOKIE_DOMAIN;
+    if (configuredDomain) {
+      return configuredDomain.startsWith(".") ? configuredDomain : `.${configuredDomain}`;
+    }
     if (typeof window === "undefined") return undefined;
 
     const host = window.location.hostname.toLowerCase();
-    if (host === "localhost" || host.endsWith(".localhost")) return ".localhost";
+    if (host === "localhost" || host.endsWith(".localhost")) return undefined;
     if (host === "lvh.me" || host.endsWith(".lvh.me")) return ".lvh.me";
     return undefined;
   };
@@ -27,6 +31,12 @@ export function createSupabaseBrowserClient() {
         domain: resolveCookieDomain(),
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
+        path: "/",
+      },
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
       }
     }
   )

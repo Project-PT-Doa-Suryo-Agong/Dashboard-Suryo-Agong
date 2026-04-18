@@ -56,7 +56,7 @@ export async function listContentPlanner(client: DbClient, page = 1, limit = 50)
   const from = (page - 1) * limit;
   const { data, error, count } = await db(client)
     .from("t_content_planner")
-    .select("*", { count: "exact" })
+    .select("*, m_affiliator(nama)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, from + limit - 1);
   return { data: (data ?? []) as TContentPlanner[], error, meta: { page, limit, total: count ?? 0 } };

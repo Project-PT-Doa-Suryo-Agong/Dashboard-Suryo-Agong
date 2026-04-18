@@ -35,10 +35,22 @@ export async function POST(request: Request) {
   const platform = requireString(input, "platform", { maxLen: 120, optional: true });
   if (!platform.ok) return fail(ErrorCode.VALIDATION_ERROR, platform.message, 400);
 
+  const affiliatorId = requireString(input, "affiliator_id", { optional: true });
+  if (!affiliatorId.ok) return fail(ErrorCode.VALIDATION_ERROR, affiliatorId.message, 400);
+  const jadwal = requireString(input, "jadwal", { optional: true });
+  if (!jadwal.ok) return fail(ErrorCode.VALIDATION_ERROR, jadwal.message, 400);
+  const tipe = requireString(input, "tipe", { optional: true });
+  if (!tipe.ok) return fail(ErrorCode.VALIDATION_ERROR, tipe.message, 400);
+  const status = requireString(input, "status", { optional: true });
+  if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);
+
   const payload: TContentPlannerInsert = {
-    ...input,
     judul: judul.data!,
     platform: platform.data,
+    affiliator_id: affiliatorId.data,
+    jadwal: jadwal.data,
+    tipe: (tipe.data as any) || null,
+    status: (status.data as any) || "direncanakan",
   };
 
   const { data, error } = await createContentPlanner(auth.ctx.supabase, payload);
