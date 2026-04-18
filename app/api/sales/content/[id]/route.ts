@@ -30,11 +30,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!platform.ok) return fail(ErrorCode.VALIDATION_ERROR, platform.message, 400);
   }
 
-  const payload = {
-    ...input,
-    ...(typeof input.judul === "string" ? { judul: input.judul.trim() } : {}),
-    ...(typeof input.platform === "string" ? { platform: input.platform.trim() } : {}),
-  };
+  const payload: Record<string, any> = {};
+  if ("judul" in input) payload.judul = typeof input.judul === "string" ? input.judul.trim() : input.judul;
+  if ("platform" in input) payload.platform = typeof input.platform === "string" ? input.platform.trim() : input.platform;
+  if ("affiliator_id" in input) payload.affiliator_id = typeof input.affiliator_id === "string" ? input.affiliator_id.trim() : null;
+  if ("jadwal" in input) payload.jadwal = typeof input.jadwal === "string" ? input.jadwal.trim() : null;
+  if ("tipe" in input) payload.tipe = typeof input.tipe === "string" ? input.tipe.trim() : null;
+  if ("status" in input) payload.status = typeof input.status === "string" ? input.status.trim() : null;
+
+  if (Object.keys(payload).length === 0) {
+    return fail(ErrorCode.VALIDATION_ERROR, "Tidak ada field valid yang diupdate.", 400);
+  }
 
   const { data, error } = await updateContentPlanner(auth.ctx.supabase, id, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update content planner.", 500, error.message);

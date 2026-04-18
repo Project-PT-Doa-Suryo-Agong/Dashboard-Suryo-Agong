@@ -12,14 +12,23 @@ import {
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Modal from '@/components/ui/Modal';
 import type { ApiError, ApiSuccess } from '@/types/api';
-import type { TContentPlanner } from '@/types/supabase';
+import type { MAfiliator, SalesContentStatus, SalesContentType, TContentPlanner } from '@/types/supabase';
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 
 type Platform = 'TikTok' | 'Instagram' | 'YouTube Shorts' | 'LinkedIn' | 'Twitter / X' | 'Lainnya';
 
 type ContentListPayload = {
-  content: TContentPlanner[];
+  content: (TContentPlanner & { m_affiliator?: { nama: string } | null })[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type AffiliatorListPayload = {
+  afiliator: MAfiliator[];
   meta: {
     page: number;
     limit: number;
@@ -61,8 +70,17 @@ const PLATFORM_BADGE: Record<Platform, string> = {
 type ContentFormProps = {
   title: string;
   platform: string;
+  affiliatorId: string;
+  jadwal: string;
+  tipe: SalesContentType | '';
+  status: SalesContentStatus;
+  affiliators: MAfiliator[];
   onTitleChange: (value: string) => void;
   onPlatformChange: (value: Platform) => void;
+  onAffiliatorChange: (value: string) => void;
+  onJadwalChange: (value: string) => void;
+  onTipeChange: (value: SalesContentType | '') => void;
+  onStatusChange: (value: SalesContentStatus) => void;
   isSubmitting: boolean;
   submitLabel: string;
   submitIcon?: React.ReactNode;
@@ -73,8 +91,17 @@ type ContentFormProps = {
 function ContentForm({
   title,
   platform,
+  affiliatorId,
+  jadwal,
+  tipe,
+  status,
+  affiliators,
   onTitleChange,
   onPlatformChange,
+  onAffiliatorChange,
+  onJadwalChange,
+  onTipeChange,
+  onStatusChange,
   isSubmitting,
   submitLabel,
   submitIcon,
@@ -84,7 +111,7 @@ function ContentForm({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2 md:col-span-2">
+        <div className="space-y-2 md:col-span-1">
           <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
             Content Title
           </label>
@@ -99,7 +126,7 @@ function ContentForm({
           />
         </div>
 
-        <div className="space-y-2 md:col-span-2">
+        <div className="space-y-2 md:col-span-1">
           <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
             Platform
           </label>
@@ -119,6 +146,82 @@ function ContentForm({
                   {option}
                 </option>
               ))}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        </div>
+
+        <div className="space-y-2 md:col-span-1">
+          <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
+            Affiliator (Opsional)
+          </label>
+          <div className="relative">
+            <select
+              value={affiliatorId}
+              onChange={(event) => onAffiliatorChange(event.target.value)}
+              disabled={isSubmitting}
+              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            >
+              <option value="">-- Tanpa Affiliator --</option>
+              {affiliators.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.nama}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        </div>
+
+        <div className="space-y-2 md:col-span-1">
+          <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
+            Jadwal (Opsional)
+          </label>
+          <input
+            type="date"
+            value={jadwal}
+            onChange={(event) => onJadwalChange(event.target.value)}
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+          />
+        </div>
+
+        <div className="space-y-2 md:col-span-1">
+          <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
+            Tipe (Opsional)
+          </label>
+          <div className="relative">
+            <select
+              value={tipe}
+              onChange={(event) => onTipeChange(event.target.value as SalesContentType | '')}
+              disabled={isSubmitting}
+              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            >
+              <option value="">-- Pilih Tipe --</option>
+              <option value="story">Story</option>
+              <option value="feed">Feed</option>
+              <option value="video">Video</option>
+              <option value="live">Live</option>
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        </div>
+
+        <div className="space-y-2 md:col-span-1">
+          <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
+            Status
+          </label>
+          <div className="relative">
+            <select
+              value={status}
+              required
+              onChange={(event) => onStatusChange(event.target.value as SalesContentStatus)}
+              disabled={isSubmitting}
+              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            >
+              <option value="direncanakan">Direncanakan</option>
+              <option value="terupload">Terupload</option>
+              <option value="dihapus">Dihapus</option>
             </select>
             <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
@@ -149,9 +252,16 @@ function ContentForm({
 }
 
 export default function ContentPlannerPage() {
-  const [contents, setContents] = useState<TContentPlanner[]>([]);
+  const [contents, setContents] = useState<(TContentPlanner & { m_affiliator?: { nama: string } | null })[]>([]);
+  const [affiliators, setAffiliators] = useState<MAfiliator[]>([]);
+
   const [title, setTitle] = useState('');
   const [platform, setPlatform] = useState<Platform | ''>('');
+  const [affiliatorId, setAffiliatorId] = useState('');
+  const [jadwal, setJadwal] = useState('');
+  const [tipe, setTipe] = useState<SalesContentType | ''>('');
+  const [status, setStatus] = useState<SalesContentStatus>('direncanakan');
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -178,13 +288,32 @@ export default function ContentPlannerPage() {
     }
   };
 
+  const fetchDependencies = async () => {
+    try {
+      const response = await apiFetch('/api/sales/affiliates?page=1&limit=500', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+      });
+      const payload = await parseJsonResponse<AffiliatorListPayload>(response);
+      setAffiliators(payload.data.afiliator ?? []);
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
+    void fetchDependencies();
     void fetchContent();
   }, []);
 
   const resetCreateForm = () => {
     setTitle('');
     setPlatform('');
+    setAffiliatorId('');
+    setJadwal('');
+    setTipe('');
+    setStatus('direncanakan');
   };
 
   const handleSaveContent = async (event: FormEvent<HTMLFormElement>) => {
@@ -199,6 +328,10 @@ export default function ContentPlannerPage() {
         body: JSON.stringify({
           judul: title.trim(),
           platform,
+          affiliator_id: affiliatorId || null,
+          jadwal: jadwal || null,
+          tipe: tipe || null,
+          status,
         }),
       });
       await parseJsonResponse<ContentPayload>(response);
@@ -233,6 +366,10 @@ export default function ContentPlannerPage() {
         body: JSON.stringify({
           judul: editData.judul.trim(),
           platform: editData.platform,
+          affiliator_id: editData.affiliator_id || null,
+          jadwal: editData.jadwal || null,
+          tipe: editData.tipe || null,
+          status: editData.status || 'direncanakan',
         }),
       });
       await parseJsonResponse<ContentPayload>(response);
@@ -291,8 +428,17 @@ export default function ContentPlannerPage() {
         <ContentForm
           title={title}
           platform={platform}
+          affiliatorId={affiliatorId}
+          jadwal={jadwal}
+          tipe={tipe}
+          status={status}
+          affiliators={affiliators}
           onTitleChange={setTitle}
           onPlatformChange={setPlatform}
+          onAffiliatorChange={setAffiliatorId}
+          onJadwalChange={setJadwal}
+          onTipeChange={setTipe}
+          onStatusChange={setStatus}
           isSubmitting={isSubmitting}
           submitLabel="Save Content"
           submitIcon={<Save size={16} />}
@@ -318,6 +464,10 @@ export default function ContentPlannerPage() {
                 <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Content ID</th>
                 <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Title</th>
                 <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Platform</th>
+                <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Affiliator</th>
+                <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Jadwal</th>
+                <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Tipe</th>
+                <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Status</th>
                 <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Date Added</th>
                 <th className="px-4 py-4 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Aksi</th>
               </tr>
@@ -325,13 +475,13 @@ export default function ContentPlannerPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500 md:px-6">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-slate-500 md:px-6">
                     Memuat data...
                   </td>
                 </tr>
               ) : contents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500 md:px-6">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-slate-500 md:px-6">
                     Belum ada konten.
                   </td>
                 </tr>
@@ -341,8 +491,20 @@ export default function ContentPlannerPage() {
                   <td className="px-4 py-4 font-mono text-sm text-slate-500 md:px-6">{item.id}</td>
                   <td className="px-4 py-4 text-sm font-medium text-slate-800 md:px-6">{item.judul}</td>
                   <td className="px-4 py-4 md:px-6">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold before:h-1.5 before:w-1.5 before:rounded-full ${PLATFORM_BADGE[(item.platform as Platform) ?? 'TikTok']}`}>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold before:h-1.5 before:w-1.5 before:rounded-full ${item.platform ? PLATFORM_BADGE[(item.platform as Platform)] || PLATFORM_BADGE['Lainnya'] : PLATFORM_BADGE['Lainnya']}`}>
                       {item.platform ?? '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 text-sm font-medium text-slate-800 md:px-6">{item.m_affiliator?.nama ?? '-'}</td>
+                  <td className="px-4 py-4 text-sm text-slate-500 md:px-6">
+                    {item.jadwal ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(item.jadwal)) : '-'}
+                  </td>
+                  <td className="px-4 py-4 md:px-6">
+                    {item.tipe ? <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">{item.tipe}</span> : '-'}
+                  </td>
+                  <td className="px-4 py-4 md:px-6">
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${item.status === 'terupload' ? 'bg-green-100 text-green-700' : item.status === 'dihapus' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {item.status ?? '-'}
                     </span>
                   </td>
                   <td className="px-4 py-4 text-sm text-slate-500 md:px-6">
@@ -396,8 +558,17 @@ export default function ContentPlannerPage() {
           <ContentForm
             title={editData.judul}
             platform={editData.platform ?? ''}
+            affiliatorId={editData.affiliator_id ?? ''}
+            jadwal={editData.jadwal ?? ''}
+            tipe={editData.tipe ?? ''}
+            status={editData.status ?? 'direncanakan'}
+            affiliators={affiliators}
             onTitleChange={(value) => handleEditChange('judul', value)}
-            onPlatformChange={(value) => handleEditChange('platform', value)}
+            onPlatformChange={(value) => handleEditChange('platform', value || null)}
+            onAffiliatorChange={(value) => handleEditChange('affiliator_id', value || null)}
+            onJadwalChange={(value) => handleEditChange('jadwal', value || null)}
+            onTipeChange={(value) => handleEditChange('tipe', value || null)}
+            onStatusChange={(value) => handleEditChange('status', value)}
             isSubmitting={isSubmitting}
             submitLabel="Simpan Perubahan"
             submitIcon={<Save size={16} />}

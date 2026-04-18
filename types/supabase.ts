@@ -41,6 +41,9 @@ export type LogisticsPackingStatus = "pending" | "packed" | "shipped";
 
 export type ManagementBudgetStatus = "pending" | "approved" | "rejected";
 
+export type SalesContentType = "story" | "feed" | "video" | "live";
+export type SalesContentStatus = "terupload" | "direncanakan" | "dihapus";
+
 // ─── Database ─────────────────────────────────────────────────────────────────
 
 export interface Database {
@@ -524,18 +527,30 @@ export interface Database {
           id: string;
           judul: string;
           platform: string | null;
+          affiliator_id: string | null;
+          jadwal: string | null;
+          tipe: SalesContentType | null;
+          status: SalesContentStatus | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
           judul: string;
           platform?: string | null;
+          affiliator_id?: string | null;
+          jadwal?: string | null;
+          tipe?: SalesContentType | null;
+          status?: SalesContentStatus | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
           judul?: string;
           platform?: string | null;
+          affiliator_id?: string | null;
+          jadwal?: string | null;
+          tipe?: SalesContentType | null;
+          status?: SalesContentStatus | null;
         };
         Relationships: [];
       };
