@@ -6,7 +6,7 @@ import { Eye, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { TReturnOrder, TSalesOrder } from "@/types/supabase";
+import type { TReturnOrder, TSalesOrder, TLogistikManifest } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
@@ -177,6 +177,7 @@ function getReturnStatusUi(value: string | null | undefined): { label: string; c
 export default function ReturnsPage() {
   const [items, setItems] = useState<ReturnItem[]>([]);
   const [orders, setOrders] = useState<TSalesOrder[]>([]);
+  const [manifests, setManifests] = useState<TLogistikManifest[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -244,9 +245,32 @@ export default function ReturnsPage() {
 
       const firstOrderId = getOrderPrimaryKey(dedupedOrders[0]);
       setOrders(dedupedOrders);
+      // keep existing behavior: prefill order_id only if not set yet; manifests will override if relevant
       setFormData((prev) => ({ ...prev, order_id: prev.order_id || firstOrderId || "" }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data sales order.";
+      alert(message);
+    }
+  };
+
+  const fetchManifests = async () => {
+    try {
+      const response = await apiFetch("/api/logistics/manifest?page=1&limit=500", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ manifest: TLogistikManifest[] }>(response);
+      const list = payload.data.manifest ?? [];
+      setManifests(list);
+      // DEBUG: verify manifest payload contains order_id/resi
+      // eslint-disable-next-line no-console
+      console.log("manifests:", list);
+      // If no order_id chosen yet, prefer first manifest's order_id as default
+      const firstManifestOrderId = list[0]?.order_id ?? "";
+      setFormData((prev) => ({ ...prev, order_id: prev.order_id || firstManifestOrderId || "" }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat data manifest.";
       alert(message);
     }
   };
@@ -255,7 +279,7 @@ export default function ReturnsPage() {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchReturns(), fetchOrders()]);
+        await Promise.all([fetchReturns(), fetchOrders(), fetchManifests()]);
       } finally {
         setIsLoading(false);
       }
@@ -287,14 +311,16 @@ export default function ReturnsPage() {
   );
 
   const selectableOrders = useMemo(() => {
+    // Only include orders that appear in logistics manifests
+    const manifestOrderIds = new Set(manifests.map((m) => (m.order_id ?? "").trim()).filter(Boolean));
     const map = new Map<string, TSalesOrder>();
     for (const order of orders) {
       const orderId = getOrderPrimaryKey(order).trim();
-      if (!orderId || map.has(orderId)) continue;
+      if (!orderId || !manifestOrderIds.has(orderId) || map.has(orderId)) continue;
       map.set(orderId, order);
     }
     return Array.from(map.values());
-  }, [orders]);
+  }, [orders, manifests]);
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -522,18 +548,32 @@ export default function ReturnsPage() {
               required
               value={formData.order_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, order_id: event.target.value }))}
-              disabled={selectableOrders.length === 0}
+              disabled={manifests.length === 0 && selectableOrders.length === 0}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
             >
-              <option value="" disabled>{selectableOrders.length === 0 ? "Tidak ada order tersedia" : "Pilih order"}</option>
-              {formData.order_id && !selectableOrders.some((order) => getOrderPrimaryKey(order) === formData.order_id) ? (
+              <option value="" disabled>{manifests.length === 0 ? (selectableOrders.length === 0 ? "Tidak ada order tersedia" : "Pilih order") : "Pilih order"}</option>
+              {formData.order_id && !manifests.some((m) => (m.order_id ?? "") === formData.order_id) && !selectableOrders.some((order) => getOrderPrimaryKey(order) === formData.order_id) ? (
                 <option value={formData.order_id}>{formData.order_id} - Order tersimpan</option>
               ) : null}
-              {selectableOrders.map((order) => {
-                const orderId = getOrderPrimaryKey(order);
-                const readableOrderCode = getOrderDisplayCode(order, orderId);
-                return <option key={orderId} value={orderId}>{readableOrderCode}</option>;
-              })}
+              {manifests.length > 0
+                ? manifests.map((m) => {
+                    const orderId = (m.order_id ?? "").trim();
+                    if (!orderId) return null;
+                    return (
+                      <option key={orderId} value={orderId}>
+                        {m.resi ?? orderId}
+                      </option>
+                    );
+                  })
+                : selectableOrders.map((order) => {
+                    const orderId = getOrderPrimaryKey(order);
+                    const readableOrderCode = getOrderDisplayCode(order, orderId);
+                    return (
+                      <option key={orderId} value={orderId}>
+                        {readableOrderCode}
+                      </option>
+                    );
+                  })}
             </select>
           </label>
 

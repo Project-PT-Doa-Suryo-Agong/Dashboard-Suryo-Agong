@@ -210,7 +210,7 @@ export default function PackingPage() {
       const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
       const matchesSearch =
         getOrderDisplayCode(order, item.order_id).toLowerCase().includes(keyword) ||
-        (item.product?.nama_produk ?? "").toLowerCase().includes(keyword);
+        (item.variant?.nama_varian ?? "").toLowerCase().includes(keyword);
       const matchesStatus = filterStatus === "all" ? true : item.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
@@ -313,7 +313,7 @@ export default function PackingPage() {
         <SearchBar
             value={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Cari order atau produk..."
+            placeholder="Cari order atau varian..."
             className="relative w-full sm:max-w-md"
           />
 
@@ -327,15 +327,6 @@ export default function PackingPage() {
           <option value="packed">packed</option>
           <option value="shipped">shipped</option>
         </select>
-
-        <button
-          type="button"
-          onClick={() => openFormModal()}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
-        >
-          <Plus size={17} />
-          Tambah Packing
-        </button>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
@@ -344,7 +335,7 @@ export default function PackingPage() {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">ID Packing</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Order</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Produk</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Varian</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
               <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
@@ -366,7 +357,7 @@ export default function PackingPage() {
                   <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
                     <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{shortId(getOrderPrimaryKey(item))}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderDisplayCode(order, item.order_id)}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{item.product?.nama_produk ?? "Produk tidak ditemukan"}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{item.variant?.nama_varian ?? "Varian tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${statusBadgeClass(item.status ?? "pending")}`}>
