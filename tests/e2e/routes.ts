@@ -34,7 +34,7 @@ export const protectedRoutes: E2ERoute[] = [
   { path: "/creative", expectedText: "Creative & Sales Dashboard", role: "management" },
   { path: "/creative/affiliates", expectedText: "Creative & Sales Dashboard", role: "management" },
   { path: "/creative/content", expectedText: "Creative & Sales Dashboard", role: "management" },
-  { path: "/creative/live-perf", expectedText: "Creative & Sales Dashboard", role: "management" },
+  { path: "/creative/content-stats", expectedText: "Creative & Sales Dashboard", role: "management" },
   { path: "/creative/sales-order", expectedText: "Creative & Sales Dashboard", role: "management" },
   { path: "/office", expectedText: "Office Support Dashboard", role: "management" },
   { path: "/office/products", expectedText: "Office Support Dashboard", role: "management" },

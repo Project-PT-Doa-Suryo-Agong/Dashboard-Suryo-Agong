@@ -80,7 +80,7 @@ const navItems = [
       { label: 'Overview', href: '/creative', icon: 'LayoutDashboard' },
       { label: 'Affiliators', href: '/creative/affiliates', icon: 'Users' },
       { label: 'Content Planner', href: '/creative/content', icon: 'CalendarDays' },
-      { label: 'Live Perf', href: '/creative/live-perf', icon: 'TrendingUp' },
+      { label: 'Content Stats', href: '/creative/content-stats', icon: 'TrendingUp' },
       { label: 'Sales Order', href: '/creative/sales-order', icon: 'ScrollText' },
     ]
   },

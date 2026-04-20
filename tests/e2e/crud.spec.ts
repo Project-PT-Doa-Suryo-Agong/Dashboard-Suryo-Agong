@@ -203,7 +203,7 @@ test.describe.serial("Authenticated CRUD routes", () => {
 
         try {
             await waitForPageText(managementPage, "/creative/affiliates", createdAffiliate);
-            await waitForPageText(managementPage, "/creative/live-perf", createdLivePlatform);
+            await waitForPageText(managementPage, "/creative/content-stats", createdLivePlatform);
             await waitForPageText(managementPage, "/creative/sales-order", `SLS-${suffix}`.toUpperCase());
 
             await updateRecord(managementPage, "/api/sales/affiliates", affiliate.id, {
@@ -224,7 +224,7 @@ test.describe.serial("Authenticated CRUD routes", () => {
             }, "order");
 
             await waitForPageText(managementPage, "/creative/affiliates", updatedAffiliate);
-            await waitForPageText(managementPage, "/creative/live-perf", updatedLivePlatform);
+            await waitForPageText(managementPage, "/creative/content-stats", updatedLivePlatform);
             await waitForPageText(managementPage, "/creative/sales-order", "Sales Order History");
 
             const salesOrders = await apiJson<{ orders: Array<{ id: string; quantity: number; total_price: number }> }>(
@@ -246,7 +246,7 @@ test.describe.serial("Authenticated CRUD routes", () => {
             await deleteRecord(managementPage, "/api/core/products", product.id);
 
             await expectPageMissingText(managementPage, "/creative/affiliates", updatedAffiliate);
-            await expectPageMissingText(managementPage, "/creative/live-perf", updatedLivePlatform);
+            await expectPageMissingText(managementPage, "/creative/content-stats", updatedLivePlatform);
         } finally {
             await deleteRecord(managementPage, "/api/sales/orders", order.id).catch(() => undefined);
             await deleteRecord(managementPage, "/api/sales/live", live.id).catch(() => undefined);

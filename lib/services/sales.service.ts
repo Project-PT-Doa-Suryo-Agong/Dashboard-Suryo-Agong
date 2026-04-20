@@ -6,7 +6,7 @@
  * 
  * @see lib/supabase/hooks/use-sales.ts
  */
-import type { MAfiliator, TContentPlanner, TLivePerformance, TSalesOrder } from "@/types/supabase";
+import type { MAfiliator, TContentPlanner, TSalesOrder, TContentStatistic } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -85,36 +85,73 @@ export async function deleteContentPlanner(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-//  t_live_performance 
+//  t_content_statistic
 
-export async function listLivePerformance(client: DbClient, page = 1, limit = 50) {
+async function enrichContentStatisticWithPlanner(
+  client: DbClient,
+  rows: TContentStatistic[]
+): Promise<TContentStatistic[]> {
+  const plannerIds = Array.from(
+    new Set(rows.map((row) => row.content_planner_id).filter((id): id is string => Boolean(id)))
+  );
+
+  if (plannerIds.length === 0) return rows;
+
+  const { data: planners } = await db(client)
+    .from("t_content_planner")
+    .select("id, judul")
+    .in("id", plannerIds);
+
+  const plannerMap = new Map((planners ?? []).map((p) => [p.id, p.judul]));
+
+  return rows.map((row) => ({
+    ...row,
+    t_content_planner: row.content_planner_id
+      ? { judul: plannerMap.get(row.content_planner_id) ?? null }
+      : null,
+  }));
+}
+
+export async function listContentStatistic(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
   const { data, error, count } = await db(client)
-    .from("t_live_performance")
+    .from("t_content_statistic")
     .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
+    .order("updated_at", { ascending: false })
     .range(from, from + limit - 1);
-  return { data: (data ?? []) as TLivePerformance[], error, meta: { page, limit, total: count ?? 0 } };
+  const rows = (data ?? []) as TContentStatistic[];
+  const enriched = await enrichContentStatisticWithPlanner(client, rows);
+  return { data: enriched, error, meta: { page, limit, total: count ?? 0 } };
 }
 
-export async function createLivePerformance(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_live_performance").insert(input as never).select("*").single();
-  return { data: data as TLivePerformance | null, error };
-}
-
-export async function updateLivePerformance(client: DbClient, id: string, input: Record<string, unknown>) {
+export async function createContentStatistic(client: DbClient, input: Record<string, unknown>) {
   const { data, error } = await db(client)
-    .from("t_live_performance")
+    .from("t_content_statistic")
+    .insert(input as never)
+    .select("*")
+    .single();
+  const row = (data as TContentStatistic | null) ?? null;
+  if (!row) return { data: row, error };
+  const [enriched] = await enrichContentStatisticWithPlanner(client, [row]);
+  return { data: enriched ?? row, error };
+}
+
+export async function updateContentStatistic(client: DbClient, id: string, input: Record<string, unknown>) {
+  const { data, error } = await db(client)
+    .from("t_content_statistic")
     .update(input)
     .eq("id", id)
     .select("*")
     .maybeSingle();
-  return { data: data as TLivePerformance | null, error };
+  const row = (data as TContentStatistic | null) ?? null;
+  if (!row) return { data: row, error };
+  const [enriched] = await enrichContentStatisticWithPlanner(client, [row]);
+  return { data: enriched ?? row, error };
 }
 
-export async function deleteLivePerformance(client: DbClient, id: string) {
+export async function deleteContentStatistic(client: DbClient, id: string) {
   const { error, count } = await db(client)
-    .from("t_live_performance")
+    .from("t_content_statistic")
     .delete({ count: "exact" })
     .eq("id", id);
   return { error, deleted: (count ?? 0) > 0 };

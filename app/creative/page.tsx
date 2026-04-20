@@ -196,7 +196,7 @@ export default function CreativeDashboard() {
   const quickLinks = [
     { label: "Affiliators", href: "/creative/affiliates" },
     { label: "Content Planner", href: "/creative/content" },
-    { label: "Live Performance", href: "/creative/live-perf" },
+    { label: "Live Performance", href: "/creative/content-stats" },
     { label: "Sales Order", href: "/creative/sales-order" },
   ];
 

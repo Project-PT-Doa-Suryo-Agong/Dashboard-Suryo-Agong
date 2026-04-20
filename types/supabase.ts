@@ -574,6 +574,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      t_content_statistic: {
+        Row: {
+          id: string;
+          content_planner_id: string | null;
+          link: string | null;
+          jumlah_view: number | null;
+          monetasi: number | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          content_planner_id?: string | null;
+          link?: string | null;
+          jumlah_view?: number | null;
+          monetasi?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          content_planner_id?: string | null;
+          link?: string | null;
+          jumlah_view?: number | null;
+          monetasi?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
       t_sales_order: {
         Row: {
           id: string;
@@ -716,10 +746,14 @@ export type TReturnOrderInsert = Tables<"logistics", "t_return_order">["Insert"]
 export type MAfiliator      = Tables<"sales", "m_affiliator">["Row"];
 export type TContentPlanner = Tables<"sales", "t_content_planner">["Row"];
 export type TLivePerformance = Tables<"sales", "t_live_performance">["Row"];
+export type TContentStatistic = Tables<"sales", "t_content_statistic">["Row"] & {
+  t_content_planner?: { judul: string | null } | null;
+};
 export type TSalesOrder      = Tables<"sales", "t_sales_order">["Row"];
 export type MAfiliatorInsert = Tables<"sales", "m_affiliator">["Insert"];
 export type TContentPlannerInsert = Tables<"sales", "t_content_planner">["Insert"];
 export type TLivePerformanceInsert = Tables<"sales", "t_live_performance">["Insert"];
+export type TContentStatisticInsert = Tables<"sales", "t_content_statistic">["Insert"];
 export type TSalesOrderInsert = Tables<"sales", "t_sales_order">["Insert"];
 
 // management

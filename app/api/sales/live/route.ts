@@ -22,26 +22,34 @@ export async function POST(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
 
-  let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400);
+    }
+
+    const input = body as Record<string, unknown>;
+    const platform = requireString(input, "platform", { maxLen: 120 });
+    if (!platform.ok) return fail(ErrorCode.VALIDATION_ERROR, platform.message, 400);
+    const revenue = requireNumber(input, "revenue", { min: 0, optional: true });
+    if (!revenue.ok) return fail(ErrorCode.VALIDATION_ERROR, revenue.message, 400);
+
+    const payload: TLivePerformanceInsert = {
+      ...input,
+      platform: platform.data!,
+      revenue: revenue.data,
+    };
+
+    const { data, error } = await createLivePerformance(auth.ctx.supabase, payload);
+    if (error) {
+      console.error("POST /api/sales/live error:", JSON.stringify(error, null, 2));
+      return fail(ErrorCode.DB_ERROR, "Gagal membuat data live performance.", 500, error.message);
+    }
+    return ok({ live: data }, "Data live performance berhasil dibuat.", 201);
+  } catch (error) {
+    console.error("POST /api/sales/live error:", JSON.stringify(error, null, 2));
+    return fail(ErrorCode.INTERNAL_ERROR, "Terjadi kesalahan saat memproses data live performance.", 500);
   }
-
-  const input = body as Record<string, unknown>;
-  const platform = requireString(input, "platform", { maxLen: 120 });
-  if (!platform.ok) return fail(ErrorCode.VALIDATION_ERROR, platform.message, 400);
-  const revenue = requireNumber(input, "revenue", { min: 0, optional: true });
-  if (!revenue.ok) return fail(ErrorCode.VALIDATION_ERROR, revenue.message, 400);
-
-  const payload: TLivePerformanceInsert = {
-    ...input,
-    platform: platform.data!,
-    revenue: revenue.data,
-  };
-
-  const { data, error } = await createLivePerformance(auth.ctx.supabase, payload);
-  if (error) return fail(ErrorCode.DB_ERROR, "Gagal membuat data live performance.", 500, error.message);
-  return ok({ live: data }, "Data live performance berhasil dibuat.", 201);
 }
