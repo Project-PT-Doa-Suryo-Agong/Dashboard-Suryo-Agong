@@ -1,3 +1,5 @@
+"use client";
+
 import { Search } from "lucide-react";
 
 interface SearchBarProps {
@@ -21,10 +23,10 @@ export function SearchBar({
       />
       <input
         type="text"
-        value={value}
+        value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-8 pr-3 rounded-xl text-sm text-slate-700 outline-none transition-all"
+        className="w-full pl-8 pr-3 py-2 rounded-xl text-sm text-slate-700 bg-slate-100 outline-none transition-all"
       />
     </div>
   );
