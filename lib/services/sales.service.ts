@@ -98,7 +98,9 @@ export async function listLivePerformance(client: DbClient, page = 1, limit = 50
 }
 
 export async function createLivePerformance(client: DbClient, input: Record<string, unknown>) {
+  console.log("createLivePerformance input:", input);
   const { data, error } = await db(client).from("t_live_performance").insert(input as never).select("*").single();
+  console.log("createLivePerformance result:", { data, error });
   return { data: data as TLivePerformance | null, error };
 }
 
