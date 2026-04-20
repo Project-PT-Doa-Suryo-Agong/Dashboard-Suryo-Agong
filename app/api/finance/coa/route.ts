@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listCoa, createCoa } from "@/lib/services/finance.service";
+import type { MCoaInsert, FinanceCoaCategory } from "@/types/supabase";
 import { requireString } from "@/lib/validation/body-validator";
 import { ErrorCode } from "@/lib/http/error-codes";
 
@@ -36,10 +37,10 @@ export async function POST(request: Request) {
   const kategori = requireString(input, "kategori");
   if (!kategori.ok) return fail(ErrorCode.VALIDATION_ERROR, kategori.message, 400);
 
-  const payload: Record<string, any> = {
-    kode_akun: kode.data,
-    nama_akun: nama.data,
-    kategori: kategori.data,
+  const payload: MCoaInsert = {
+    kode_akun: String(kode.data),
+    nama_akun: String(nama.data),
+    kategori: kategori.data as unknown as FinanceCoaCategory,
   };
   
   if ("is_sub_account" in input) payload.is_sub_account = Boolean(input.is_sub_account);

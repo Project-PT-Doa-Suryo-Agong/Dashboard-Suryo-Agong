@@ -6,7 +6,7 @@
  * 
  * @see lib/supabase/hooks/use-finance.ts
  */
-import type { TCashflow, TPayrollHistory, TReimbursement, MCoa, TJournal, TJournalItem } from "@/types/supabase";
+import type { TCashflow, TPayrollHistory, TReimbursement, MCoa, MCoaInsert, TJournal, TJournalItem } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -125,7 +125,7 @@ export async function listCoa(client: DbClient, page = 1, limit = 100) {
   return { data: (data ?? []) as MCoa[], error, meta: { page, limit, total: count ?? 0 } };
 }
 
-export async function createCoa(client: DbClient, input: Record<string, unknown>) {
+export async function createCoa(client: DbClient, input: MCoaInsert) {
   const { data, error } = await db(client).from("m_coa").insert(input).select("*").single();
   return { data: data as MCoa | null, error };
 }
@@ -153,7 +153,7 @@ export async function listJurnal(client: DbClient, page = 1, limit = 100) {
 }
 
 export async function createJurnal(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_journal").insert(input).select("*").single();
+  const { data, error } = await db(client).from("t_journal").insert(input as any).select("*").single();
   return { data: data as TJournal | null, error };
 }
 
@@ -179,7 +179,7 @@ export async function listJurnalItem(client: DbClient, journalId: string) {
 }
 
 export async function createJurnalItem(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_journal_item").insert(input).select("*").single();
+  const { data, error } = await db(client).from("t_journal_item").insert(input as any).select("*").single();
   return { data: data as TJournalItem | null, error };
 }
 
