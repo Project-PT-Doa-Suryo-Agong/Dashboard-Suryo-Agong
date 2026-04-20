@@ -134,6 +134,9 @@ export async function POST(request: Request) {
 
   const generatedOrderCode = await generateNextOrderCode(auth.ctx.supabase);
 
+  const coaId = requireUUID(input, "coa_id", { optional: true });
+  if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+
   const payload: TSalesOrderInsert = {
     ...input,
     ...(generatedOrderCode ? { order_code: generatedOrderCode } : {}),
@@ -141,6 +144,7 @@ export async function POST(request: Request) {
     affiliator_id: affiliatorId.data,
     quantity: quantity.data!,
     total_price: calculatedTotalPrice,
+    coa_id: coaId.data,
   };
 
   const { data, error } = await createSalesOrder(auth.ctx.supabase, payload);

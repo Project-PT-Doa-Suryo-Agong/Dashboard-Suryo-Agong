@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { updateBudgetRequest, deleteBudgetRequest } from "@/lib/services/management.service";
-import { requireNumber, requireString } from "@/lib/validation/body-validator";
+import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import { ErrorCode } from "@/lib/http/error-codes";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +35,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (status.data !== null && !["pending", "approved", "rejected"].includes(status.data)) {
       return fail(ErrorCode.VALIDATION_ERROR, "status harus pending, approved, atau rejected.", 400);
     }
+  }
+  if ("coa_id" in input) {
+    const coaId = requireUUID(input, "coa_id", { optional: true });
+    if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
   }
 
   const { data, error } = await updateBudgetRequest(auth.ctx.supabase, id, input);

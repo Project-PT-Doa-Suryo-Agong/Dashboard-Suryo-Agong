@@ -11,6 +11,7 @@ export async function listProduk(client: DbClient, page = 1, limit = 50) {
     .from("m_produk")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
+    .order("nama_produk", { ascending: true })
     .range(from, from + limit - 1);
   return { data: (data ?? []) as MProduk[], error, meta: { page, limit, total: count ?? 0 } };
 }

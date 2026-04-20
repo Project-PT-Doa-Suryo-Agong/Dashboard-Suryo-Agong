@@ -119,8 +119,12 @@ export async function POST(request: Request) {
     }
   }
 
+  const coaId = requireUUID(input, "coa_id", { optional: true });
+  if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+
   const payload: TReimbursementInsert = {
     employee_id: employeeId.data,
+    coa_id: coaId.data,
     amount: amount.data,
     bukti: finalBukti,
     status: (status.data ?? "pending") as TReimbursementInsert["status"],

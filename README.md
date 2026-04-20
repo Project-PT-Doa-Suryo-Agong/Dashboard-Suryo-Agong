@@ -173,6 +173,17 @@ Bagian di bawah ini sudah difilter. Poin yang backend-nya sudah selesai dan tida
 - Pastikan login frontend menggunakan Supabase Auth secara langsung.
 - Pastikan mapping role di UI konsisten dengan role yang dipakai backend dan data `core.profiles`.
 
+### 7. Finance - Menu COA, Jurnal, dan Jurnal Item
+- Endpoint backend untuk CRUD COA (`/api/finance/coa`), Jurnal (`/api/finance/jurnal`), dan Jurnal Item (`/api/finance/jurnal-items`) sudah tersedia.
+- Frontend disilakan untuk menyesuaikan dan mengintegrasikan UI CRUD ke endpoint-endpoint tersebut.
+- Pastikan untuk menjalankan iterasi database (SQL script) yang ada di `supabase/add_finance_coa_jurnal.sql` agar tabel dan relasi yang diperlukan terbuat di Supabase sebelum mengamankan integrasi frontend.
+
+### 8. Integrasi Kolom COA (Chart of Accounts)
+- Backend sekarang siap menerima dan memvalidasi `coa_id` pada payload form: **Reimbursement** (Finance), **Payroll History** (Finance), **Sales Order** (Sales), dan **Budget Request** (Management).
+- Frontend perlu menambah form input `coa_id` (sebagai UUID) di keempat modul tadi. UI biasanya berupa combobox yang _fetch_ datanya ke `GET /api/finance/coa`.
+- Komponen tabel UI / view di layar tersebut juga diarahkan agar dapat menampilkan relasi data COA.
+- **Peringatan Pre-Check Mode**: Jika tabel `sales.t_sales_order` & `management.t_budget_request` belum ditambahkan kolom `coa_id` di layer database (sebagaimana `reimbursement` dan `payroll`), tolong eksekusikan penambahannya lewat _SQL Editor_ Supabase secara manual sebelum melakukan testing integrasi.
+
 ## Getting Started
 
 ### Prerequisites

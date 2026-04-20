@@ -37,6 +37,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const totalPrice = requireNumber(input, "total_price", { min: 0 });
     if (!totalPrice.ok) return fail(ErrorCode.VALIDATION_ERROR, totalPrice.message, 400);
   }
+  if ("coa_id" in input) {
+    const coaId = requireUUID(input, "coa_id", { optional: true });
+    if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+  }
 
   const { data, error } = await updateSalesOrder(auth.ctx.supabase, id, input);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update sales order.", 500, error.message);

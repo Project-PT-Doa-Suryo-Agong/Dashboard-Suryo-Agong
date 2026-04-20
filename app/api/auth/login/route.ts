@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
         ...(options as object),
         domain: cookieDomain,
         sameSite: "lax",
-        httpOnly: true,
+        httpOnly: false,
         secure: process.env.NODE_ENV === "production",
       });
     }

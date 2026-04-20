@@ -69,6 +69,12 @@ Dokumen ini merangkum endpoint internal Next.js App Router di folder `app/api`, 
 | /api/finance/reimburse | GET, POST | level(strategic, managerial, operational) | active | Reimburse aktif |
 | /api/finance/reimburse/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Reimburse by id |
 | /api/finance/reimbursement | GET, POST | level(strategic, managerial, operational) | deprecated | Selalu balikan HTTP 410, pakai /reimburse |
+| /api/finance/coa | GET, POST | level(strategic, managerial, operational) | active | CRUD Chart of Account (COA) |
+| /api/finance/coa/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | CRUD COA by id |
+| /api/finance/jurnal | GET, POST | level(strategic, managerial, operational) | active | Jurnal entry |
+| /api/finance/jurnal/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Jurnal entry by id |
+| /api/finance/jurnal-items | GET, POST | level(strategic, managerial, operational) | active | Jurnal items (GET requires `jurnal_id`) |
+| /api/finance/jurnal-items/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Jurnal items by id |
 
 ## Logistics
 

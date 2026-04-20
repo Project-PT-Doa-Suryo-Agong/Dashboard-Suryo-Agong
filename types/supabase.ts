@@ -33,6 +33,7 @@ export type HrAttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";
 
 export type FinanceCashflowType = "income" | "expense";
 export type FinanceReimburseStatus = "pending" | "approved" | "rejected";
+export type FinanceCoaCategory = "Aset" | "Liabilitas" | "Ekuitas" | "Pendapatan" | "Beban" | "Beban Lain-lain";
 
 export type ProductionStatus = "draft" | "ongoing" | "done";
 export type ProductionQcResult = "pass" | "reject";
@@ -260,6 +261,96 @@ export interface Database {
   // ── Schema: finance ─────────────────────────────────────────────────────────
   finance: {
     Tables: {
+      m_coa: {
+        Row: {
+          id: string;
+          kode_akun: string;
+          nama_akun: string;
+          kategori: FinanceCoaCategory;
+          is_sub_account: boolean | null;
+          parent_id: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          kode_akun: string;
+          nama_akun: string;
+          kategori: FinanceCoaCategory;
+          is_sub_account?: boolean | null;
+          parent_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          kode_akun?: string;
+          nama_akun?: string;
+          kategori?: FinanceCoaCategory;
+          is_sub_account?: boolean | null;
+          parent_id?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      t_journal: {
+        Row: {
+          id: string;
+          no_bukti: string;
+          tanggal: string;
+          keterangan: string | null;
+          referensi_id: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          no_bukti: string;
+          tanggal?: string;
+          keterangan?: string | null;
+          referensi_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          no_bukti?: string;
+          tanggal?: string;
+          keterangan?: string | null;
+          referensi_id?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      t_journal_item: {
+        Row: {
+          id: string;
+          journal_id: string | null;
+          coa_id: string;
+          debit: number | null;
+          kredit: number | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          journal_id?: string | null;
+          coa_id: string;
+          debit?: number | null;
+          kredit?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          journal_id?: string | null;
+          coa_id?: string;
+          debit?: number | null;
+          kredit?: number | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
       t_cashflow: {
         Row: {
           id: string;
@@ -290,6 +381,7 @@ export interface Database {
         Row: {
           id: string;
           employee_id: string | null;
+          coa_id: string | null;
           bulan: string | null;
           total: number | null;
           created_at: string | null;
@@ -297,6 +389,7 @@ export interface Database {
         Insert: {
           id?: string;
           employee_id?: string | null;
+          coa_id?: string | null;
           bulan?: string | null;
           total?: number | null;
           created_at?: string | null;
@@ -304,6 +397,7 @@ export interface Database {
         Update: {
           id?: string;
           employee_id?: string | null;
+          coa_id?: string | null;
           bulan?: string | null;
           total?: number | null;
         };
@@ -313,6 +407,7 @@ export interface Database {
         Row: {
           id: string;
           employee_id: string | null;
+          coa_id: string | null;
           amount: number | null;
           bukti: string | null;
           status: FinanceReimburseStatus | null;
@@ -321,6 +416,7 @@ export interface Database {
         Insert: {
           id?: string;
           employee_id?: string | null;
+          coa_id?: string | null;
           amount?: number | null;
           bukti?: string | null;
           status?: FinanceReimburseStatus | null;
@@ -329,6 +425,7 @@ export interface Database {
         Update: {
           id?: string;
           employee_id?: string | null;
+          coa_id?: string | null;
           amount?: number | null;
           bukti?: string | null;
           status?: FinanceReimburseStatus | null;
@@ -341,6 +438,7 @@ export interface Database {
     Enums: {
       cashflow_type: FinanceCashflowType;
       reimburse_status: FinanceReimburseStatus;
+      coa_category: FinanceCoaCategory;
     };
     CompositeTypes: { [_ in never]: never };
   };
@@ -608,6 +706,7 @@ export interface Database {
         Row: {
           id: string;
           order_code: string | null;
+          coa_id: string | null;
           varian_id: string | null;
           affiliator_id: string | null;
           quantity: number;
@@ -617,6 +716,7 @@ export interface Database {
         Insert: {
           id?: string;
           order_code?: string | null;
+          coa_id?: string | null;
           varian_id?: string | null;
           affiliator_id?: string | null;
           quantity: number;
@@ -626,6 +726,7 @@ export interface Database {
         Update: {
           id?: string;
           order_code?: string | null;
+          coa_id?: string | null;
           varian_id?: string | null;
           affiliator_id?: string | null;
           quantity?: number;
@@ -647,6 +748,7 @@ export interface Database {
         Row: {
           id: string;
           divisi: string;
+          coa_id: string | null;
           amount: number;
           status: ManagementBudgetStatus | null;
           created_at: string | null;
@@ -654,6 +756,7 @@ export interface Database {
         Insert: {
           id?: string;
           divisi: string;
+          coa_id?: string | null;
           amount: number;
           status?: ManagementBudgetStatus | null;
           created_at?: string | null;
@@ -661,6 +764,7 @@ export interface Database {
         Update: {
           id?: string;
           divisi?: string;
+          coa_id?: string | null;
           amount?: number;
           status?: ManagementBudgetStatus | null;
         };
@@ -722,9 +826,15 @@ export type TEmployeeWarning = Tables<"hr", "t_employee_warning">["Row"];
 export type TCashflow       = Tables<"finance", "t_cashflow">["Row"];
 export type TPayrollHistory = Tables<"finance", "t_payroll_history">["Row"];
 export type TReimbursement  = Tables<"finance", "t_reimbursement">["Row"];
-export type TCashflowInsert = Tables<"finance", "t_cashflow">["Insert"];
+export type MCoa             = Tables<"finance", "m_coa">["Row"];
+export type TJournal         = Tables<"finance", "t_journal">["Row"];
+export type TJournalItem     = Tables<"finance", "t_journal_item">["Row"];
+export type TCashflowInsert  = Tables<"finance", "t_cashflow">["Insert"];
 export type TPayrollHistoryInsert = Tables<"finance", "t_payroll_history">["Insert"];
 export type TReimbursementInsert = Tables<"finance", "t_reimbursement">["Insert"];
+export type MCoaInsert            = Tables<"finance", "m_coa">["Insert"];
+export type TJournalInsert        = Tables<"finance", "t_journal">["Insert"];
+export type TJournalItemInsert    = Tables<"finance", "t_journal_item">["Insert"];
 
 // production
 export type TProduksiOrder = Tables<"production", "t_produksi_order">["Row"];

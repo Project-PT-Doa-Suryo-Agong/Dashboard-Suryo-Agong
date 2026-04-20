@@ -6,7 +6,7 @@
  * 
  * @see lib/supabase/hooks/use-finance.ts
  */
-import type { TCashflow, TPayrollHistory, TReimbursement } from "@/types/supabase";
+import type { TCashflow, TPayrollHistory, TReimbursement, MCoa, TJournal, TJournalItem } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -110,6 +110,86 @@ export async function updateReimbursement(client: DbClient, id: string, input: R
 
 export async function deleteReimbursement(client: DbClient, id: string) {
   const { error, count } = await db(client).from("t_reimbursement").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}
+
+// m_coa
+
+export async function listCoa(client: DbClient, page = 1, limit = 100) {
+  const from = (page - 1) * limit;
+  const { data, error, count } = await db(client)
+    .from("m_coa")
+    .select("*", { count: "exact" })
+    .order("kode_akun", { ascending: true })
+    .range(from, from + limit - 1);
+  return { data: (data ?? []) as MCoa[], error, meta: { page, limit, total: count ?? 0 } };
+}
+
+export async function createCoa(client: DbClient, input: Record<string, unknown>) {
+  const { data, error } = await db(client).from("m_coa").insert(input).select("*").single();
+  return { data: data as MCoa | null, error };
+}
+
+export async function updateCoa(client: DbClient, id: string, input: Record<string, unknown>) {
+  const { data, error } = await db(client).from("m_coa").update(input).eq("id", id).select("*").maybeSingle();
+  return { data: data as MCoa | null, error };
+}
+
+export async function deleteCoa(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("m_coa").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}
+
+// t_journal
+
+export async function listJurnal(client: DbClient, page = 1, limit = 100) {
+  const from = (page - 1) * limit;
+  const { data, error, count } = await db(client)
+    .from("t_journal")
+    .select("*", { count: "exact" })
+    .order("tanggal", { ascending: false })
+    .range(from, from + limit - 1);
+  return { data: (data ?? []) as TJournal[], error, meta: { page, limit, total: count ?? 0 } };
+}
+
+export async function createJurnal(client: DbClient, input: Record<string, unknown>) {
+  const { data, error } = await db(client).from("t_journal").insert(input).select("*").single();
+  return { data: data as TJournal | null, error };
+}
+
+export async function updateJurnal(client: DbClient, id: string, input: Record<string, unknown>) {
+  const { data, error } = await db(client).from("t_journal").update(input).eq("id", id).select("*").maybeSingle();
+  return { data: data as TJournal | null, error };
+}
+
+export async function deleteJurnal(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_journal").delete({ count: "exact" }).eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}
+
+// t_journal_item
+
+export async function listJurnalItem(client: DbClient, journalId: string) {
+  const { data, error } = await db(client)
+    .from("t_journal_item")
+    .select("*")
+    .eq("journal_id", journalId)
+    .order("created_at", { ascending: true });
+  return { data: (data ?? []) as TJournalItem[], error };
+}
+
+export async function createJurnalItem(client: DbClient, input: Record<string, unknown>) {
+  const { data, error } = await db(client).from("t_journal_item").insert(input).select("*").single();
+  return { data: data as TJournalItem | null, error };
+}
+
+export async function updateJurnalItem(client: DbClient, id: string, input: Record<string, unknown>) {
+  const { data, error } = await db(client).from("t_journal_item").update(input).eq("id", id).select("*").maybeSingle();
+  return { data: data as TJournalItem | null, error };
+}
+
+export async function deleteJurnalItem(client: DbClient, id: string) {
+  const { error, count } = await db(client).from("t_journal_item").delete({ count: "exact" }).eq("id", id);
   return { error, deleted: (count ?? 0) > 0 };
 }
 
