@@ -10,6 +10,8 @@ import {
   ArrowRight,
   UserCog,
   Server,
+  Briefcase,
+  DollarSign,
 } from 'lucide-react';
 import type { ApiError, ApiSuccess } from '@/types/api';
 import { apiFetch } from "@/lib/utils/api-fetch";
@@ -58,7 +60,43 @@ export default function SuperAdminDashboard() {
     totalVarian: 0,
     totalVendor: 0,
   });
-
+  const quick_links = [
+    {
+      href: "/hr",
+      title: "HR",
+      description: "Kelola data karyawan.",
+    },
+    {
+      href: "/management",
+      title: "Management",
+      description: "Kelola data manajemen.",
+    },
+    {
+      href: "/finance",
+      title: "Finance",
+      description: "Kelola data keuangan perusahaan.",
+    },
+    {
+      href: "/produksi",
+      title: "Produksi",
+      description: "Kelola data produksi perusahaan.",
+    },
+    {
+      href: "/logistik",
+      title: "Logistik",
+      description: "Kelola data logistik perusahaan.",
+    },
+    {
+      href: "/creative",
+      title: "Creative & Sales",
+      description: "Kelola data creative & sales perusahaan.",
+    },
+    {
+      href: "/office",
+      title: "Office Support",
+      description: "Kelola data office perusahaan.",
+    },
+  ];
   useEffect(() => {
     const loadStats = async () => {
       setIsLoading(true);
@@ -72,13 +110,13 @@ export default function SuperAdminDashboard() {
             apiFetch('/api/core/vendors?page=1&limit=1', { method: 'GET', headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }),
           ]);
 
-        const profilesPayload  = await parseJsonResponse<ProfilesListPayload>(profilesResponse);
-        const productsPayload  = await parseJsonResponse<ProductsListPayload>(productsResponse);
-        const variantsPayload  = await parseJsonResponse<VariantsListPayload>(variantsResponse);
-        const vendorsPayload   = await parseJsonResponse<VendorsListPayload>(vendorsResponse);
+        const profilesPayload = await parseJsonResponse<ProfilesListPayload>(profilesResponse);
+        const productsPayload = await parseJsonResponse<ProductsListPayload>(productsResponse);
+        const variantsPayload = await parseJsonResponse<VariantsListPayload>(variantsResponse);
+        const vendorsPayload = await parseJsonResponse<VendorsListPayload>(vendorsResponse);
 
         setStats({
-          totalUsers:  profilesPayload.data.meta.total ?? 0,
+          totalUsers: profilesPayload.data.meta.total ?? 0,
           totalProduk: productsPayload.data.meta.total ?? 0,
           totalVarian: variantsPayload.data.varian?.length ?? 0,
           totalVendor: vendorsPayload.data.meta.total ?? 0,
@@ -179,14 +217,11 @@ export default function SuperAdminDashboard() {
             </span>
           </div>
         </article>
-
       </section>
 
       {errorMessage ? <p className="text-sm text-rose-200">{errorMessage}</p> : null}
 
-      {/* ── Module Cards ── */}
       <section className="grid grid-cols-1 gap-2 md:gap-3 sm:grid-cols-2 lg:grid-cols-2 lg:gap-4">
-
         {/* Pengelolaan User */}
         <Link
           href="/super-admin/users"
@@ -201,7 +236,7 @@ export default function SuperAdminDashboard() {
                 Pengelolaan User
               </h2>
               <p className="text-xs leading-relaxed text-slate-600 md:text-sm lg:text-base">
-                Kelola data user enterprise, role akses, dan validasi profil
+                Kelola data user enterprise, role akses, dan validasi profil.
               </p>
             </div>
             <ArrowRight className="h-5 w-5 shrink-0 text-slate-400 transition-all group-hover:translate-x-1 group-hover:text-indigo-500 md:h-6 md:w-6" />
@@ -228,7 +263,27 @@ export default function SuperAdminDashboard() {
             <ArrowRight className="h-5 w-5 shrink-0 text-slate-400 transition-all group-hover:translate-x-1 group-hover:text-orange-500 md:h-6 md:w-6" />
           </div>
         </Link>
+      </section>
 
+      <section className="space-y-3">
+        <h2 className="text-base md:text-lg font-bold text-slate-200">User Menu Quick Access</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {quick_links.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 md:p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-slate-400"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1.5 min-w-0">
+                  <p className="text-sm md:text-base font-bold text-slate-900 group-hover:text-blue-700">{item.title}</p>
+                  <p className="text-xs md:text-sm text-slate-600 group-hover:text-blue-500">{item.description}</p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:text-blue-700 group-hover:translate-x-0.5 shrink-0" />
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
     </div>
   );
