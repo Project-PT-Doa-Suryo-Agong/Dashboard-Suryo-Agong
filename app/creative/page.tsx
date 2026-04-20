@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowBigLeft,
   Banknote,
   FileText,
   Tv2,
@@ -16,12 +15,12 @@ import type {
   MAfiliator,
   MVarian,
   TContentPlanner,
-  TLivePerformance,
+  TContentStatistic,
   TSalesOrder,
 } from "@/types/supabase";
 
 type SalesOrderListPayload = { orders: TSalesOrder[] };
-type LiveListPayload = { live: TLivePerformance[] };
+type ContentStatsListPayload = { content_stats: TContentStatistic[] };
 type ContentListPayload = { content: TContentPlanner[] };
 type AffiliatorListPayload = { afiliator: MAfiliator[] };
 type VarianListPayload = { varian: MVarian[] };
@@ -69,7 +68,7 @@ function formatDate(value: string | null): string {
 
 export default function CreativeDashboard() {
   const [orders, setOrders] = useState<TSalesOrder[]>([]);
-  const [liveItems, setLiveItems] = useState<TLivePerformance[]>([]);
+  const [contentStats, setContentStats] = useState<TContentStatistic[]>([]);
   const [contents, setContents] = useState<TContentPlanner[]>([]);
   const [affiliators, setAffiliators] = useState<MAfiliator[]>([]);
   const [variants, setVariants] = useState<MVarian[]>([]);
@@ -83,7 +82,7 @@ export default function CreativeDashboard() {
       try {
         const [
           ordersResponse,
-          liveResponse,
+          contentStatsResponse,
           contentResponse,
           affiliatesResponse,
           variantsResponse,
@@ -93,7 +92,7 @@ export default function CreativeDashboard() {
             headers: { "Content-Type": "application/json" },
             cache: "no-store",
           }),
-          apiFetch("/api/sales/live?page=1&limit=500", {
+          apiFetch("/api/sales/content-stats?page=1&limit=500", {
             method: "GET",
             headers: { "Content-Type": "application/json" },
             cache: "no-store",
@@ -117,8 +116,8 @@ export default function CreativeDashboard() {
 
         const ordersPayload =
           await parseJsonResponse<SalesOrderListPayload>(ordersResponse);
-        const livePayload =
-          await parseJsonResponse<LiveListPayload>(liveResponse);
+        const contentStatsPayload =
+          await parseJsonResponse<ContentStatsListPayload>(contentStatsResponse);
         const contentPayload =
           await parseJsonResponse<ContentListPayload>(contentResponse);
         const affiliatesPayload =
@@ -127,7 +126,7 @@ export default function CreativeDashboard() {
           await parseJsonResponse<VarianListPayload>(variantsResponse);
 
         setOrders(ordersPayload.data.orders ?? []);
-        setLiveItems(livePayload.data.live ?? []);
+        setContentStats(contentStatsPayload.data.content_stats ?? []);
         setContents(contentPayload.data.content ?? []);
         setAffiliators(affiliatesPayload.data.afiliator ?? []);
         setVariants(variantsPayload.data.varian ?? []);
@@ -151,8 +150,8 @@ export default function CreativeDashboard() {
   );
 
   const liveRevenue = useMemo(
-    () => liveItems.reduce((sum, item) => sum + (item.revenue ?? 0), 0),
-    [liveItems],
+    () => contentStats.reduce((sum, item) => sum + (item.monetasi ?? 0), 0),
+    [contentStats],
   );
 
   const recentContents = useMemo(
@@ -265,10 +264,10 @@ export default function CreativeDashboard() {
           <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center md:mb-6 md:gap-4">
             <div className="min-w-0">
               <h3 className="text-sm font-bold text-slate-900 md:text-base lg:text-lg">
-                Live Performance Revenue
+                Content Stats Revenue
               </h3>
               <p className="text-xs text-slate-500 md:text-sm lg:text-base">
-                Akumulasi revenue dari data live performance.
+                  Akumulasi monetasi dari data content stats.
               </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
@@ -276,36 +275,36 @@ export default function CreativeDashboard() {
                 {formatRupiah(liveRevenue)}
               </span>
               <span className="whitespace-nowrap rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-600 md:text-xs">
-                {liveItems.length} Session
+                {contentStats.length} Data
               </span>
             </div>
           </div>
 
           {isLoading ? (
             <p className="text-sm text-slate-500">
-              Memuat data live performance...
+              Memuat data content stats...
             </p>
-          ) : liveItems.length === 0 ? (
+          ) : contentStats.length === 0 ? (
             <p className="text-sm text-slate-500">
-              Belum ada data live performance.
+              Belum ada data content stats.
             </p>
           ) : (
             <div className="space-y-2">
-              {liveItems.slice(0, 5).map((item) => (
+              {contentStats.slice(0, 5).map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2"
                 >
                   <div>
                     <p className="text-sm font-semibold text-slate-900">
-                      {item.platform}
+                      {item.t_content_planner?.judul ?? "Konten"}
                     </p>
                     <p className="text-xs text-slate-500">
                       {formatDate(item.created_at)}
                     </p>
                   </div>
                   <p className="text-sm font-bold text-slate-900">
-                    {formatRupiah(item.revenue ?? 0)}
+                    {formatRupiah(item.monetasi ?? 0)}
                   </p>
                 </div>
               ))}

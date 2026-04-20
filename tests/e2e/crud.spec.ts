@@ -189,10 +189,17 @@ test.describe.serial("Authenticated CRUD routes", () => {
             platform: "TikTok",
         }, "afiliator");
 
-        const live = await createRecord<{ id: string; platform: string; revenue: number | null }>(managementPage, "/api/sales/live", {
-            platform: createdLivePlatform,
-            revenue: 2500000,
-        }, "live");
+        const planner = await createRecord<{ id: string; judul: string }>(managementPage, "/api/sales/content", {
+            judul: createdLivePlatform,
+            platform: "TikTok",
+        }, "content");
+
+        const contentStat = await createRecord<{ id: string; content_planner_id: string | null; link: string | null }>(managementPage, "/api/sales/content-stats", {
+            content_planner_id: planner.id,
+            link: null,
+            jumlah_view: 100,
+            monetasi: 2500000,
+        }, "content_stat");
 
         const order = await createRecord<{ id: string; varian_id: string | null; affiliator_id: string | null; quantity: number; total_price: number }>(managementPage, "/api/sales/orders", {
             varian_id: variant.id,
@@ -211,10 +218,10 @@ test.describe.serial("Authenticated CRUD routes", () => {
                 platform: "Instagram",
             }, "afiliator");
 
-            await updateRecord(managementPage, "/api/sales/live", live.id, {
-                platform: updatedLivePlatform,
-                revenue: 3500000,
-            }, "live");
+            await updateRecord(managementPage, "/api/sales/content", planner.id, {
+                judul: updatedLivePlatform,
+                platform: "Instagram",
+            }, "content");
 
             await updateRecord(managementPage, "/api/sales/orders", order.id, {
                 varian_id: variant.id,
@@ -240,7 +247,8 @@ test.describe.serial("Authenticated CRUD routes", () => {
             });
 
             await deleteRecord(managementPage, "/api/sales/orders", order.id);
-            await deleteRecord(managementPage, "/api/sales/live", live.id);
+            await deleteRecord(managementPage, "/api/sales/content-stats", contentStat.id);
+            await deleteRecord(managementPage, "/api/sales/content", planner.id);
             await deleteRecord(managementPage, "/api/sales/affiliates", affiliate.id);
             await deleteRecord(managementPage, "/api/core/variants", variant.id);
             await deleteRecord(managementPage, "/api/core/products", product.id);
@@ -249,7 +257,8 @@ test.describe.serial("Authenticated CRUD routes", () => {
             await expectPageMissingText(managementPage, "/creative/content-stats", updatedLivePlatform);
         } finally {
             await deleteRecord(managementPage, "/api/sales/orders", order.id).catch(() => undefined);
-            await deleteRecord(managementPage, "/api/sales/live", live.id).catch(() => undefined);
+            await deleteRecord(managementPage, "/api/sales/content-stats", contentStat.id).catch(() => undefined);
+            await deleteRecord(managementPage, "/api/sales/content", planner.id).catch(() => undefined);
             await deleteRecord(managementPage, "/api/sales/affiliates", affiliate.id).catch(() => undefined);
             await deleteRecord(managementPage, "/api/core/variants", variant.id).catch(() => undefined);
             await deleteRecord(managementPage, "/api/core/products", product.id).catch(() => undefined);
