@@ -85,8 +85,6 @@ export async function deleteContentPlanner(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
-//  t_live_performance 
-
 //  t_content_statistic
 
 async function enrichContentStatisticWithPlanner(
