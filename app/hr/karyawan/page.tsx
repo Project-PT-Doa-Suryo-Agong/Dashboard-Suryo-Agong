@@ -54,8 +54,8 @@ function Badge({ status }: { status: HrEmployeeStatus }) {
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
         status === "aktif"
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-red-100 text-red-700"
+          ? "bg-green-500 text-white"
+          : "bg-red-500 text-white"
       }`}
     >
       {status}

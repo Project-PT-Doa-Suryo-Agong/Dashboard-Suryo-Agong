@@ -42,7 +42,7 @@ export function DetailButton({ onClick, disabled = false, label = "Detail" }: De
       onClick={onClick}
       disabled={disabled}
       title={label}
-      className={`${BASE} border-slate-400 bg-slate-400 text-white hover:bg-slate-500 hover:border-slate-500`}
+      className={`${BASE} border-blue-400 bg-blue-500 text-white hover:bg-blue-400 hover:border-blue-500`}
     >
       <Eye size={14} />
       <span className="hidden sm:inline">{label}</span>
