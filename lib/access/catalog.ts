@@ -26,6 +26,7 @@ export const MENU_CATALOG: MenuCluster[] = [
     title: "HR & Operation Manager",
     menus: [
       { key: "hr_recruitment_onboarding", title: "Rekrutmen & Onboarding" },
+      { key: "hr_contract_template_editor", title: "Editor Surat PKWT/PKWTP" },
       { key: "hr_performance_appraisal", title: "Penilaian Kinerja (Appraisal)" },
       { key: "hr_conflict_discipline", title: "Penanganan Konflik & Disiplin" },
       { key: "hr_operational_audit", title: "Audit Operasional" },

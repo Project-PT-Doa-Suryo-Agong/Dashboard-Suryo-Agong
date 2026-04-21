@@ -1,0 +1,14 @@
+{
+  "templates": {
+    "pkwt": {
+      "title": "PERJANJIAN KERJA WAKTU TERTENTU (PKWT)",
+      "description": "Template kontrak PKWT untuk karyawan kontrak dengan periode tertentu.",
+      "content": "{{company_city}}, {{current_date_human}}\n\nSURAT PERJANJIAN KERJA WAKTU TERTENTU (PKWT)\nNomor: {{contract_number}}\n\nPada hari ini, telah dibuat perjanjian kerja antara:\n\nPIHAK PERTAMA\nNama Perusahaan: {{company_name}}\nAlamat: {{company_address}}\nDiwakili oleh: {{company_representative}}\nJabatan: {{company_representative_title}}\n\nPIHAK KEDUA\nNama: {{employee_name}}\nNIK: {{employee_nik}}\nNo. KTP: {{employee_identity_number}}\nAlamat: {{employee_address}}\nJabatan: {{employee_position}}\nUnit Kerja: {{employee_department}}\n\nPasal 1 - Ruang Lingkup Pekerjaan\nPihak Kedua bersedia melaksanakan pekerjaan sesuai jabatan dan arahan kerja yang berlaku di {{company_name}}.\n\nPasal 2 - Jangka Waktu\nPerjanjian ini berlaku sejak {{contract_start_date}} sampai dengan {{contract_end_date}}.\n\nPasal 3 - Hak dan Kewajiban\nHak, kewajiban, jam kerja, disiplin, dan ketentuan perusahaan mengikuti peraturan internal {{company_name}} serta ketentuan perundang-undangan yang berlaku.\n\nDemikian perjanjian ini dibuat untuk dipatuhi oleh kedua belah pihak.\n\nPIHAK PERTAMA,\n{{company_representative}}\n\nPIHAK KEDUA,\n{{employee_name}}"
+    },
+    "pkwtp": {
+      "title": "PERJANJIAN KERJA WAKTU TIDAK TERTENTU DENGAN MASA PERCOBAAN (PKWTP)",
+      "description": "Template kontrak PKWTP dengan masa percobaan kerja.",
+      "content": "{{company_city}}, {{current_date_human}}\n\nSURAT PERJANJIAN KERJA WAKTU TIDAK TERTENTU (PKWTP)\nNomor: {{contract_number}}\n\nPada hari ini, telah dibuat perjanjian kerja antara:\n\nPIHAK PERTAMA\nNama Perusahaan: {{company_name}}\nAlamat: {{company_address}}\nDiwakili oleh: {{company_representative}}\nJabatan: {{company_representative_title}}\n\nPIHAK KEDUA\nNama: {{employee_name}}\nNIK: {{employee_nik}}\nNo. KTP: {{employee_identity_number}}\nAlamat: {{employee_address}}\nJabatan: {{employee_position}}\nUnit Kerja: {{employee_department}}\n\nPasal 1 - Pengangkatan\nPihak Kedua diangkat sebagai karyawan di {{company_name}} dengan status PKWTP.\n\nPasal 2 - Masa Percobaan\nPihak Kedua menjalani masa percobaan selama {{probation_months}} bulan, terhitung sejak {{contract_start_date}} hingga {{probation_end_date}}.\n\nPasal 3 - Hak dan Kewajiban\nHak, kewajiban, jam kerja, disiplin, dan ketentuan perusahaan mengikuti peraturan internal {{company_name}} serta ketentuan perundang-undangan yang berlaku.\n\nDemikian perjanjian ini dibuat untuk dipatuhi oleh kedua belah pihak.\n\nPIHAK PERTAMA,\n{{company_representative}}\n\nPIHAK KEDUA,\n{{employee_name}}"
+    }
+  }
+}

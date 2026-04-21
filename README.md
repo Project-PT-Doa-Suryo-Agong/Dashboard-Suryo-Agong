@@ -192,6 +192,21 @@ Bagian di bawah ini sudah difilter. Poin yang backend-nya sudah selesai dan tida
 - Tampilkan pesan error dari API jika mendapat `403` (contoh: bukan Super Admin atau mencoba ubah password akun sendiri lewat endpoint ini).
 - Setelah submit berhasil, kosongkan kembali field password agar tidak tertinggal di state/form.
 
+### 10. Human Resources - Editor Surat PKWT/PKWTP
+- Menu baru backend untuk cluster HR sudah ditambahkan dengan key `hr_contract_template_editor` dan label `Editor Surat PKWT/PKWTP`.
+- Frontend perlu menambahkan halaman/menu HR baru (misalnya `Human Resources -> Surat PKWT/PKWTP`) yang memanggil endpoint berikut:
+  - `GET /api/hr/contracts/templates` untuk mengambil daftar template + schema field form informasi karyawan.
+  - `GET /api/hr/contracts/templates/:type` untuk mengambil detail template (`type`: `pkwt` atau `pkwtp`).
+  - `PUT /api/hr/contracts/templates/:type` untuk menyimpan hasil edit template.
+  - `POST /api/hr/contracts/generate` untuk generate draft surat berdasarkan form informasi karyawan.
+- Payload minimal generate:
+  - `templateType`: `pkwt` atau `pkwtp`.
+  - `employee`: object berisi field form (contoh: `employee_name`, `employee_nik`, `employee_identity_number`, `employee_address`, `employee_position`, `employee_department`, `contract_number`, `contract_start_date`, dst).
+- Validasi penting di frontend:
+  - Untuk `pkwt`, wajib isi `contract_end_date`.
+  - Untuk `pkwtp`, wajib isi `probation_months` dan `probation_end_date`.
+- Template editable backend disimpan di `data/hr-contract-templates.json` dan sudah disesuaikan untuk identitas `PT DOA SURYO AGONG`.
+
 ## Getting Started
 
 ### Prerequisites
