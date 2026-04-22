@@ -1,6 +1,5 @@
 "use client";
 import { SearchBar } from "@/components/ui/search-bar";
-
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Pencil, PlusCircle, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
