@@ -305,7 +305,7 @@ export default function OfficeProductsPage() {
                     type="button"
                     onClick={() => openVarianModal(produk)}
                     disabled={isSubmitting}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500 bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-amber-100 disabled:opacity-50"
                   >
                     <Plus className="h-4 w-4" />
                     Tambah Varian
@@ -355,7 +355,7 @@ export default function OfficeProductsPage() {
               type="text"
               value={formNamaProduk}
               onChange={(event) => setFormNamaProduk(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               placeholder="Masukkan nama produk"
             />
           </div>
@@ -367,14 +367,14 @@ export default function OfficeProductsPage() {
               type="text"
               value={formKategoriProduk}
               onChange={(event) => setFormKategoriProduk(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               placeholder="Contoh: Minuman"
             />
           </div>
 
           <div className="pt-2 flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button type="button" onClick={closeProductModal} className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Batal</button>
-            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
+            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-600 disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
           </div>
         </form>
       </Modal>
@@ -389,7 +389,7 @@ export default function OfficeProductsPage() {
               value={formNamaVarian}
               onChange={(event) => setFormNamaVarian(event.target.value)}
               placeholder="Masukkan nama varian"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             />
           </div>
 
@@ -401,7 +401,7 @@ export default function OfficeProductsPage() {
               value={formSku}
               onChange={(event) => setFormSku(event.target.value)}
               placeholder="Contoh: PRD-001-V99"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             />
           </div>
 
@@ -414,13 +414,13 @@ export default function OfficeProductsPage() {
               value={formHarga}
               onChange={(event) => setFormHarga(event.target.value)}
               placeholder="Masukkan harga varian"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             />
           </div>
 
           <div className="pt-2 flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button type="button" onClick={closeVarianModal} className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Batal</button>
-            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
+            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-600 disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
           </div>
         </form>
       </Modal>

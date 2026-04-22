@@ -193,7 +193,7 @@ export default function OfficeDashboardPage() {
               <p className="text-base md:text-2xl font-bold text-slate-900">{total_vendor_aktif} Mitra</p>
               <p className="text-xs md:text-sm text-slate-600">Terdaftar dalam sistem</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#BC934B]/15 text-[#BC934B] shrink-0">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-500 text-white shrink-0">
               <Building2 className="h-5 w-5" />
             </span>
           </div>
@@ -207,7 +207,7 @@ export default function OfficeDashboardPage() {
               <p className="text-base md:text-2xl font-bold text-slate-900">{total_katalog_produk} Item</p>
               <p className="text-xs md:text-sm text-slate-600">{products.length} produk, varian produk aktif</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700 shrink-0">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500 text-white shrink-0">
               <Package className="h-5 w-5" />
             </span>
           </div>
@@ -221,7 +221,7 @@ export default function OfficeDashboardPage() {
               <p className="text-base md:text-2xl font-bold text-slate-900">{total_karyawan} Orang</p>
               <p className="text-xs md:text-sm text-slate-600">Seluruh divisi</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500 text-white shrink-0">
               <Users className="h-5 w-5" />
             </span>
           </div>
@@ -300,7 +300,7 @@ export default function OfficeDashboardPage() {
                           <div className="flex flex-col gap-1">
                             <span
                               className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                isUpdated ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                                isUpdated ? "bg-amber-500 text-white" : "bg-emerald-500 text-white"
                               }`}
                             >
                               {isUpdated ? "Updated" : "Baru"}

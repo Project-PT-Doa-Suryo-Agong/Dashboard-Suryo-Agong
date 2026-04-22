@@ -59,6 +59,7 @@ export default function OfficeVendorsPage() {
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<MVendor | null>(null);
 
   const [formNamaVendor, setFormNamaVendor] = useState("");
@@ -171,6 +172,16 @@ export default function OfficeVendorsPage() {
     setSelectedVendor(null);
   };
 
+  const openDetailModal = (vendor: MVendor) => {
+    setSelectedVendor(vendor);
+    setIsDetailModalOpen(true);
+  };
+
+  const closeDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedVendor(null);
+  };
+
   const handleDeleteVendor = async () => {
     if (!selectedVendor || isSubmitting) return;
 
@@ -231,7 +242,6 @@ export default function OfficeVendorsPage() {
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">ID Vendor</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Nama Vendor</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Kontak</th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Terakhir Diupdate</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Aksi</th>
               </tr>
             </thead>
@@ -250,9 +260,9 @@ export default function OfficeVendorsPage() {
                     <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{vendor.id}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-64 break-words">{vendor.nama_vendor ?? "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{vendor.kontak ?? "-"}</td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{formatDate(vendor.updated_at)}</td>
                     <td className="px-4 md:px-6 py-3">
                       <RowActions>
+                        <DetailButton onClick={() => openDetailModal(vendor)} />
                         <EditButton onClick={() => openEditModal(vendor)} disabled={isSubmitting} />
                         <DeleteButton onClick={() => openDeleteModal(vendor)} disabled={isSubmitting} />
                       </RowActions>
@@ -275,7 +285,7 @@ export default function OfficeVendorsPage() {
               value={formNamaVendor}
               onChange={(event) => setFormNamaVendor(event.target.value)}
               placeholder="Masukkan nama vendor"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             />
           </div>
 
@@ -287,15 +297,38 @@ export default function OfficeVendorsPage() {
               value={formKontak}
               onChange={(event) => setFormKontak(event.target.value)}
               placeholder="Contoh: 021-xxxxxxx atau email vendor"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             />
           </div>
 
           <div className="pt-2 flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button type="button" onClick={closeFormModal} className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Batal</button>
-            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a88444] disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
+            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-600 disabled:opacity-50">{isSubmitting ? "Menyimpan..." : "Simpan"}</button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={isDetailModalOpen} onClose={closeDetailModal} title="Detail Vendor" maxWidth="max-w-md">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">Nama Vendor</h3>
+            <p className="mt-1 text-sm text-slate-900">{selectedVendor?.nama_vendor ?? "-"}</p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">Kontak</h3>
+            <p className="mt-1 text-sm text-slate-900">{selectedVendor?.kontak ?? "-"}</p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">Terakhir Diupdate</h3>
+            <p className="mt-1 text-sm text-slate-900">{formatDate(selectedVendor?.updated_at ?? null)}</p>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button type="button" onClick={closeDetailModal} className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Tutup</button>
+          </div>
+        </div>
       </Modal>
 
       <ConfirmDialog
