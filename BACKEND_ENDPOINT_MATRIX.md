@@ -51,8 +51,10 @@ Dokumen ini merangkum endpoint internal Next.js App Router di folder `app/api`, 
 | /api/hr/roles | GET | level(strategic, managerial, operational, support) | active | Referensi role/divisi frontend |
 | /api/hr/employees | GET, POST | level(strategic, managerial, operational) | active | Endpoint utama karyawan |
 | /api/hr/employees/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Update/delete karyawan |
+| /api/hr/employees/[id]/upload-photos | POST | level(strategic, managerial, operational) | active | Upload foto perorangan/KTP/KK dan simpan URL ke kolom m_karyawan |
 | /api/hr/karyawan | GET, POST | same as /hr/employees | active (alias) | Re-export dari endpoint employees |
 | /api/hr/karyawan/[id] | PATCH, DELETE | same as /hr/employees/[id] | active (alias) | Re-export dari endpoint employees/[id] |
+| /api/hr/karyawan/[id]/upload-photos | POST | same as /hr/employees/[id]/upload-photos | active (alias) | Re-export endpoint upload foto karyawan |
 | /api/hr/attendance | GET, POST, PATCH, DELETE | level(strategic, managerial, operational) | active | Attendance collection endpoint |
 | /api/hr/attendance/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Attendance by id |
 | /api/hr/warnings | GET, POST | level(strategic, managerial, operational) | active | Employee warning |

@@ -1,0 +1,1 @@
+export { POST } from "../../../employees/[id]/upload-photos/route";

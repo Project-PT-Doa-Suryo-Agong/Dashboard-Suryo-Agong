@@ -24,6 +24,18 @@ type RolesPayload = {
   system_role_keys: string[];
 };
 
+type EmployeePhotoFiles = {
+  foto_perorangan: File | null;
+  foto_ktp: File | null;
+  foto_kk: File | null;
+};
+
+const EMPTY_PHOTO_FILES: EmployeePhotoFiles = {
+  foto_perorangan: null,
+  foto_ktp: null,
+  foto_kk: null,
+};
+
 const FALLBACK_DIVISI_OPTIONS = [
   "Management & Strategy",
   "Finance & Administration",
@@ -83,6 +95,7 @@ export default function KaryawanPage() {
   const [isDivisiManuallyEdited, setIsDivisiManuallyEdited] = useState<boolean>(false);
   const [detailItem, setDetailItem] = useState<MKaryawan | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
+  const [photoFiles, setPhotoFiles] = useState<EmployeePhotoFiles>(EMPTY_PHOTO_FILES);
 
   const divisiOptions = useMemo(() => {
     return roleOptions.length > 0 ? roleOptions : FALLBACK_DIVISI_OPTIONS;
@@ -182,6 +195,7 @@ export default function KaryawanPage() {
       status: "aktif",
     });
     setGajiPokokInput("");
+    setPhotoFiles(EMPTY_PHOTO_FILES);
     setIsDivisiManuallyEdited(false);
     setEditData(null);
   };
@@ -235,6 +249,25 @@ export default function KaryawanPage() {
     resetForm();
   };
 
+  const hasPendingPhotoUpload =
+    photoFiles.foto_perorangan !== null || photoFiles.foto_ktp !== null || photoFiles.foto_kk !== null;
+
+  const uploadEmployeePhotos = async (employeeId: string) => {
+    if (!hasPendingPhotoUpload) return;
+
+    const uploadFormData = new FormData();
+    if (photoFiles.foto_perorangan) uploadFormData.append("foto_perorangan", photoFiles.foto_perorangan);
+    if (photoFiles.foto_ktp) uploadFormData.append("foto_ktp", photoFiles.foto_ktp);
+    if (photoFiles.foto_kk) uploadFormData.append("foto_kk", photoFiles.foto_kk);
+
+    const uploadResponse = await apiFetch(`/api/hr/employees/${employeeId}/upload-photos`, {
+      method: "POST",
+      body: uploadFormData,
+    });
+
+    await parseJsonResponse<{ karyawan: MKaryawan }>(uploadResponse);
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting) return;
@@ -248,6 +281,8 @@ export default function KaryawanPage() {
     setIsSubmitting(true);
 
     try {
+      let targetEmployeeId: string | null = editData?.id ?? null;
+
       if (editData) {
         const payload = {
           nama: formData.nama,
@@ -258,6 +293,7 @@ export default function KaryawanPage() {
         };
         const result = await update(editData.id, payload);
         if (!result) throw new Error("Gagal update karyawan.");
+        targetEmployeeId = result.id;
       } else {
         if (!formData.email.trim()) {
           throw new Error("Email wajib diisi.");
@@ -281,6 +317,11 @@ export default function KaryawanPage() {
         };
         const result = await insert(payload);
         if (!result) throw new Error("Gagal menambah karyawan.");
+        targetEmployeeId = result.id;
+      }
+
+      if (hasPendingPhotoUpload && targetEmployeeId) {
+        await uploadEmployeePhotos(targetEmployeeId);
       }
 
       refresh();
@@ -539,6 +580,51 @@ export default function KaryawanPage() {
                 value={gajiPokokInput}
                 onChange={(event) => setGajiPokokInput(event.target.value.replace(/[^0-9]/g, ""))}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              />
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-slate-700">Foto Perorangan</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) =>
+                  setPhotoFiles((prev) => ({
+                    ...prev,
+                    foto_perorangan: event.target.files?.[0] ?? null,
+                  }))
+                }
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+              />
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-slate-700">Foto KTP</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) =>
+                  setPhotoFiles((prev) => ({
+                    ...prev,
+                    foto_ktp: event.target.files?.[0] ?? null,
+                  }))
+                }
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+              />
+            </label>
+
+            <label className="space-y-1.5 md:col-span-2">
+              <span className="text-sm font-medium text-slate-700">Foto KK</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) =>
+                  setPhotoFiles((prev) => ({
+                    ...prev,
+                    foto_kk: event.target.files?.[0] ?? null,
+                  }))
+                }
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
               />
             </label>
           </div>
