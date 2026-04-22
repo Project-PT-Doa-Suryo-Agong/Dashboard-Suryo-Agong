@@ -216,17 +216,6 @@ export default function OfficeVendorsPage() {
             placeholder="Cari nama vendor atau kontak..."
             className="relative w-full sm:max-w-xl"
           />
-
-        {!isOfficeSupport && (
-          <button
-            type="button"
-            onClick={openAddModal}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 w-full sm:w-auto"
-          >
-            <Plus className="h-4 w-4" />
-            Tambah Vendor
-          </button>
-        )}
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">

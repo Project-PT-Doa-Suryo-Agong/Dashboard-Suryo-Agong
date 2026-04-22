@@ -242,37 +242,28 @@ export default function OfficeProductsPage() {
         <p className="text-sm md:text-base text-slate-300">Kelola master data produk dan varian SKU dari database core.</p>
       </section>
 
-      <section className="flex flex-col gap-3 md:gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex w-full flex-col gap-3 sm:flex-row xl:max-w-3xl">
-          <SearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Cari nama produk, nama varian, atau SKU..."
-            className="relative flex-1"
-          />
+<section className="w-full xl:flex xl:flex-row xl:items-center xl:justify-between">
+  <div className="flex w-full md:grid-cols-2 gap-3 md:gap-4 xl:max-w-3xl">
+    
+    <SearchBar
+      value={searchTerm}
+      onChange={setSearchTerm}
+      placeholder="Cari nama produk, nama varian, atau SKU..."
+      className="relative w-full"
+    />
 
-          <select
-            value={selectedKategori}
-            onChange={(event) => setSelectedKategori(event.target.value)}
-            className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
-          >
-            {kategoriOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        </div>
-
-        {!isOfficeSupport && (
-          <button
-            type="button"
-            onClick={openProductModal}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 w-full sm:w-auto"
-          >
-            <Plus className="h-4 w-4" />
-            Tambah Produk Baru
-          </button>
-        )}
-      </section>
+    <select
+      value={selectedKategori}
+      onChange={(event) => setSelectedKategori(event.target.value)}
+      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-b-slate-300 focus:ring-2 focus:ring-slate-300/20"
+    >
+      {kategoriOptions.map((option) => (
+        <option key={option} value={option}>{option}</option>
+      ))}
+    </select>
+    
+  </div>
+</section>
 
       <section className="space-y-4">
         {isLoading ? (
@@ -301,15 +292,6 @@ export default function OfficeProductsPage() {
               <div className="border-t border-slate-100 p-4 md:p-5 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs md:text-sm font-semibold text-slate-600">Daftar Varian SKU</p>
-                  <button
-                    type="button"
-                    onClick={() => openVarianModal(produk)}
-                    disabled={isSubmitting}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500 bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-amber-100 disabled:opacity-50"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Tambah Varian
-                  </button>
                 </div>
 
                 <div className="overflow-x-auto w-full">
