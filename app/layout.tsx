@@ -32,7 +32,7 @@ export default function RootLayout({
         <meta name="color-scheme" content="light" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-400`}
       >
         <AuthProvider>{children}</AuthProvider>
       </body>
