@@ -16,7 +16,7 @@ import type { MAfiliator, SalesContentStatus, SalesContentType, TContentPlanner 
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 
-type Platform = 'TikTok' | 'Instagram' | 'YouTube Shorts' | 'LinkedIn' | 'Twitter / X' | 'Lainnya';
+type Platform = 'TikTok' | 'Instagram' | 'YouTube Shorts' | 'LinkedIn' | 'Twitter / X' | 'Lainnya'| 'Website';
 
 type ContentListPayload = {
   content: (TContentPlanner & { m_affiliator?: { nama: string } | null })[];
@@ -40,7 +40,7 @@ type ContentPayload = {
   content: TContentPlanner | null;
 };
 
-const PLATFORM_OPTIONS: Platform[] = ['TikTok', 'Instagram', 'YouTube Shorts', 'LinkedIn', 'Twitter / X', 'Lainnya'];
+const PLATFORM_OPTIONS: Platform[] = ['TikTok', 'Instagram', 'YouTube Shorts', 'LinkedIn', 'Twitter / X',  'Website', 'Lainnya',];
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const raw = await response.text();
@@ -63,7 +63,8 @@ const PLATFORM_BADGE: Record<Platform, string> = {
   Instagram: 'bg-pink-50 text-pink-700 before:bg-pink-500',
   'YouTube Shorts': 'bg-red-50 text-red-700 before:bg-red-500',
   LinkedIn: 'bg-sky-50 text-sky-700 before:bg-sky-500',
-  'Twitter / X': 'bg-zinc-100 text-zinc-700 before:bg-zinc-900',
+  'Twitter / X': 'bg-zinc-100 text-zinc-700 before:bg-zinc-900', 
+  Website: 'bg-green-50 text-green-700 before:bg-green-500',
   Lainnya: 'bg-violet-50 text-violet-700 before:bg-violet-500',
 };
 
@@ -202,6 +203,8 @@ function ContentForm({
               <option value="feed">Feed</option>
               <option value="video">Video</option>
               <option value="live">Live</option>
+              <option value="article">Article</option>
+              <option value="other">Lainnya</option>
             </select>
             <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
