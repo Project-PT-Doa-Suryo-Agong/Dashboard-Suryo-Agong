@@ -1,10 +1,11 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import {
-  deleteProfileById,
+  deleteProfileAndAuthByIdAsAdmin,
   getProfileById,
   updateProfileAuthPasswordById,
   updateProfileById,
+  updateProfileByIdAsAdmin,
 } from "@/lib/services/profile.service";
 import { parseUpdateProfileByIdInput } from "@/lib/validation/profiles-admin";
 import { ErrorCode } from "@/lib/http/error-codes";
@@ -65,6 +66,7 @@ export async function PATCH(
     payload.nama !== undefined ||
     payload.role !== undefined ||
     payload.phone !== undefined;
+  const hasRoleField = payload.role !== undefined;
   const hasPasswordField = payload.password !== undefined;
 
   if (!hasProfileFields && !hasPasswordField) {
@@ -91,7 +93,9 @@ export async function PATCH(
       return fail(ErrorCode.VALIDATION_ERROR, parsed.message, 400);
     }
 
-    const { data, error } = await updateProfileById(auth.ctx.supabase, id, parsed.data);
+    const { data, error } = hasRoleField
+      ? await updateProfileByIdAsAdmin(id, parsed.data)
+      : await updateProfileById(auth.ctx.supabase, id, parsed.data);
 
     if (error) {
       return fail(ErrorCode.DB_ERROR, "Gagal memperbarui profil.", 500, error.message);
@@ -164,7 +168,7 @@ export async function DELETE(
     return fail(ErrorCode.VALIDATION_ERROR, "ID harus berupa UUID yang valid.", 400);
   }
 
-  const { error, deleted } = await deleteProfileById(auth.ctx.supabase, id);
+  const { error, deleted, authError } = await deleteProfileAndAuthByIdAsAdmin(id);
 
   if (error) {
     return fail(ErrorCode.DB_ERROR, "Gagal menghapus profil.", 500, error.message);
@@ -172,6 +176,15 @@ export async function DELETE(
 
   if (!deleted) {
     return fail(ErrorCode.NOT_FOUND, "Profil tidak ditemukan.", 404);
+  }
+
+  if (authError) {
+    return fail(
+      ErrorCode.DB_ERROR,
+      "Profil berhasil dihapus, tetapi akun auth gagal dihapus.",
+      500,
+      authError.message,
+    );
   }
 
   return ok(null, "Profil berhasil dihapus.");
