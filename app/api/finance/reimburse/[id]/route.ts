@@ -69,6 +69,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     
     payload.bukti = finalBukti;
   }
+  if ("coa_id" in input) {
+    const coaId = requireUUID(input, "coa_id", { optional: true });
+    if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+    payload.coa_id = coaId.data;
+  }
   if ("status" in input) {
     const status = requireString(input, "status");
     if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);

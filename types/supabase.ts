@@ -904,6 +904,17 @@ export type TCashflow       = Tables<"finance", "t_cashflow">["Row"];
 export type TPayrollHistory = Tables<"finance", "t_payroll_history">["Row"];
 export type TReimbursement  = Tables<"finance", "t_reimbursement">["Row"];
 export type MCoa             = Tables<"finance", "m_coa">["Row"];
+export type MCOA = {
+  id: string;
+  kode_akun: string;
+  nama_akun: string;
+  kategori: 'Aset' | 'Liabilitas' | 'Ekuitas' | 'Pendapatan' | 'Beban' | 'Beban Lain-lain' | 'Pendapatan Lain-lain';
+  is_sub_account: boolean | null;
+  parent_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  parent?: { kode_akun: string; nama_akun: string } | null;
+};
 export type TJournal         = Tables<"finance", "t_journal">["Row"];
 export type TJournalItem     = Tables<"finance", "t_journal_item">["Row"];
 export type TCashflowInsert  = Tables<"finance", "t_cashflow">["Insert"];

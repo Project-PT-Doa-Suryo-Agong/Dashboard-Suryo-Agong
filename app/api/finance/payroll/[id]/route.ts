@@ -34,6 +34,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!bulan.ok) return fail(ErrorCode.VALIDATION_ERROR, bulan.message, 400);
     payload.bulan = bulan.data;
   }
+  if ("coa_id" in input) {
+    const coaId = requireUUID(input, "coa_id", { optional: true });
+    if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+    payload.coa_id = coaId.data;
+  }
   if ("total" in input) {
     const total = requireNumber(input, "total", { min: 0 });
     if (!total.ok) return fail(ErrorCode.VALIDATION_ERROR, total.message, 400);

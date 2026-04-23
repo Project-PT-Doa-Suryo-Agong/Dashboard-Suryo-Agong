@@ -5,10 +5,14 @@ import { Edit, Eye, PlusCircle, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { ManagementBudgetStatus, TBudgetRequest } from "@/types/supabase";
+import type { MCOA, ManagementBudgetStatus, TBudgetRequest } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 import { SearchBar } from "@/components/ui/search-bar";
+
+type TBudgetRequestWithCoa = TBudgetRequest & {
+  m_coa?: { kode_akun: string; nama_akun: string } | null;
+};
 
 type BudgetRequestFilterStatus = "all" | ManagementBudgetStatus;
 
@@ -25,14 +29,25 @@ type BudgetPayload = {
   budget_request: TBudgetRequest | null;
 };
 
+type CoaListPayload = {
+  coa: MCOA[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
 type FormState = {
   divisi: string;
+  coa_id: string | null;
   amount: string;
   status: ManagementBudgetStatus;
 };
 
 const initialFormState: FormState = {
   divisi: "",
+  coa_id: null,
   amount: "",
   status: "pending",
 };
@@ -84,7 +99,8 @@ function statusLabel(status: ManagementBudgetStatus | null): string {
 }
 
 export default function ManagementBudgetPage() {
-  const [items, setItems] = useState<TBudgetRequest[]>([]);
+  const [items, setItems] = useState<TBudgetRequestWithCoa[]>([]);
+  const [coaOptions, setCoaOptions] = useState<MCOA[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<BudgetRequestFilterStatus>("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -118,8 +134,23 @@ export default function ManagementBudgetPage() {
     }
   };
 
+  const fetchCoa = async () => {
+    try {
+      const response = await apiFetch("/api/finance/coa?page=1&limit=500", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<CoaListPayload>(response);
+      setCoaOptions(payload.data.coa ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat daftar COA.";
+      alert(message);
+    }
+  };
+
   useEffect(() => {
-    void fetchBudgetRequests();
+    void Promise.all([fetchBudgetRequests(), fetchCoa()]);
   }, []);
 
   const filteredItems = useMemo(() => {
@@ -146,6 +177,7 @@ export default function ManagementBudgetPage() {
     setEditData(item);
     setFormData({
       divisi: item.divisi,
+      coa_id: item.coa_id ?? null,
       amount: String(item.amount),
       status: item.status ?? "pending",
     });
@@ -175,8 +207,7 @@ export default function ManagementBudgetPage() {
     try {
       const payload = {
         divisi: formData.divisi.trim(),
-        amount: parsedAmount,
-        status: formData.status,
+      coa_id: formData.coa_id,
       };
 
       if (editData) {
@@ -311,6 +342,7 @@ export default function ManagementBudgetPage() {
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">ID Pengajuan</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Divisi</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">COA</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Nominal</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
               <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
@@ -320,7 +352,7 @@ export default function ManagementBudgetPage() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Memuat data...</td>
               </tr>
             ) : filteredItems.length > 0 ? (
               filteredItems.map((item) => {
@@ -333,6 +365,7 @@ export default function ManagementBudgetPage() {
                       {item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-800">{item.divisi}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-"}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{formatRupiah(item.amount)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(item.status)}`}>
@@ -351,7 +384,7 @@ export default function ManagementBudgetPage() {
               })
             ) : (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">Data pengajuan tidak ditemukan.</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">Data pengajuan tidak ditemukan.</td>
               </tr>
             )}
           </tbody>
@@ -379,6 +412,22 @@ export default function ManagementBudgetPage() {
               </option>
             ))}
           </select>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">COA</label>
+            <select
+              value={formData.coa_id ?? ""}
+              onChange={(event) => setFormData((prev) => ({ ...prev, coa_id: event.target.value || null }))}
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
+              disabled={isSubmitting}
+            >
+              <option value="">-- Pilih COA (opsional) --</option>
+              {coaOptions.map((coa) => (
+                <option key={coa.id} value={coa.id}>
+                  {coa.kode_akun} - {coa.nama_akun}
+                </option>
+              ))}
+            </select>
+          </div>
           <input
             required
             type="number"

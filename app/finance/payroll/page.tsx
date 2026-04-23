@@ -8,8 +8,12 @@ import autoTable from "jspdf-autotable";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { MKaryawan, TPayrollHistory } from "@/types/supabase";
+import type { MCOA, MKaryawan, TPayrollHistory } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+
+type TPayrollHistoryWithCoa = TPayrollHistory & {
+  m_coa?: { kode_akun: string; nama_akun: string } | null;
+};
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type EmployeeOption = {
@@ -29,6 +33,15 @@ type PayrollListPayload = {
 
 type PayrollPayload = {
   payroll: TPayrollHistory | null;
+};
+
+type CoaListPayload = {
+  coa: MCOA[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 };
 
 type EmployeesListPayload = {
@@ -83,8 +96,9 @@ function toDateInput(value: string | null): string {
 }
 
 export default function FinancePayrollPage() {
-  const [items, setItems] = useState<TPayrollHistory[]>([]);
+  const [items, setItems] = useState<TPayrollHistoryWithCoa[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [coaOptions, setCoaOptions] = useState<MCOA[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,10 +111,12 @@ export default function FinancePayrollPage() {
 
   const [formData, setFormData] = useState<{
     employee_id: string;
+    coa_id: string | null;
     bulan: string;
     total: string;
   }>({
     employee_id: "",
+    coa_id: null,
     bulan: "",
     total: "",
   });
@@ -116,6 +132,21 @@ export default function FinancePayrollPage() {
       setItems(payload.data.payroll ?? []);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data payroll.";
+      alert(message);
+    }
+  };
+
+  const fetchCoa = async () => {
+    try {
+      const response = await apiFetch("/api/finance/coa?page=1&limit=500", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<CoaListPayload>(response);
+      setCoaOptions(payload.data.coa ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat daftar COA.";
       alert(message);
     }
   };
@@ -153,7 +184,7 @@ export default function FinancePayrollPage() {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchPayroll(), fetchKaryawan()]);
+        await Promise.all([fetchPayroll(), fetchKaryawan(), fetchCoa()]);
       } finally {
         setIsLoading(false);
       }
@@ -203,6 +234,7 @@ export default function FinancePayrollPage() {
     const defaultEmployee = employees[0];
     setFormData({
       employee_id: defaultEmployee?.id ?? "",
+      coa_id: null,
       bulan: "",
       total:
         defaultEmployee?.gaji_pokok != null && defaultEmployee.gaji_pokok > 0
@@ -221,6 +253,7 @@ export default function FinancePayrollPage() {
     setEditData(item);
     setFormData({
       employee_id: item.employee_id ?? "",
+      coa_id: item.coa_id ?? null,
       bulan: toDateInput(item.bulan),
       total: String(item.total ?? ""),
     });
@@ -264,6 +297,7 @@ export default function FinancePayrollPage() {
     try {
       const payload = {
         employee_id: formData.employee_id,
+        coa_id: formData.coa_id,
         bulan: formData.bulan,
         total: parsedTotal,
       };
@@ -388,6 +422,7 @@ export default function FinancePayrollPage() {
             <thead className="bg-slate-50/80">
               <tr>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Periode</th>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">COA</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Karyawan</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Total Gaji</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Tanggal Eksekusi</th>
@@ -416,6 +451,7 @@ export default function FinancePayrollPage() {
                   return (
                     <tr key={rowKey} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.bulan ? formatPeriod(item.bulan) : "-"}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-900 whitespace-nowrap">{employeeName}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-semibold text-right text-slate-900 whitespace-nowrap">{formatRupiah(item.total ?? 0)}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
@@ -455,6 +491,22 @@ export default function FinancePayrollPage() {
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.nama}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">COA</label>
+            <select
+              value={formData.coa_id ?? ""}
+              onChange={(event) => setFormData((prev) => ({ ...prev, coa_id: event.target.value || null }))}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            >
+              <option value="">-- Pilih COA (opsional) --</option>
+              {coaOptions.map((coa) => (
+                <option key={coa.id} value={coa.id}>
+                  {coa.kode_akun} - {coa.nama_akun}
                 </option>
               ))}
             </select>

@@ -11,8 +11,13 @@ import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions
 import type {
   FinanceReimburseStatus,
   MKaryawan,
+  MCOA,
   TReimbursement,
 } from "@/types/supabase";
+
+type TReimbursementWithCoa = TReimbursement & {
+  m_coa?: { kode_akun: string; nama_akun: string } | null;
+};
 
 type EmployeeOption = {
   id: string;
@@ -31,6 +36,15 @@ type ReimburseListPayload = {
 
 type ReimbursePayload = {
   reimburse: TReimbursement | null;
+};
+
+type CoaListPayload = {
+  coa: MCOA[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 };
 
 type EmployeesListPayload = {
@@ -86,8 +100,9 @@ export default function FinanceReimbursePage() {
   const MAX_BUKTI_SIZE = 5 * 1024 * 1024;
   const ACCEPTED_BUKTI_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
-  const [items, setItems] = useState<TReimbursement[]>([]);
+  const [items, setItems] = useState<TReimbursementWithCoa[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [coaOptions, setCoaOptions] = useState<MCOA[]>([]);
 
   const [activeTab, setActiveTab] = useState<"pending" | "processed">("pending");
   const [isLoading, setIsLoading] = useState(true);
@@ -100,11 +115,13 @@ export default function FinanceReimbursePage() {
 
   const [formData, setFormData] = useState<{
     employee_id: string;
+    coa_id: string | null;
     amount: string;
     status: FinanceReimburseStatus;
     bukti: string | null;
   }>({
     employee_id: "",
+    coa_id: null,
     amount: "",
     status: "pending",
     bukti: null,
@@ -150,11 +167,26 @@ export default function FinanceReimbursePage() {
     }
   };
 
+  const fetchCoa = async () => {
+    try {
+      const response = await apiFetch("/api/finance/coa?page=1&limit=500", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<CoaListPayload>(response);
+      setCoaOptions(payload.data.coa ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal memuat daftar COA.";
+      alert(message);
+    }
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchReimburse(), fetchKaryawan()]);
+        await Promise.all([fetchReimburse(), fetchKaryawan(), fetchCoa()]);
       } finally {
         setIsLoading(false);
       }
@@ -183,6 +215,7 @@ export default function FinanceReimbursePage() {
   const resetForm = () => {
     setFormData({
       employee_id: employees[0]?.id ?? "",
+      coa_id: null,
       amount: "",
       status: "pending",
       bukti: null,
@@ -200,6 +233,7 @@ export default function FinanceReimbursePage() {
     setEditData(item);
     setFormData({
       employee_id: item.employee_id ?? "",
+      coa_id: item.coa_id ?? null,
       amount: String(item.amount ?? ""),
       status: item.status ?? "pending",
       bukti: item.bukti ?? null,
@@ -246,6 +280,7 @@ export default function FinanceReimbursePage() {
 
       const payload = {
         employee_id: formData.employee_id,
+        coa_id: formData.coa_id,
         amount: parsedAmount,
         status: formData.status,
         bukti: buktiPath,
@@ -374,6 +409,7 @@ export default function FinanceReimbursePage() {
               <tr>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Karyawan</th>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">COA</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Divisi</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Nominal</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
@@ -400,6 +436,7 @@ export default function FinanceReimbursePage() {
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
+                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{employee?.nama ?? "Karyawan tidak ditemukan"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{employee?.divisi ?? "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-900 text-right whitespace-nowrap">{formatRupiah(item.amount ?? 0)}</td>
@@ -492,6 +529,22 @@ export default function FinanceReimbursePage() {
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
               placeholder="Masukkan nominal reimburse"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">COA</label>
+            <select
+              value={formData.coa_id ?? ""}
+              onChange={(event) => setFormData((prev) => ({ ...prev, coa_id: event.target.value || null }))}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            >
+              <option value="">-- Pilih COA (opsional) --</option>
+              {coaOptions.map((coa) => (
+                <option key={coa.id} value={coa.id}>
+                  {coa.kode_akun} - {coa.nama_akun}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2">

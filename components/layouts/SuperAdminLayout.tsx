@@ -37,6 +37,8 @@ const navItems = [
       { label: 'Cashflow', href: '/finance/cashflow', icon: 'ChartCandlestick' },
       { label: 'Payroll', href: '/finance/payroll', icon: 'Banknote' },
       { label: 'Reimburse', href: '/finance/reimburse', icon: 'ReceiptText' },
+      { label: 'Chart of Accounts', href: '/finance/coa', icon: 'BookOpen' },
+      { label: 'Journal', href: '/finance/journal', icon: 'BookMarked' },
     ]
   },
   {

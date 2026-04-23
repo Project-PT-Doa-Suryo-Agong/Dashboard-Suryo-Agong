@@ -51,7 +51,7 @@ export async function listPayroll(client: DbClient, page = 1, limit = 50, employ
   const from = (page - 1) * limit;
   let query = db(client)
     .from("t_payroll_history")
-    .select("*", { count: "exact" })
+    .select("*, m_coa(kode_akun,nama_akun)", { count: "exact" })
     .order("bulan", { ascending: false })
     .range(from, from + limit - 1);
   if (employeeId) query = query.eq("employee_id", employeeId);
@@ -85,7 +85,7 @@ export async function listReimbursement(client: DbClient, page = 1, limit = 50, 
   const from = (page - 1) * limit;
   let query = db(client)
     .from("t_reimbursement")
-    .select("*", { count: "exact" })
+    .select("*, m_coa(kode_akun,nama_akun)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, from + limit - 1);
   if (employeeId) query = query.eq("employee_id", employeeId);
@@ -119,7 +119,7 @@ export async function listCoa(client: DbClient, page = 1, limit = 100) {
   const from = (page - 1) * limit;
   const { data, error, count } = await db(client)
     .from("m_coa")
-    .select("*", { count: "exact" })
+    .select("*, parent:parent_id(kode_akun,nama_akun)", { count: "exact" })
     .order("kode_akun", { ascending: true })
     .range(from, from + limit - 1);
   return { data: (data ?? []) as MCoa[], error, meta: { page, limit, total: count ?? 0 } };
@@ -146,7 +146,7 @@ export async function listJurnal(client: DbClient, page = 1, limit = 100) {
   const from = (page - 1) * limit;
   const { data, error, count } = await db(client)
     .from("t_journal")
-    .select("*", { count: "exact" })
+    .select("*, t_journal_item(id)", { count: "exact" })
     .order("tanggal", { ascending: false })
     .range(from, from + limit - 1);
   return { data: (data ?? []) as TJournal[], error, meta: { page, limit, total: count ?? 0 } };
@@ -172,7 +172,7 @@ export async function deleteJurnal(client: DbClient, id: string) {
 export async function listJurnalItem(client: DbClient, journalId: string) {
   const { data, error } = await db(client)
     .from("t_journal_item")
-    .select("*")
+    .select("*, m_coa(kode_akun,nama_akun)")
     .eq("journal_id", journalId)
     .order("created_at", { ascending: true });
   return { data: (data ?? []) as TJournalItem[], error };

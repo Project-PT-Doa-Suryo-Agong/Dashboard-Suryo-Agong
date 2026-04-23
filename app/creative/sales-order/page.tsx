@@ -5,8 +5,12 @@ import { Edit, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { MAfiliator, MVarian, TSalesOrder } from "@/types/supabase";
+import type { MAfiliator, MCOA, MVarian, TSalesOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+
+type TSalesOrderWithCoa = TSalesOrder & {
+  m_coa?: { kode_akun: string; nama_akun: string } | null;
+};
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
 type SalesOrderListPayload = {
@@ -35,9 +39,19 @@ type VarianListPayload = {
   varian: MVarian[];
 };
 
+type CoaListPayload = {
+  coa: MCOA[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
 type FormState = {
   varian_id: string;
   affiliator_id: string;
+  coa_id: string | null;
   quantity: string;
   total_price: string;
 };
@@ -45,6 +59,7 @@ type FormState = {
 const initialFormState: FormState = {
   varian_id: "",
   affiliator_id: "",
+  coa_id: null,
   quantity: "",
   total_price: "",
 };
@@ -94,9 +109,10 @@ function getVarianLabel(item: MVarian): string {
 }
 
 export default function SalesOrderPage() {
-  const [orders, setOrders] = useState<TSalesOrder[]>([]);
+  const [orders, setOrders] = useState<TSalesOrderWithCoa[]>([]);
   const [variants, setVariants] = useState<MVarian[]>([]);
   const [affiliators, setAffiliators] = useState<MAfiliator[]>([]);
+  const [coaOptions, setCoaOptions] = useState<MCOA[]>([]);
   const [formData, setFormData] = useState<FormState>(initialFormState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -158,12 +174,12 @@ export default function SalesOrderPage() {
   );
 
   const resetForm = () => {
-    setFormData(initialFormState);
+    setFormData({ ...initialFormState, coa_id: null });
     setEditData(null);
   };
 
   const fetchDependencies = useCallback(async () => {
-    const [ordersResponse, variantsResponse, affiliatorsResponse] = await Promise.all([
+    const [ordersResponse, variantsResponse, affiliatorsResponse, coaResponse] = await Promise.all([
       apiFetch("/api/sales/orders?page=1&limit=500", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -179,15 +195,22 @@ export default function SalesOrderPage() {
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       }),
+      apiFetch("/api/finance/coa?page=1&limit=500", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      }),
     ]);
 
     const ordersPayload = await parseJsonResponse<SalesOrderListPayload>(ordersResponse);
     const varianPayload = await parseJsonResponse<VarianListPayload>(variantsResponse);
     const affiliatorPayload = await parseJsonResponse<AffiliatorListPayload>(affiliatorsResponse);
+    const coaPayload = await parseJsonResponse<CoaListPayload>(coaResponse);
 
     setOrders(ordersPayload.data.orders ?? []);
     setVariants(varianPayload.data.varian ?? []);
     setAffiliators(affiliatorPayload.data.afiliator ?? []);
+    setCoaOptions(coaPayload.data.coa ?? []);
   }, []);
 
   const fetchOrdersAndDependencies = useCallback(async () => {
@@ -213,6 +236,7 @@ export default function SalesOrderPage() {
     setFormData({
       varian_id: initialVariantId,
       affiliator_id: item.affiliator_id ?? "",
+      coa_id: item.coa_id ?? null,
       quantity: initialQuantity,
       total_price: resolveCalculatedTotal(initialVariantId, initialQuantity) || String(item.total_price),
     });
@@ -247,6 +271,7 @@ export default function SalesOrderPage() {
         body: JSON.stringify({
           varian_id: formData.varian_id,
           affiliator_id: formData.affiliator_id || null,
+          coa_id: formData.coa_id || null,
           quantity: parsedQuantity,
           total_price: parsedTotalPrice,
         }),
@@ -285,6 +310,7 @@ export default function SalesOrderPage() {
         body: JSON.stringify({
           varian_id: formData.varian_id,
           affiliator_id: formData.affiliator_id || null,
+          coa_id: formData.coa_id || null,
           quantity: parsedQuantity,
           total_price: parsedTotalPrice,
         }),
@@ -377,6 +403,22 @@ export default function SalesOrderPage() {
           </div>
 
           <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">COA</label>
+            <select
+              value={formData.coa_id ?? ""}
+              onChange={(event) => setFormData((prev) => ({ ...prev, coa_id: event.target.value || null }))}
+              className="w-full rounded-xl border border-slate-200 bg-slate-200 text-slate-700 py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            >
+              <option value="">-- Pilih COA (opsional) --</option>
+              {coaOptions.map((coa) => (
+                <option key={coa.id} value={coa.id}>
+                  {coa.kode_akun} - {coa.nama_akun}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Quantity</label>
             <input
               required
@@ -427,6 +469,7 @@ export default function SalesOrderPage() {
               <tr className="bg-slate-50/80">
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Order Code</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Product Variant</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">COA</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Affiliator</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">Qty</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Total Price</th>
@@ -437,13 +480,13 @@ export default function SalesOrderPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-sm text-slate-500">
                     Memuat data...
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-sm text-slate-500">
                     Belum ada sales order.
                   </td>
                 </tr>
@@ -456,6 +499,7 @@ export default function SalesOrderPage() {
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-bold text-slate-700 font-mono">{getOrderDisplayCode(item)}</td>
                       <td className="px-6 py-4 text-sm font-medium text-slate-800">{varian?.nama_varian ?? "-"}</td>
+                      <td className="px-6 py-4 text-sm text-slate-700">{item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-"}</td>
                       <td className="px-6 py-4 text-sm text-slate-700">{affiliator ? `${affiliator.nama} (${affiliator.platform ?? "-"})` : "-"}</td>
                       <td className="px-6 py-4 text-sm text-slate-700 text-center font-bold">{item.quantity}</td>
                       <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">{formatRupiah(item.total_price)}</td>
