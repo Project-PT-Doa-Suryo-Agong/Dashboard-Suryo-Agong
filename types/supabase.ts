@@ -42,7 +42,7 @@ export type LogisticsPackingStatus = "pending" | "packed" | "shipped";
 
 export type ManagementBudgetStatus = "pending" | "approved" | "rejected";
 
-export type SalesContentType = "story" | "feed" | "video" | "live";
+export type SalesContentType = "story" | "feed" | "video" | "live" | "article" | "other";
 export type SalesContentStatus = "terupload" | "direncanakan" | "dihapus";
 
 // ─── Database ─────────────────────────────────────────────────────────────────
