@@ -10,6 +10,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 type SchemaClient = DbClient & { schema: (schema: string) => DbClient };
 const db = (client: DbClient) => (client as unknown as SchemaClient).schema("core");
+const adminDb = () => (supabaseAdmin as unknown as SchemaClient).schema("core");
 
 export async function getProfileById(client: DbClient, userId: string) {
   const { data, error } = await db(client)
@@ -84,7 +85,7 @@ export async function createProfile(client: DbClient, input: CreateProfileInput)
     updated_at: new Date().toISOString(),
   }
 
-  const { data, error } = await db(client)
+  const { data, error } = await adminDb()
     .from("profiles")
     .insert(payload)
     .select("id, nama, role, phone, created_at, updated_at")
@@ -118,6 +119,25 @@ export async function updateProfileById(
   return { data: data as Profile | null, error };
 }
 
+export async function updateProfileByIdAsAdmin(
+  id: string,
+  input: UpdateProfileByIdInput
+) {
+  const payload = {
+    ...input,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await adminDb()
+    .from("profiles")
+    .update(payload)
+    .eq("id", id)
+    .select("id, nama, role, phone, created_at, updated_at")
+    .maybeSingle();
+
+  return { data: data as Profile | null, error };
+}
+
 export async function updateProfileAuthPasswordById(id: string, password: string) {
   const { data, error } = await supabaseAdmin.auth.admin.updateUserById(id, {
     password,
@@ -136,5 +156,40 @@ export async function deleteProfileById(client: DbClient, id: string) {
     error,
     deleted: (count ?? 0) > 0,
   };
+}
+
+export async function deleteProfileByIdAsAdmin(id: string) {
+  const { error, count } = await adminDb()
+    .from("profiles")
+    .delete({ count: "exact" })
+    .eq("id", id);
+
+  return {
+    error,
+    deleted: (count ?? 0) > 0,
+  };
+}
+
+export async function deleteProfileAndAuthByIdAsAdmin(id: string) {
+  const { error, count } = await adminDb()
+    .from("profiles")
+    .delete({ count: "exact" })
+    .eq("id", id);
+
+  const deleted = (count ?? 0) > 0;
+  if (error || !deleted) {
+    return { error, deleted, authError: null as { message: string } | null };
+  }
+
+  const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
+  if (authError) {
+    const message = typeof authError.message === "string" ? authError.message.toLowerCase() : "";
+    const isAlreadyMissing = message.includes("not found") || message.includes("does not exist");
+    if (!isAlreadyMissing) {
+      return { error: null, deleted: true, authError };
+    }
+  }
+
+  return { error: null, deleted: true, authError: null };
 }
 

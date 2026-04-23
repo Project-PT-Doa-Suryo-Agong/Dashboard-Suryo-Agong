@@ -40,7 +40,19 @@ export async function POST(request: Request) {
   const { data, error } = await createProfile(auth.ctx.supabase, parsed.data);
 
   if (error) {
-    return fail(ErrorCode.DB_ERROR, "Gagal membuat profil baru.", 500, error.message);
+    const rawMessage = typeof error.message === "string" ? error.message : "";
+    const normalizedMessage = rawMessage.toLowerCase();
+
+    if (normalizedMessage.includes("already") || normalizedMessage.includes("registered")) {
+      return fail(ErrorCode.VALIDATION_ERROR, "Email sudah terdaftar.", 409, rawMessage);
+    }
+
+    return fail(
+      ErrorCode.DB_ERROR,
+      rawMessage ? `Gagal membuat profil baru: ${rawMessage}` : "Gagal membuat profil baru.",
+      500,
+      rawMessage || undefined,
+    );
   }
 
   return ok({ profile: data }, "Profil berhasil dibuat.", 201);
