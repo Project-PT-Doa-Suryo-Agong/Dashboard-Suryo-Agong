@@ -279,6 +279,7 @@ export default function FinanceDashboardPage() {
         </div>
         <CashflowLineChart data={cashflowPreviewData} />
       </section>
+
       <section>
         <div>
           <h1 className="text-lg md:text-xl font-bold text-slate-100 py-4">
@@ -346,8 +347,47 @@ export default function FinanceDashboardPage() {
               <ArrowRight className="h-4 w-4 md:h-5 md:w-5 text-slate-400 group-hover:text-[#1E3A8A] group-hover:translate-x-1 transition-all shrink-0" />
             </div>
           </Link>
+          <Link
+            href="/finance/coa"
+            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-[#BC934B]/60 transition-colors"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-3 min-w-0">
+                <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                  Live Summary
+                </div>
+                <h2 className="text-base md:text-lg font-bold text-slate-900 wrap-break-word">
+                  Laporan CoA
+                </h2>
+                <p className="text-sm text-slate-500 wrap-break-word">
+                  Tinjau dan proses chart of accounts dengan mudah.
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 md:h-5 md:w-5 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-1 transition-all shrink-0" />
+            </div>
+          </Link>
+          <Link
+            href="/finance/journal"
+            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-[#BC934B]/60 transition-colors"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-3 min-w-0">
+                <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+                  Live Summary
+                </div>
+                <h2 className="text-base md:text-lg font-bold text-slate-900 wrap-break-word">
+                  Laporan Jurnal
+                </h2>
+                <p className="text-sm text-slate-500 wrap-break-word">
+                  Tinjau dan proses jurnal umum dengan mudah.
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 md:h-5 md:w-5 text-slate-400 group-hover:text-slate-600 group-hover:translate-x-1 transition-all shrink-0" />
+            </div>
+          </Link>
         </section>
       </section>
+
       <section className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
         <div className="px-4 md:px-6 py-4 border-b border-slate-100">
           <h3 className="text-sm md:text-base font-bold text-slate-900">
