@@ -64,6 +64,29 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     payload.gaji_pokok = gajiPokok.data;
   }
 
+  const optionalStringFields = [
+    "nik",
+    "alamat_domisili",
+    "nomor_whatsapp",
+    "email_pribadi",
+    "foto_perorangan_url",
+    "foto_ktp_url",
+    "foto_kk_url",
+    "pendidikan_terakhir",
+    "jurusan",
+    "pengalaman_kerja_sebelumnya",
+    "keahlian_khusus",
+    "motivasi_kerja",
+  ];
+
+  for (const field of optionalStringFields) {
+    if (field in input) {
+      const val = requireString(input, field, { optional: true });
+      if (!val.ok) return fail(ErrorCode.VALIDATION_ERROR, val.message, 400);
+      payload[field] = val.data;
+    }
+  }
+
   const { data, error } = await updateKaryawan(auth.ctx.supabase, id, payload);
 
   console.log("[HR ROUTE][employees][PATCH] auth level:", auth.ctx.accessLevel);

@@ -11,6 +11,18 @@ const ALLOWED_CREATE_EMPLOYEE_FIELDS = new Set([
   "gaji_pokok",
   "phone",
   "status",
+  "nik",
+  "alamat_domisili",
+  "nomor_whatsapp",
+  "email_pribadi",
+  "foto_perorangan_url",
+  "foto_ktp_url",
+  "foto_kk_url",
+  "pendidikan_terakhir",
+  "jurusan",
+  "pengalaman_kerja_sebelumnya",
+  "keahlian_khusus",
+  "motivasi_kerja",
 ]);
 
 function validateOptionalString(
@@ -35,6 +47,18 @@ export type CreateEmployeeWithAccountInput = {
   gaji_pokok?: number | null;
   phone?: string | null;
   status?: HrEmployeeStatus | null;
+  nik: string;
+  alamat_domisili: string;
+  nomor_whatsapp: string;
+  email_pribadi?: string | null;
+  foto_perorangan_url?: string | null;
+  foto_ktp_url?: string | null;
+  foto_kk_url?: string | null;
+  pendidikan_terakhir: string;
+  jurusan: string;
+  pengalaman_kerja_sebelumnya?: string | null;
+  keahlian_khusus?: string | null;
+  motivasi_kerja?: string | null;
 };
 
 export function parseCreateEmployeeInput(payload: unknown):
@@ -80,6 +104,21 @@ export function parseCreateEmployeeInput(payload: unknown):
   if (typeof body.role !== "string" || body.role.trim() === "") {
     return { ok: false, message: "role wajib diisi." };
   }
+  if (typeof body.nik !== "string" || body.nik.trim() === "") {
+    return { ok: false, message: "nik wajib diisi." };
+  }
+  if (typeof body.alamat_domisili !== "string" || body.alamat_domisili.trim() === "") {
+    return { ok: false, message: "alamat_domisili wajib diisi." };
+  }
+  if (typeof body.nomor_whatsapp !== "string" || body.nomor_whatsapp.trim() === "") {
+    return { ok: false, message: "nomor_whatsapp wajib diisi." };
+  }
+  if (typeof body.pendidikan_terakhir !== "string" || body.pendidikan_terakhir.trim() === "") {
+    return { ok: false, message: "pendidikan_terakhir wajib diisi." };
+  }
+  if (typeof body.jurusan !== "string" || body.jurusan.trim() === "") {
+    return { ok: false, message: "jurusan wajib diisi." };
+  }
 
   const roleString = body.role.trim();
   let finalRole: CoreUserRole;
@@ -102,6 +141,21 @@ export function parseCreateEmployeeInput(payload: unknown):
   if (!posisi.ok) return posisi;
   const divisi = validateOptionalString("divisi", body.divisi, 100);
   if (!divisi.ok) return divisi;
+
+  const email_pribadi = validateOptionalString("email_pribadi", body.email_pribadi, 255);
+  if (!email_pribadi.ok) return email_pribadi;
+  const foto_perorangan_url = validateOptionalString("foto_perorangan_url", body.foto_perorangan_url, 1000);
+  if (!foto_perorangan_url.ok) return foto_perorangan_url;
+  const foto_ktp_url = validateOptionalString("foto_ktp_url", body.foto_ktp_url, 1000);
+  if (!foto_ktp_url.ok) return foto_ktp_url;
+  const foto_kk_url = validateOptionalString("foto_kk_url", body.foto_kk_url, 1000);
+  if (!foto_kk_url.ok) return foto_kk_url;
+  const pengalaman_kerja_sebelumnya = validateOptionalString("pengalaman_kerja_sebelumnya", body.pengalaman_kerja_sebelumnya, 2000);
+  if (!pengalaman_kerja_sebelumnya.ok) return pengalaman_kerja_sebelumnya;
+  const keahlian_khusus = validateOptionalString("keahlian_khusus", body.keahlian_khusus, 2000);
+  if (!keahlian_khusus.ok) return keahlian_khusus;
+  const motivasi_kerja = validateOptionalString("motivasi_kerja", body.motivasi_kerja, 2000);
+  if (!motivasi_kerja.ok) return motivasi_kerja;
 
   let gaji_pokok: number | null | undefined = undefined;
   if (body.gaji_pokok !== undefined && body.gaji_pokok !== null) {
@@ -135,6 +189,18 @@ export function parseCreateEmployeeInput(payload: unknown):
       divisi: divisi.value,
       gaji_pokok,
       status: status ?? "aktif",
+      nik: body.nik.trim(),
+      alamat_domisili: body.alamat_domisili.trim(),
+      nomor_whatsapp: body.nomor_whatsapp.trim(),
+      email_pribadi: email_pribadi.value,
+      foto_perorangan_url: foto_perorangan_url.value,
+      foto_ktp_url: foto_ktp_url.value,
+      foto_kk_url: foto_kk_url.value,
+      pendidikan_terakhir: body.pendidikan_terakhir.trim(),
+      jurusan: body.jurusan.trim(),
+      pengalaman_kerja_sebelumnya: pengalaman_kerja_sebelumnya.value,
+      keahlian_khusus: keahlian_khusus.value,
+      motivasi_kerja: motivasi_kerja.value,
     },
   };
 }

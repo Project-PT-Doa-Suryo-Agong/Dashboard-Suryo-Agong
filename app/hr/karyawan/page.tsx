@@ -109,6 +109,18 @@ export default function KaryawanPage() {
     posisi: string;
     divisi: string;
     status: HrEmployeeStatus;
+    nik: string;
+    alamat_domisili: string;
+    nomor_whatsapp: string;
+    email_pribadi: string;
+    foto_perorangan_url: string;
+    foto_ktp_url: string;
+    foto_kk_url: string;
+    pendidikan_terakhir: string;
+    jurusan: string;
+    pengalaman_kerja_sebelumnya: string;
+    keahlian_khusus: string;
+    motivasi_kerja: string;
   }>({
     email: "",
     password: "",
@@ -117,6 +129,18 @@ export default function KaryawanPage() {
     posisi: "",
     divisi: "",
     status: "aktif",
+    nik: "",
+    alamat_domisili: "",
+    nomor_whatsapp: "",
+    email_pribadi: "",
+    foto_perorangan_url: "",
+    foto_ktp_url: "",
+    foto_kk_url: "",
+    pendidikan_terakhir: "",
+    jurusan: "",
+    pengalaman_kerja_sebelumnya: "",
+    keahlian_khusus: "",
+    motivasi_kerja: "",
   });
 
   // ── Supabase Direct ──
@@ -193,6 +217,18 @@ export default function KaryawanPage() {
       posisi: "",
       divisi: divisiOptions[0] ?? "",
       status: "aktif",
+      nik: "",
+      alamat_domisili: "",
+      nomor_whatsapp: "",
+      email_pribadi: "",
+      foto_perorangan_url: "",
+      foto_ktp_url: "",
+      foto_kk_url: "",
+      pendidikan_terakhir: "",
+      jurusan: "",
+      pengalaman_kerja_sebelumnya: "",
+      keahlian_khusus: "",
+      motivasi_kerja: "",
     });
     setGajiPokokInput("");
     setPhotoFiles(EMPTY_PHOTO_FILES);
@@ -215,6 +251,18 @@ export default function KaryawanPage() {
       posisi: item.posisi ?? "",
       divisi: item.divisi ?? divisiOptions[0] ?? "",
       status: item.status ?? "aktif",
+      nik: item.nik ?? "",
+      alamat_domisili: item.alamat_domisili ?? "",
+      nomor_whatsapp: item.nomor_whatsapp ?? "",
+      email_pribadi: item.email_pribadi ?? "",
+      foto_perorangan_url: item.foto_perorangan_url ?? "",
+      foto_ktp_url: item.foto_ktp_url ?? "",
+      foto_kk_url: item.foto_kk_url ?? "",
+      pendidikan_terakhir: item.pendidikan_terakhir ?? "",
+      jurusan: item.jurusan ?? "",
+      pengalaman_kerja_sebelumnya: item.pengalaman_kerja_sebelumnya ?? "",
+      keahlian_khusus: item.keahlian_khusus ?? "",
+      motivasi_kerja: item.motivasi_kerja ?? "",
     });
     setGajiPokokInput(item.gaji_pokok != null ? String(item.gaji_pokok) : "");
     setIsDivisiManuallyEdited(false);
@@ -290,6 +338,18 @@ export default function KaryawanPage() {
           divisi: formData.divisi,
           status: formData.status,
           gaji_pokok: parsedGajiPokok,
+          nik: formData.nik,
+          alamat_domisili: formData.alamat_domisili,
+          nomor_whatsapp: formData.nomor_whatsapp,
+          email_pribadi: formData.email_pribadi || null,
+          foto_perorangan_url: formData.foto_perorangan_url || null,
+          foto_ktp_url: formData.foto_ktp_url || null,
+          foto_kk_url: formData.foto_kk_url || null,
+          pendidikan_terakhir: formData.pendidikan_terakhir,
+          jurusan: formData.jurusan,
+          pengalaman_kerja_sebelumnya: formData.pengalaman_kerja_sebelumnya || null,
+          keahlian_khusus: formData.keahlian_khusus || null,
+          motivasi_kerja: formData.motivasi_kerja || null,
         };
         const result = await update(editData.id, payload);
         if (!result) throw new Error("Gagal update karyawan.");
@@ -314,6 +374,18 @@ export default function KaryawanPage() {
           divisi: formData.divisi,
           status: formData.status,
           gaji_pokok: parsedGajiPokok,
+          nik: formData.nik,
+          alamat_domisili: formData.alamat_domisili,
+          nomor_whatsapp: formData.nomor_whatsapp,
+          email_pribadi: formData.email_pribadi || null,
+          foto_perorangan_url: formData.foto_perorangan_url || null,
+          foto_ktp_url: formData.foto_ktp_url || null,
+          foto_kk_url: formData.foto_kk_url || null,
+          pendidikan_terakhir: formData.pendidikan_terakhir,
+          jurusan: formData.jurusan,
+          pengalaman_kerja_sebelumnya: formData.pengalaman_kerja_sebelumnya || null,
+          keahlian_khusus: formData.keahlian_khusus || null,
+          motivasi_kerja: formData.motivasi_kerja || null,
         };
         const result = await insert(payload);
         if (!result) throw new Error("Gagal menambah karyawan.");
@@ -453,181 +525,321 @@ export default function KaryawanPage() {
         title={editData ? "Edit Data Karyawan" : "Tambah Karyawan Baru"}
         maxWidth="max-w-2xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {!editData ? (
-              <>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-medium text-slate-700">Email</span>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, email: event.target.value }))
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-                  />
-                </label>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <section>
+            <h4 className="font-bold text-slate-700 border-b pb-2 mb-4">Informasi Pekerjaan & Akun</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {!editData ? (
+                <>
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-slate-700">Email</span>
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(event) =>
+                        setFormData((prev) => ({ ...prev, email: event.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                    />
+                  </label>
 
-                <label className="space-y-1.5">
-                  <span className="text-sm font-medium text-slate-700">Password</span>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={formData.password}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, password: event.target.value }))
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-                  />
-                </label>
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-slate-700">Password</span>
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      value={formData.password}
+                      onChange={(event) =>
+                        setFormData((prev) => ({ ...prev, password: event.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                    />
+                  </label>
 
-                <label className="space-y-1.5 md:col-span-2">
-                  <span className="text-sm font-medium text-slate-700">Role</span>
-                  <select
-                    required
-                    value={formData.role}
-                    onChange={(event) => {
-                      const selectedRole = event.target.value as CoreUserRole;
-                      setFormData((prev) => ({
-                        ...prev,
-                        role: selectedRole,
-                        divisi: !isDivisiManuallyEdited ? selectedRole : prev.divisi,
-                      }));
-                    }}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-                  >
-                    <option value="" disabled>Pilih role</option>
-                    {divisiOptions.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </>
-            ) : null}
+                  <label className="space-y-1.5 md:col-span-2">
+                    <span className="text-sm font-medium text-slate-700">Role</span>
+                    <select
+                      required
+                      value={formData.role}
+                      onChange={(event) => {
+                        const selectedRole = event.target.value as CoreUserRole;
+                        setFormData((prev) => ({
+                          ...prev,
+                          role: selectedRole,
+                          divisi: !isDivisiManuallyEdited ? selectedRole : prev.divisi,
+                        }));
+                      }}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                    >
+                      <option value="" disabled>Pilih role</option>
+                      {divisiOptions.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              ) : null}
 
-            <label className="space-y-1.5 md:col-span-2">
-              <span className="text-sm font-medium text-slate-700">Nama</span>
-              <input
-                type="text"
-                required
-                value={formData.nama}
-                onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, nama: event.target.value }))
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-              />
-            </label>
+              <label className="space-y-1.5 md:col-span-2">
+                <span className="text-sm font-medium text-slate-700">Nama</span>
+                <input
+                  type="text"
+                  required
+                  value={formData.nama}
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, nama: event.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
 
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Posisi</span>
-              <input
-                type="text"
-                required
-                value={formData.posisi}
-                onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, posisi: event.target.value }))
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-              />
-            </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">Posisi</span>
+                <input
+                  type="text"
+                  required
+                  value={formData.posisi}
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, posisi: event.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
 
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Divisi</span>
-              <select
-                value={formData.divisi}
-                onChange={(event) => {
-                  setIsDivisiManuallyEdited(true);
-                  setFormData((prev) => ({ ...prev, divisi: event.target.value }));
-                }}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-              >
-                {divisiOptions.map((divisi) => (
-                  <option key={divisi} value={divisi}>
-                    {divisi}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">Divisi</span>
+                <select
+                  value={formData.divisi}
+                  onChange={(event) => {
+                    setIsDivisiManuallyEdited(true);
+                    setFormData((prev) => ({ ...prev, divisi: event.target.value }));
+                  }}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                >
+                  {divisiOptions.map((divisi) => (
+                    <option key={divisi} value={divisi}>
+                      {divisi}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Status</span>
-              <select
-                value={formData.status}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    status: event.target.value as HrEmployeeStatus,
-                  }))
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-              >
-                <option value="aktif">aktif</option>
-                <option value="nonaktif">nonaktif</option>
-              </select>
-            </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">Status</span>
+                <select
+                  value={formData.status}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      status: event.target.value as HrEmployeeStatus,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                >
+                  <option value="aktif">aktif</option>
+                  <option value="nonaktif">nonaktif</option>
+                </select>
+              </label>
 
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Gaji Pokok</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                required
-                value={gajiPokokInput}
-                onChange={(event) => setGajiPokokInput(event.target.value.replace(/[^0-9]/g, ""))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-              />
-            </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">Gaji Pokok</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  value={gajiPokokInput}
+                  onChange={(event) => setGajiPokokInput(event.target.value.replace(/[^0-9]/g, ""))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+            </div>
+          </section>
 
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Foto Perorangan</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) =>
-                  setPhotoFiles((prev) => ({
-                    ...prev,
-                    foto_perorangan: event.target.files?.[0] ?? null,
-                  }))
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
-              />
-            </label>
+          <section>
+            <h4 className="font-bold text-slate-700 border-b pb-2 mb-4">Data Pribadi</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">NIK (Nomor KTP)</span>
+                <input
+                  type="text"
+                  required
+                  value={formData.nik}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, nik: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+              
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">Nomor WhatsApp</span>
+                <input
+                  type="text"
+                  required
+                  value={formData.nomor_whatsapp}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, nomor_whatsapp: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
 
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Foto KTP</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) =>
-                  setPhotoFiles((prev) => ({
-                    ...prev,
-                    foto_ktp: event.target.files?.[0] ?? null,
-                  }))
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
-              />
-            </label>
+              <label className="space-y-1.5 md:col-span-2">
+                <span className="text-sm font-medium text-slate-700">Alamat Domisili</span>
+                <textarea
+                  required
+                  value={formData.alamat_domisili}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, alamat_domisili: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20 min-h-[80px]"
+                />
+              </label>
 
-            <label className="space-y-1.5 md:col-span-2">
-              <span className="text-sm font-medium text-slate-700">Foto KK</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) =>
-                  setPhotoFiles((prev) => ({
-                    ...prev,
-                    foto_kk: event.target.files?.[0] ?? null,
-                  }))
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
-              />
-            </label>
-          </div>
+              <label className="space-y-1.5 md:col-span-2">
+                <span className="text-sm font-medium text-slate-700">Email Pribadi (Opsional)</span>
+                <input
+                  type="email"
+                  value={formData.email_pribadi}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, email_pribadi: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <h4 className="font-bold text-slate-700 border-b pb-2 mb-4">Dokumen</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">URL Foto Perorangan (Opsional)</span>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={formData.foto_perorangan_url}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, foto_perorangan_url: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">URL Foto KTP (Opsional)</span>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={formData.foto_ktp_url}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, foto_ktp_url: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+              <label className="space-y-1.5 md:col-span-2">
+                <span className="text-sm font-medium text-slate-700">URL Foto KK (Opsional)</span>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={formData.foto_kk_url}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, foto_kk_url: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+
+              <label className="space-y-1.5 mt-2">
+                <span className="text-sm font-medium text-slate-700">Upload Foto Perorangan</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) =>
+                    setPhotoFiles((prev) => ({
+                      ...prev,
+                      foto_perorangan: event.target.files?.[0] ?? null,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+                />
+              </label>
+
+              <label className="space-y-1.5 mt-2">
+                <span className="text-sm font-medium text-slate-700">Upload Foto KTP</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) =>
+                    setPhotoFiles((prev) => ({
+                      ...prev,
+                      foto_ktp: event.target.files?.[0] ?? null,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+                />
+              </label>
+
+              <label className="space-y-1.5 md:col-span-2">
+                <span className="text-sm font-medium text-slate-700">Upload Foto KK</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) =>
+                    setPhotoFiles((prev) => ({
+                      ...prev,
+                      foto_kk: event.target.files?.[0] ?? null,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <h4 className="font-bold text-slate-700 border-b pb-2 mb-4">Latar Belakang</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">Pendidikan Terakhir</span>
+                <input
+                  type="text"
+                  required
+                  value={formData.pendidikan_terakhir}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, pendidikan_terakhir: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+              
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">Jurusan</span>
+                <input
+                  type="text"
+                  required
+                  value={formData.jurusan}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, jurusan: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+
+              <label className="space-y-1.5 md:col-span-2">
+                <span className="text-sm font-medium text-slate-700">Pengalaman Kerja Sebelumnya (Opsional)</span>
+                <textarea
+                  value={formData.pengalaman_kerja_sebelumnya}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, pengalaman_kerja_sebelumnya: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20 min-h-[80px]"
+                />
+              </label>
+
+              <label className="space-y-1.5 md:col-span-2">
+                <span className="text-sm font-medium text-slate-700">Keahlian Khusus (Opsional)</span>
+                <textarea
+                  value={formData.keahlian_khusus}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, keahlian_khusus: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20 min-h-[80px]"
+                />
+              </label>
+
+              <label className="space-y-1.5 md:col-span-2">
+                <span className="text-sm font-medium text-slate-700">Motivasi Kerja di PT. DSA (Opsional)</span>
+                <textarea
+                  value={formData.motivasi_kerja}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, motivasi_kerja: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20 min-h-[80px]"
+                />
+              </label>
+            </div>
+          </section>
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
             <button
