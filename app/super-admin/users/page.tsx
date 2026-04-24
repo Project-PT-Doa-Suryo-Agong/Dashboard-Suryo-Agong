@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Pencil, Trash2, UserPlus, Users2 } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, Users2 } from 'lucide-react';
 import type { ApiError, ApiSuccess } from '@/types/api';
 import type { CoreUserRole, Profile } from '@/types/supabase';
 import { apiFetch } from "@/lib/utils/api-fetch";
@@ -85,6 +85,7 @@ export default function SuperAdminUsersPage() {
 	const [role, setRole] = useState<SystemRoleKey>('Super Admin');
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 	const [deleteId, setDeleteId] = useState<string | null>(null);
+	const [showPassword, setShowPassword] = useState(false);
 
 	const submitLabel = editingId ? 'Update User' : 'Tambah User';
 
@@ -142,14 +143,18 @@ export default function SuperAdminUsersPage() {
 
 		try {
 			if (editingId) {
+				const patchBody: Record<string, unknown> = {
+					nama: nama.trim(),
+					phone: phone.trim() || null,
+					role,
+				};
+				if (password.trim() !== '') {
+					patchBody.password = password;
+				}
 				const response = await apiFetch(`/api/profiles/${editingId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						nama: nama.trim(),
-						phone: phone.trim() || null,
-						role,
-					}),
+					body: JSON.stringify(patchBody),
 				});
 				await parseJsonResponse<ProfilePayload>(response);
 			} else {
@@ -248,18 +253,28 @@ export default function SuperAdminUsersPage() {
 
 					<div className="space-y-1 md:space-y-2">
 						<label htmlFor="password" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-							Password
+							Password{editingId ? <span className="ml-1 normal-case font-normal text-slate-400">(opsional)</span> : null}
 						</label>
-						<input
-							id="password"
-							type="password"
-							value={password}
-							onChange={(event) => setPassword(event.target.value)}
-							placeholder={editingId ? 'Password tidak diubah di mode edit' : 'Minimal 6 karakter'}
-							disabled={!!editingId}
-							required={!editingId}
-							className="w-full h-10 md:h-11 text-xs md:text-sm text-slate-500 bg-slate-200 rounded-lg border border-slate-300 px-2 md:px-3 outline-none focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20 disabled:opacity-60"
-						/>
+						<div className="relative">
+							<input
+								id="password"
+								type={showPassword ? 'text' : 'password'}
+								value={password}
+								onChange={(event) => setPassword(event.target.value)}
+								placeholder={editingId ? 'Masukkan password baru' : 'Masukkan password'}
+								required={!editingId}
+								className="w-full h-10 md:h-11 text-xs md:text-sm text-slate-500 bg-slate-200 rounded-lg border border-slate-300 px-2 md:px-3 pr-10 outline-none focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
+							/>
+							<button
+								type="button"
+								onClick={() => setShowPassword((prev) => !prev)}
+								className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+								tabIndex={-1}
+								aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+							>
+								{showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+							</button>
+						</div>
 					</div>
 
 					<div className="space-y-1 md:space-y-2">
