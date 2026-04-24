@@ -8,7 +8,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import { apiFetch } from "@/lib/utils/api-fetch";
-import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
+import { RowActions, EditButton, DeleteButton, DetailButton } from "@/components/ui/RowActions";
 import type {
   MProduk,
   MVendor,
@@ -87,9 +87,9 @@ const statusLabel: Record<ProductionStatus, string> = {
 };
 
 const statusBadgeClass: Record<ProductionStatus, string> = {
-  draft: "bg-amber-100 text-amber-700",
-  ongoing: "bg-blue-100 text-blue-700",
-  done: "bg-emerald-100 text-emerald-700",
+  draft: "bg-amber-500 text-white",
+  ongoing: "bg-blue-500 text-white",
+  done: "bg-green-500 text-white",
 };
 
 const CRUD_PRIMARY_BUTTON_CLASS =
@@ -125,6 +125,7 @@ export default function ProductionOrdersPage() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [detailItem, setDetailItem] = useState<TProduksiOrder | null>(null);
 
   const [formData, setFormData] = useState<{
     product_id: string;
@@ -483,9 +484,6 @@ export default function ProductionOrdersPage() {
               <tr>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">ID Pesanan</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Produk</th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Vendor</th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Target (Qty)</th>
-                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Dibuat</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Aksi</th>
               </tr>
@@ -493,13 +491,13 @@ export default function ProductionOrdersPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={7}>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={4}>
                     Memuat data...
                   </td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={7}>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={4}>
                     Tidak ada pesanan yang sesuai filter.
                   </td>
                 </tr>
@@ -508,9 +506,6 @@ export default function ProductionOrdersPage() {
                   <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.id}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-56">{productById[item.product_id ?? ""] ?? "Produk tidak ditemukan"}</td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{vendorById[item.vendor_id ?? ""] ?? "Vendor tidak ditemukan"}</td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.quantity ?? 0} Unit</td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                     <td className="px-4 md:px-6 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass[item.status ?? "draft"]}`}>
                         {statusLabel[item.status ?? "draft"]}
@@ -518,6 +513,7 @@ export default function ProductionOrdersPage() {
                     </td>
                     <td className="px-4 md:px-6 py-3">
                       <RowActions>
+                        <DetailButton onClick={() => setDetailItem(item)} />
                         <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
                         <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
                       </RowActions>
@@ -626,6 +622,47 @@ export default function ProductionOrdersPage() {
         cancelText="Batal"
         variant="danger"
       />
+
+      {/* ── Detail Modal ── */}
+      <Modal
+        isOpen={detailItem !== null}
+        onClose={() => setDetailItem(null)}
+        title="Detail Pesanan Produksi"
+        maxWidth="max-w-md"
+      >
+        {detailItem && (
+          <dl className="space-y-4 text-sm">
+            <div className="flex flex-col gap-1">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">ID Pesanan</dt>
+              <dd className="font-mono text-slate-800 break-all">{detailItem.id}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Produk</dt>
+              <dd className="text-slate-800">{productById[detailItem.product_id ?? ""] ?? "Produk tidak ditemukan"}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Vendor</dt>
+              <dd className="text-slate-800">{vendorById[detailItem.vendor_id ?? ""] ?? "Vendor tidak ditemukan"}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Target (Qty)</dt>
+              <dd className="text-slate-800">{detailItem.quantity ?? 0} Unit</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Dibuat</dt>
+              <dd className="text-slate-800">{detailItem.created_at ? formatDate(detailItem.created_at) : "-"}</dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Status</dt>
+              <dd>
+                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass[detailItem.status ?? "draft"]}`}>
+                  {statusLabel[detailItem.status ?? "draft"]}
+                </span>
+              </dd>
+            </div>
+          </dl>
+        )}
+      </Modal>
     </div>
   );
 }
