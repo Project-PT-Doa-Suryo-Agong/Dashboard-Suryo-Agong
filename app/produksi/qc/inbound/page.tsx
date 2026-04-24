@@ -2,7 +2,7 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CheckSquare, ClipboardCheck, Search, Trash2 } from "lucide-react";
+import { ClipboardCheck } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -54,16 +54,12 @@ const statusLabel: Record<ProductionQcResult, string> = {
 };
 
 const statusBadgeClass: Record<ProductionQcResult, string> = {
-  pass: "bg-emerald-100 text-emerald-700",
-  reject: "bg-rose-100 text-rose-700",
+  pass: "bg-emerald-500 text-white",
+  reject: "bg-rose-500 text-white",
 };
 
 const CRUD_PRIMARY_BUTTON_CLASS =
   "inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC934B]/30 disabled:opacity-50";
-const CRUD_EDIT_BUTTON_CLASS =
-  "inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 disabled:opacity-50";
-const CRUD_DELETE_BUTTON_CLASS =
-  "inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 disabled:opacity-50";
 const CRUD_CANCEL_BUTTON_CLASS =
   "inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 disabled:opacity-50";
 
@@ -344,18 +340,12 @@ export default function QcInboundPage() {
                       </span>
                     </td>
                     <td className="px-4 md:px-6 py-3">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          type="button"
+                      <RowActions>
+                        <EditButton
                           onClick={() => openEditModal(item)}
                           disabled={isSubmitting}
-                          className={CRUD_EDIT_BUTTON_CLASS}
-                        >
-                          <CheckSquare className="h-4 w-4" />
-                          Edit QC
-                        </button>
-                        <button
-                          type="button"
+                        />
+                        <DeleteButton
                           onClick={() => {
                             const primaryKey = getQcPrimaryKey(item);
                             if (!primaryKey) {
@@ -365,12 +355,8 @@ export default function QcInboundPage() {
                             openDeleteModal(primaryKey);
                           }}
                           disabled={isSubmitting}
-                          className={CRUD_DELETE_BUTTON_CLASS}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Hapus
-                        </button>
-                      </div>
+                        />
+                      </RowActions>
                     </td>
                   </tr>
                 ))
