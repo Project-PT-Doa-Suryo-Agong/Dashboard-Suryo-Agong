@@ -84,10 +84,10 @@ const order_status_label: Record<DisplayOrderStatus, string> = {
 };
 
 const order_status_class: Record<DisplayOrderStatus, string> = {
-  draft: "bg-amber-100 text-amber-700",
-  ongoing: "bg-blue-100 text-blue-700",
-  done: "bg-emerald-100 text-emerald-700",
-  unknown: "bg-slate-100 text-slate-700",
+  draft: "bg-amber-500 text-white",
+  ongoing: "bg-blue-500 text-white",
+  done: "bg-emerald-500 text-white",
+  unknown: "bg-slate-500 text-white",
 };
 
 const qc_result_label: Record<DisplayQcStatus, string> = {
@@ -97,9 +97,9 @@ const qc_result_label: Record<DisplayQcStatus, string> = {
 };
 
 const qc_result_class: Record<DisplayQcStatus, string> = {
-  pass: "bg-emerald-100 text-emerald-700",
-  reject: "bg-rose-100 text-rose-700",
-  unknown: "bg-slate-100 text-slate-700",
+  pass: "bg-emerald-500 text-white",
+  reject: "bg-rose-500 text-white",
+  unknown: "bg-slate-500 text-white",
 };
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
@@ -265,7 +265,7 @@ export default function ProduksiDashboardPage() {
               <p className="text-base md:text-2xl font-bold text-slate-900">{pesanan_aktif_count} Batch</p>
               <p className="text-xs md:text-sm text-slate-600">Sedang dalam proses (In Progress)</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#BC934B]/15 text-[#BC934B] shrink-0">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#BC934B] text-white shrink-0">
               <ClipboardList className="h-5 w-5" />
             </span>
           </div>
@@ -279,7 +279,7 @@ export default function ProduksiDashboardPage() {
               <p className="text-base md:text-2xl font-bold text-amber-700">{antrean_qc_inbound_count} Inspeksi</p>
               <p className="text-xs md:text-sm text-amber-700/80">Bahan baku dengan hasil reject</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-700 shrink-0">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500 text-white shrink-0">
               <ShieldAlert className="h-5 w-5" />
             </span>
           </div>
@@ -293,7 +293,7 @@ export default function ProduksiDashboardPage() {
               <p className="text-base md:text-2xl font-bold text-emerald-700">{outbound_passed_rate}%</p>
               <p className="text-xs md:text-sm text-emerald-700/80">Produk jadi siap kirim ke logistik</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500 text-white shrink-0">
               <CheckSquare className="h-5 w-5" />
             </span>
           </div>
