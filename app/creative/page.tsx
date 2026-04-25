@@ -193,10 +193,10 @@ export default function CreativeDashboard() {
   );
 
   const quickLinks = [
-    { label: "Affiliators", href: "/creative/affiliates" },
-    { label: "Content Planner", href: "/creative/content" },
-    { label: "Live Performance", href: "/creative/content-stats" },
-    { label: "Sales Order", href: "/creative/sales-order" },
+    { label: "Affiliators", href: "/creative/affiliates", className: "block rounded-xl border bg-blue-400 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500 text-white" },
+    { label: "Content Planner", href: "/creative/content", className: "block rounded-xl border bg-green-400 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500 text-white" },
+    { label: "Live Performance", href: "/creative/content-stats", className: "block rounded-xl border bg-orange-400 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500 text-white" },
+    { label: "Sales Order", href: "/creative/sales-order", className: "block rounded-xl border bg-red-400 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500 text-white" },
   ];
 
   return (
@@ -267,7 +267,7 @@ export default function CreativeDashboard() {
                 Content Stats Revenue
               </h3>
               <p className="text-xs text-slate-500 md:text-sm lg:text-base">
-                  Akumulasi monetasi dari data content stats.
+                Akumulasi monetasi dari data content stats.
               </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
@@ -324,15 +324,15 @@ export default function CreativeDashboard() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="block rounded-xl border bg-slate-300 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500"
+                className={item.className}
               >
                 <div className="flex items-center justify-between text-slate-900 hover:text-slate-100">
                   <div className="text-sm font-semibold">
                     <p className="">{item.label}</p>
                   </div>
                   <div className="rounded-lg bg-primary/10 p-2">
-                      <ArrowRight className="h-2 w-2 flex-shrink-0 md:h-4 md:w-4" />
-                    </div>
+                    <ArrowRight className="h-2 w-2 flex-shrink-0 md:h-4 md:w-4" />
+                  </div>
                 </div>
               </Link>
             ))}
