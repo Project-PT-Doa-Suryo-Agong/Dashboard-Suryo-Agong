@@ -193,10 +193,10 @@ export default function CreativeDashboard() {
   );
 
   const quickLinks = [
-    { label: "Affiliators", href: "/creative/affiliates" },
-    { label: "Content Planner", href: "/creative/content" },
-    { label: "Live Performance", href: "/creative/content-stats" },
-    { label: "Sales Order", href: "/creative/sales-order" },
+    { label: "Affiliators", href: "/creative/affiliates", className: "block rounded-xl border bg-blue-400 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500 text-white" },
+    { label: "Content Planner", href: "/creative/content", className: "block rounded-xl border bg-green-400 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500 text-white" },
+    { label: "Live Performance", href: "/creative/content-stats", className: "block rounded-xl border bg-orange-400 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500 text-white" },
+    { label: "Sales Order", href: "/creative/sales-order", className: "block rounded-xl border bg-red-400 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500 text-white" },
   ];
 
   return (
@@ -324,7 +324,7 @@ export default function CreativeDashboard() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="block rounded-xl border bg-slate-300 border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-500"
+                className={item.className}
               >
                 <div className="flex items-center justify-between text-slate-900 hover:text-slate-100">
                   <div className="text-sm font-semibold">
