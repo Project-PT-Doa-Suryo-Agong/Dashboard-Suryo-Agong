@@ -59,13 +59,13 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
 }
 
 const PLATFORM_BADGE: Record<Platform, string> = {
-  TikTok: 'bg-slate-100 text-slate-700 before:bg-slate-900',
-  Instagram: 'bg-pink-50 text-pink-700 before:bg-pink-500',
-  'YouTube Shorts': 'bg-red-50 text-red-700 before:bg-red-500',
-  LinkedIn: 'bg-sky-50 text-sky-700 before:bg-sky-500',
-  'Twitter / X': 'bg-zinc-100 text-zinc-700 before:bg-zinc-900', 
-  Website: 'bg-green-50 text-green-700 before:bg-green-500',
-  Lainnya: 'bg-violet-50 text-violet-700 before:bg-violet-500',
+  TikTok: 'bg-slate-500 text-white before:bg-slate-700',
+  Instagram: 'bg-pink-500 text-white before:bg-pink-700',
+  'YouTube Shorts': 'bg-red-500 text-white before:bg-red-700',
+  LinkedIn: 'bg-sky-500 text-white before:bg-sky-700',
+  'Twitter / X': 'bg-zinc-500 text-white before:bg-zinc-700',
+  Website: 'bg-green-500 text-white before:bg-green-700',
+  Lainnya: 'bg-violet-500 text-white before:bg-violet-700',
 };
 
 type ContentFormProps = {
@@ -121,7 +121,7 @@ function ContentForm({
             value={title}
             onChange={(event) => onTitleChange(event.target.value)}
             disabled={isSubmitting}
-            className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             placeholder="e.g., Summer Promo Video"
             required
           />
@@ -136,7 +136,7 @@ function ContentForm({
               value={platform}
               onChange={(event) => onPlatformChange(event.target.value as Platform)}
               disabled={isSubmitting}
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               required
             >
               <option value="" disabled>
@@ -161,7 +161,7 @@ function ContentForm({
               value={affiliatorId}
               onChange={(event) => onAffiliatorChange(event.target.value)}
               disabled={isSubmitting}
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             >
               <option value="">-- Tanpa Affiliator --</option>
               {affiliators.map((option) => (
@@ -183,7 +183,7 @@ function ContentForm({
             value={jadwal}
             onChange={(event) => onJadwalChange(event.target.value)}
             disabled={isSubmitting}
-            className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+            className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
           />
         </div>
 
@@ -196,7 +196,7 @@ function ContentForm({
               value={tipe}
               onChange={(event) => onTipeChange(event.target.value as SalesContentType | '')}
               disabled={isSubmitting}
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             >
               <option value="">-- Pilih Tipe --</option>
               <option value="story">Story</option>
@@ -220,7 +220,7 @@ function ContentForm({
               required
               onChange={(event) => onStatusChange(event.target.value as SalesContentStatus)}
               disabled={isSubmitting}
-              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none transition-all focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             >
               <option value="direncanakan">Direncanakan</option>
               <option value="terupload">Terupload</option>
@@ -503,10 +503,10 @@ export default function ContentPlannerPage() {
                     {item.jadwal ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(item.jadwal)) : '-'}
                   </td>
                   <td className="px-4 py-4 md:px-6">
-                    {item.tipe ? <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">{item.tipe}</span> : '-'}
+                    {item.tipe ? <span className="inline-flex rounded-full bg-slate-500 px-2.5 py-1 text-xs font-bold text-white">{item.tipe}</span> : '-'}
                   </td>
                   <td className="px-4 py-4 md:px-6">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${item.status === 'terupload' ? 'bg-green-100 text-green-700' : item.status === 'dihapus' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${item.status === 'terupload' ? 'bg-green-500 text-white' : item.status === 'dihapus' ? 'bg-red-500 text-white' : 'bg-yellow-500 text-white'}`}>
                       {item.status ?? '-'}
                     </span>
                   </td>
