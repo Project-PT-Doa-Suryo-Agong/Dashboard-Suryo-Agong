@@ -12,6 +12,7 @@ const ALLOWED_CREATE_EMPLOYEE_FIELDS = new Set([
   "phone",
   "status",
   "nik",
+  "nip",
   "alamat_domisili",
   "nomor_whatsapp",
   "email_pribadi",
@@ -48,6 +49,7 @@ export type CreateEmployeeWithAccountInput = {
   phone?: string | null;
   status?: HrEmployeeStatus | null;
   nik: string;
+  nip: string;
   alamat_domisili: string;
   nomor_whatsapp: string;
   email_pribadi?: string | null;
@@ -106,6 +108,9 @@ export function parseCreateEmployeeInput(payload: unknown):
   }
   if (typeof body.nik !== "string" || body.nik.trim() === "") {
     return { ok: false, message: "nik wajib diisi." };
+  }
+  if (typeof body.nip !== "string" || body.nip.trim() === "") {
+    return { ok: false, message: "nip wajib diisi." };
   }
   if (typeof body.alamat_domisili !== "string" || body.alamat_domisili.trim() === "") {
     return { ok: false, message: "alamat_domisili wajib diisi." };
@@ -190,6 +195,7 @@ export function parseCreateEmployeeInput(payload: unknown):
       gaji_pokok,
       status: status ?? "aktif",
       nik: body.nik.trim(),
+      nip: body.nip.trim(),
       alamat_domisili: body.alamat_domisili.trim(),
       nomor_whatsapp: body.nomor_whatsapp.trim(),
       email_pribadi: email_pribadi.value,

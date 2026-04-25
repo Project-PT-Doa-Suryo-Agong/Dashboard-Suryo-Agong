@@ -7,17 +7,42 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { RowActions, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 import { FileText, PlusCircle } from "lucide-react";
 import type { TPKWT } from "@/types/supabase";
+import { jsPDF } from "jspdf";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+
+type EmployeeOption = {
+  id: string;
+  nama: string;
+  nik: string;
+  nip: string;
+  posisi: string;
+  divisi: string;
+  alamat_domisili: string;
+};
+
+type ApiEnvelope<T> = {
+  success?: boolean;
+  message?: string;
+  error?: { message?: string; details?: unknown };
+  data?: T;
+};
+
+function getErrorMessage(payload: ApiEnvelope<unknown>, fallback: string) {
+  return payload?.error?.message || payload?.message || fallback;
+}
 
 export default function PKWTPage() {
   const [tab, setTab] = useState<"generate" | "history">("generate");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState("");
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
 
   // Form state
   const [templateType, setTemplateType] = useState<"pkwt" | "pkwtp">("pkwt");
   const [form, setForm] = useState<Record<string, any>>({
+    employee_id: "",
     contract_number: "",
     employee_name: "",
     employee_nik: "",
@@ -46,14 +71,69 @@ export default function PKWTPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, page]);
 
+  useEffect(() => {
+    void fetchEmployees();
+  }, []);
+
+  async function fetchEmployees() {
+    setIsLoadingEmployees(true);
+    try {
+      const res = await apiFetch("/api/hr/employees?page=1&limit=500", { cache: "no-store" });
+      const payload = await res.json();
+      if (!res.ok || !payload?.success) {
+        throw new Error(payload?.message || payload?.error?.message || "Gagal mengambil data karyawan.");
+      }
+
+      const rows = Array.isArray(payload?.data?.karyawan) ? payload.data.karyawan : [];
+      const normalized: EmployeeOption[] = rows
+        .map((item: Record<string, unknown>) => {
+          const id = typeof item.id === "string" ? item.id : "";
+          const nama = typeof item.nama === "string" ? item.nama : "";
+          if (!id || !nama) return null;
+
+          return {
+            id,
+            nama,
+            nik: typeof item.nik === "string" ? item.nik : "",
+            nip: typeof item.nip === "string" ? item.nip : "",
+            posisi: typeof item.posisi === "string" ? item.posisi : "",
+            divisi: typeof item.divisi === "string" ? item.divisi : "",
+            alamat_domisili: typeof item.alamat_domisili === "string" ? item.alamat_domisili : "",
+          } as EmployeeOption;
+        })
+        .filter(Boolean) as EmployeeOption[];
+
+      setEmployees(normalized);
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : "Gagal mengambil daftar karyawan.");
+    } finally {
+      setIsLoadingEmployees(false);
+    }
+  }
+
+  const applySelectedEmployee = (employeeId: string) => {
+    const selected = employees.find((employee) => employee.id === employeeId);
+    setForm((prev) => ({
+      ...prev,
+      employee_id: selected?.id ?? "",
+      employee_name: selected?.nama ?? "",
+      employee_nik: selected?.nik ?? "",
+      employee_identity_number: selected?.nip ?? "",
+      employee_position: selected?.posisi ?? "",
+      employee_department: selected?.divisi ?? "",
+      employee_address: selected?.alamat_domisili ?? "",
+    }));
+  };
+
   async function fetchHistory() {
     setIsLoadingHistory(true);
     try {
       const q = search ? `&q=${encodeURIComponent(search)}` : "";
       const res = await apiFetch(`/api/hr/pkwt?page=${page}&limit=50${q}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Gagal mengambil riwayat.");
-      setHistory(data.pkwt ?? []);
+      const payload = (await res.json()) as ApiEnvelope<{ pkwt?: TPKWT[] }>;
+      if (!res.ok || !payload?.success) throw new Error(getErrorMessage(payload, "Gagal mengambil riwayat."));
+      setHistory(payload?.data?.pkwt ?? []);
     } catch (error) {
       console.error(error);
       alert(error instanceof Error ? error.message : "Gagal mengambil riwayat kontrak.");
@@ -67,8 +147,8 @@ export default function PKWTPage() {
     if (isSubmitting) return;
 
     // Basic validation
-    if (!form.employee_name || !form.contract_start_date) {
-      alert("Nama karyawan dan tanggal mulai kontrak wajib diisi.");
+    if (!form.employee_id || !form.contract_start_date) {
+      alert("Karyawan dan tanggal mulai kontrak wajib diisi.");
       return;
     }
 
@@ -80,22 +160,24 @@ export default function PKWTPage() {
       };
 
       const res = await apiFetch(`/api/hr/pkwt`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data?.missingFields) {
-          alert("Informasi karyawan belum lengkap: " + data.missingFields.join(", "));
+      const responsePayload = (await res.json()) as ApiEnvelope<{ pkwt?: TPKWT; draft?: { content?: string } }>;
+      if (!res.ok || !responsePayload?.success) {
+        const errorDetails = responsePayload?.error?.details as { missingFields?: unknown } | undefined;
+        const missingFields = errorDetails?.missingFields;
+        if (Array.isArray(missingFields)) {
+          alert("Informasi karyawan belum lengkap: " + missingFields.join(", "));
         } else {
-          throw new Error(data?.message || "Gagal generate kontrak.");
+          throw new Error(getErrorMessage(responsePayload, "Gagal generate kontrak."));
         }
         return;
       }
 
-      const generated = data.pkwt as TPKWT | undefined;
+      const generated = responsePayload?.data?.pkwt as TPKWT | undefined;
       if (generated) {
         setPreviewContent(generated.generated_content ?? "");
         setPreviewOpen(true);
-      } else if (data.draft?.content) {
-        setPreviewContent(data.draft.content ?? "");
+      } else if (responsePayload?.data?.draft?.content) {
+        setPreviewContent(responsePayload.data.draft.content ?? "");
         setPreviewOpen(true);
       }
 
@@ -109,27 +191,38 @@ export default function PKWTPage() {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownloadPdf = () => {
     if (!previewContent) return;
-    const blob = new Blob([previewContent], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${form.employee_name ?? "kontrak"}-${templateType}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 40;
+    const marginY = 44;
+    const lineHeight = 18;
+    const maxTextWidth = pageWidth - (marginX * 2);
 
-  const handlePrint = () => {
-    if (!previewContent) return;
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
-    if (!printWindow) return;
-    printWindow.document.write(`<html><head><title>Preview Kontrak</title><style>body{font-family:system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding:24px;} pre{white-space:pre-wrap;}</style></head><body><pre>${previewContent.replace(/</g, "&lt;")}</pre></body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    doc.setFont("courier", "normal");
+    doc.setFontSize(11);
+
+    const lines = doc.splitTextToSize(previewContent, maxTextWidth) as string[];
+    let cursorY = marginY;
+
+    for (const line of lines) {
+      if (cursorY > pageHeight - marginY) {
+        doc.addPage();
+        cursorY = marginY;
+      }
+      doc.text(line, marginX, cursorY);
+      cursorY += lineHeight;
+    }
+
+    const safeName = (form.employee_name ?? "kontrak")
+      .toString()
+      .trim()
+      .replace(/[^a-zA-Z0-9-_ ]/g, "")
+      .replace(/\s+/g, "-") || "kontrak";
+
+    doc.save(`${safeName}-${templateType}.pdf`);
   };
 
   const openDelete = (id: string) => { setDeleteId(id); setIsDeleteOpen(true); };
@@ -139,8 +232,8 @@ export default function PKWTPage() {
     if (!deleteId) return;
     try {
       const res = await apiFetch(`/api/hr/pkwt/${deleteId}`, { method: "DELETE" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || "Gagal menghapus riwayat.");
+      const payload = (await res.json()) as ApiEnvelope<null>;
+      if (!res.ok || !payload?.success) throw new Error(getErrorMessage(payload, "Gagal menghapus riwayat."));
       fetchHistory();
     } catch (error) {
       console.error(error);
@@ -186,19 +279,29 @@ export default function PKWTPage() {
 
             <label className="space-y-1">
               <div className="text-sm font-medium text-slate-700">Nama Karyawan</div>
-              <input value={form.employee_name} onChange={(e) => setForm((p) => ({ ...p, employee_name: e.target.value }))} className="w-full rounded-xl border border-slate-200 px-3 py-2" />
+              <select
+                value={form.employee_id}
+                onChange={(e) => applySelectedEmployee(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                disabled={isLoadingEmployees}
+              >
+                <option value="">{isLoadingEmployees ? "Memuat karyawan..." : "Pilih karyawan"}</option>
+                {employees.map((employee) => (
+                  <option key={employee.id} value={employee.id}>{employee.nama}</option>
+                ))}
+              </select>
             </label>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <input placeholder="NIK" value={form.employee_nik} onChange={(e) => setForm((p) => ({ ...p, employee_nik: e.target.value }))} className="rounded-xl border border-slate-200 px-3 py-2" />
-            <input placeholder="No Identitas" value={form.employee_identity_number} onChange={(e) => setForm((p) => ({ ...p, employee_identity_number: e.target.value }))} className="rounded-xl border border-slate-200 px-3 py-2" />
-            <input placeholder="Jabatan" value={form.employee_position} onChange={(e) => setForm((p) => ({ ...p, employee_position: e.target.value }))} className="rounded-xl border border-slate-200 px-3 py-2" />
+            <input placeholder="NIK" value={form.employee_nik} readOnly className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2" />
+            <input placeholder="No Identitas (NIP)" value={form.employee_identity_number} readOnly className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2" />
+            <input placeholder="Jabatan" value={form.employee_position} readOnly className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input placeholder="Departemen" value={form.employee_department} onChange={(e) => setForm((p) => ({ ...p, employee_department: e.target.value }))} className="rounded-xl border border-slate-200 px-3 py-2" />
-            <input placeholder="Alamat" value={form.employee_address} onChange={(e) => setForm((p) => ({ ...p, employee_address: e.target.value }))} className="rounded-xl border border-slate-200 px-3 py-2" />
+            <input placeholder="Departemen" value={form.employee_department} readOnly className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2" />
+            <input placeholder="Alamat" value={form.employee_address} readOnly className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -208,7 +311,28 @@ export default function PKWTPage() {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => { setForm({ contract_number: "", employee_name: "", employee_nik: "", employee_identity_number: "", employee_address: "", employee_position: "", employee_department: "", contract_start_date: "", contract_end_date: "", probation_months: "", probation_end_date: "" }); }} className="rounded-xl border border-slate-300 px-4 py-2">Reset</button>
+            <button
+              type="button"
+              onClick={() => {
+                setForm({
+                  employee_id: "",
+                  contract_number: "",
+                  employee_name: "",
+                  employee_nik: "",
+                  employee_identity_number: "",
+                  employee_address: "",
+                  employee_position: "",
+                  employee_department: "",
+                  contract_start_date: "",
+                  contract_end_date: "",
+                  probation_months: "",
+                  probation_end_date: "",
+                });
+              }}
+              className="rounded-xl border border-slate-300 px-4 py-2"
+            >
+              Reset
+            </button>
             <button type="submit" disabled={isSubmitting} className="rounded-xl bg-green-500 px-4 py-2 text-white">{isSubmitting ? "Menyimpan..." : "Generate & Simpan"}</button>
           </div>
         </form>
@@ -249,9 +373,9 @@ export default function PKWTPage() {
                           <DetailButton onClick={async () => {
                             try {
                               const res = await apiFetch(`/api/hr/pkwt/${row.id}`);
-                              const data = await res.json();
-                              if (!res.ok) throw new Error(data?.message || "Gagal memuat preview.");
-                              setPreviewContent(data.pkwt.generated_content ?? "");
+                              const payload = (await res.json()) as ApiEnvelope<{ pkwt?: TPKWT }>;
+                              if (!res.ok || !payload?.success) throw new Error(getErrorMessage(payload, "Gagal memuat preview."));
+                              setPreviewContent(payload?.data?.pkwt?.generated_content ?? "");
                               setPreviewOpen(true);
                             } catch (err) {
                               alert(err instanceof Error ? err.message : "Gagal memuat preview.");
@@ -275,8 +399,7 @@ export default function PKWTPage() {
         <div className="space-y-3">
           <pre className="whitespace-pre-wrap text-sm text-slate-800 bg-white p-3 rounded-md border border-slate-100">{previewContent}</pre>
           <div className="flex justify-end gap-3">
-            <button onClick={handleDownload} className="rounded-xl border px-4 py-2">Download TXT</button>
-            <button onClick={handlePrint} className="rounded-xl bg-blue-600 text-white px-4 py-2">Print</button>
+            <button onClick={handleDownloadPdf} className="rounded-xl bg-blue-600 text-white px-4 py-2">Download PDF</button>
           </div>
         </div>
       </Modal>

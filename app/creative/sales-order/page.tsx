@@ -173,6 +173,11 @@ export default function SalesOrderPage() {
     [affiliators],
   );
 
+  const coaMap = useMemo(
+    () => new Map<string, MCOA>(coaOptions.map((item) => [item.id, item])),
+    [coaOptions],
+  );
+
   const resetForm = () => {
     setFormData({ ...initialFormState, coa_id: null });
     setEditData(null);
@@ -494,12 +499,13 @@ export default function SalesOrderPage() {
                 orders.map((item) => {
                   const varian = item.varian_id ? variantMap.get(item.varian_id) : null;
                   const affiliator = item.affiliator_id ? affiliatorMap.get(item.affiliator_id) : null;
+                  const coa = item.coa_id ? coaMap.get(item.coa_id) : null;
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-bold text-slate-700 font-mono">{getOrderDisplayCode(item)}</td>
                       <td className="px-6 py-4 text-sm font-medium text-slate-800">{varian?.nama_varian ?? "-"}</td>
-                      <td className="px-6 py-4 text-sm text-slate-700">{item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-"}</td>
+                      <td className="px-6 py-4 text-sm text-slate-700">{item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : (coa ? `${coa.kode_akun} - ${coa.nama_akun}` : "-")}</td>
                       <td className="px-6 py-4 text-sm text-slate-700">{affiliator ? `${affiliator.nama} (${affiliator.platform ?? "-"})` : "-"}</td>
                       <td className="px-6 py-4 text-sm text-slate-700 text-center font-bold">{item.quantity}</td>
                       <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">{formatRupiah(item.total_price)}</td>

@@ -66,6 +66,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const optionalStringFields = [
     "nik",
+    "nip",
     "alamat_domisili",
     "nomor_whatsapp",
     "email_pribadi",

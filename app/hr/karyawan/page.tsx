@@ -110,6 +110,7 @@ export default function KaryawanPage() {
     divisi: string;
     status: HrEmployeeStatus;
     nik: string;
+    nip: string;
     alamat_domisili: string;
     nomor_whatsapp: string;
     email_pribadi: string;
@@ -130,6 +131,7 @@ export default function KaryawanPage() {
     divisi: "",
     status: "aktif",
     nik: "",
+    nip: "",
     alamat_domisili: "",
     nomor_whatsapp: "",
     email_pribadi: "",
@@ -200,6 +202,11 @@ export default function KaryawanPage() {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   };
 
+  const getEmployeeNip = (item: MKaryawan | null | undefined) => {
+    const raw = (item as unknown as Record<string, unknown> | null | undefined)?.nip;
+    return typeof raw === "string" && raw.trim() ? raw : "-";
+  };
+
   useEffect(() => {
     if (divisiOptions.length === 0) return;
     setFormData((prev) => {
@@ -218,6 +225,7 @@ export default function KaryawanPage() {
       divisi: divisiOptions[0] ?? "",
       status: "aktif",
       nik: "",
+      nip: "",
       alamat_domisili: "",
       nomor_whatsapp: "",
       email_pribadi: "",
@@ -252,6 +260,7 @@ export default function KaryawanPage() {
       divisi: item.divisi ?? divisiOptions[0] ?? "",
       status: item.status ?? "aktif",
       nik: item.nik ?? "",
+      nip: ((item as unknown as Record<string, unknown>)?.nip as string | undefined) ?? "",
       alamat_domisili: item.alamat_domisili ?? "",
       nomor_whatsapp: item.nomor_whatsapp ?? "",
       email_pribadi: item.email_pribadi ?? "",
@@ -339,6 +348,7 @@ export default function KaryawanPage() {
           status: formData.status,
           gaji_pokok: parsedGajiPokok,
           nik: formData.nik,
+          nip: formData.nip,
           alamat_domisili: formData.alamat_domisili,
           nomor_whatsapp: formData.nomor_whatsapp,
           email_pribadi: formData.email_pribadi || null,
@@ -375,6 +385,7 @@ export default function KaryawanPage() {
           status: formData.status,
           gaji_pokok: parsedGajiPokok,
           nik: formData.nik,
+          nip: formData.nip,
           alamat_domisili: formData.alamat_domisili,
           nomor_whatsapp: formData.nomor_whatsapp,
           email_pribadi: formData.email_pribadi || null,
@@ -439,6 +450,7 @@ export default function KaryawanPage() {
     !!formData.posisi.trim() &&
     !!formData.divisi &&
     !!formData.nik &&
+    !!formData.nip &&
     !!formData.alamat_domisili.trim() &&
     !!formData.nomor_whatsapp &&
     !!formData.pendidikan_terakhir.trim() &&
@@ -672,7 +684,7 @@ export default function KaryawanPage() {
 
           <section>
             <h4 className="font-bold text-slate-700 border-b pb-2 mb-4">Data Pribadi</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="space-y-1.5">
                 <span className="text-sm font-medium text-slate-700">NIK (Nomor KTP)</span>
                 <input
@@ -681,6 +693,17 @@ export default function KaryawanPage() {
                   required
                   value={formData.nik}
                   onChange={(event) => setFormData((prev) => ({ ...prev, nik: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">NIP</span>
+                <input
+                  type="text"
+                  required
+                  value={formData.nip}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, nip: event.target.value }))}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                 />
               </label>
@@ -697,7 +720,7 @@ export default function KaryawanPage() {
                 />
               </label>
 
-              <label className="space-y-1.5 md:col-span-2">
+              <label className="space-y-1.5 md:col-span-3">
                 <span className="text-sm font-medium text-slate-700">Alamat Domisili</span>
                 <textarea
                   required
@@ -707,7 +730,7 @@ export default function KaryawanPage() {
                 />
               </label>
 
-              <label className="space-y-1.5 md:col-span-2">
+              <label className="space-y-1.5 md:col-span-3">
                 <span className="text-sm font-medium text-slate-700">Email Pribadi (Opsional)</span>
                 <input
                   type="email"
@@ -902,6 +925,10 @@ export default function KaryawanPage() {
                   <div>
                     <div className="text-xs text-slate-500">NIK</div>
                     <div className="text-sm text-slate-900">{detailItem.nik ?? "-"}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500">NIP</div>
+                    <div className="text-sm text-slate-900">{getEmployeeNip(detailItem)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500">Nama Lengkap</div>

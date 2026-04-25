@@ -174,6 +174,7 @@ export interface Database {
           nama: string;
           posisi: string | null;
           nik: string | null;
+          nip: string | null;
           foto_perorangan_url: string | null;
           foto_ktp_url: string | null;
           foto_kk_url: string | null;
@@ -197,6 +198,7 @@ export interface Database {
           nama: string;
           posisi?: string | null;
           nik?: string | null;
+          nip?: string | null;
           foto_perorangan_url?: string | null;
           foto_ktp_url?: string | null;
           foto_kk_url?: string | null;
@@ -220,6 +222,7 @@ export interface Database {
           nama?: string;
           posisi?: string | null;
           nik?: string | null;
+          nip?: string | null;
           foto_perorangan_url?: string | null;
           foto_ktp_url?: string | null;
           foto_kk_url?: string | null;

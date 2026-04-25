@@ -163,7 +163,7 @@ export async function listSalesOrder(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
   const { data, error, count } = await db(client)
     .from("t_sales_order")
-    .select("*, m_coa(kode_akun,nama_akun)", { count: "exact" })
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, from + limit - 1);
   return { data: (data ?? []) as TSalesOrder[], error, meta: { page, limit, total: count ?? 0 } };
