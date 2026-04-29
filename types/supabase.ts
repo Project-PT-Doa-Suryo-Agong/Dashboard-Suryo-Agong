@@ -34,6 +34,8 @@ export type HrAttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";
 export type FinanceCashflowType = "income" | "expense";
 export type FinanceReimburseStatus = "pending" | "approved" | "rejected";
 export type FinanceCoaCategory = "Aset" | "Liabilitas" | "Ekuitas" | "Pendapatan" | "Beban" | "Beban Lain-lain";
+export type FinanceInvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
+export type FinanceTipeKas = "ya" | "tidak";
 
 export type ProductionStatus = "draft" | "ongoing" | "done";
 export type ProductionQcResult = "pass" | "reject";
@@ -510,6 +512,100 @@ export interface Database {
         };
         Relationships: [];
       };
+      t_invoice: {
+        Row: {
+          id: string;
+          tanggal: string;
+          jatuh_tempo: string;
+          pelanggan: string;
+          catatan: string | null;
+          total_amount: number;
+        };
+        Insert: {
+          id?: string;
+          tanggal: string;
+          jatuh_tempo: string;
+          pelanggan: string;
+          catatan?: string | null;
+          total_amount?: number;
+        };
+        Update: {
+          id?: string;
+          tanggal?: string;
+          jatuh_tempo?: string;
+          pelanggan?: string;
+          catatan?: string | null;
+          total_amount?: number;
+        };
+        Relationships: [];
+      };
+      t_invoice_item: {
+        Row: {
+          id_invoice: string;
+          id_sales_order: string;
+          deskripsi: string | null;
+        };
+        Insert: {
+          id_invoice: string;
+          id_sales_order: string;
+          deskripsi?: string | null;
+        };
+        Update: {
+          id_invoice?: string;
+          id_sales_order?: string;
+          deskripsi?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "t_invoice_item_id_invoice_fkey";
+            columns: ["id_invoice"];
+            isOneToOne: false;
+            referencedRelation: "t_invoice";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      t_utang_piutang: {
+        Row: {
+          id: string;
+          tanggal_awal: string;
+          jatuh_tempo: string;
+          nominal: number;
+          klien: string;
+          deskripsi: string | null;
+          kas: FinanceTipeKas;
+          coa: string | null;
+        };
+        Insert: {
+          id?: string;
+          tanggal_awal?: string;
+          jatuh_tempo: string;
+          nominal: number;
+          klien: string;
+          deskripsi?: string | null;
+          kas?: FinanceTipeKas;
+          coa?: string | null;
+        };
+        Update: {
+          id?: string;
+          tanggal_awal?: string;
+          jatuh_tempo?: string;
+          nominal?: number;
+          klien?: string;
+          deskripsi?: string | null;
+          kas?: FinanceTipeKas;
+          coa?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "t_utang_piutang_coa_fkey";
+            columns: ["coa"];
+            isOneToOne: false;
+            referencedRelation: "m_coa";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
@@ -517,6 +613,8 @@ export interface Database {
       cashflow_type: FinanceCashflowType;
       reimburse_status: FinanceReimburseStatus;
       coa_category: FinanceCoaCategory;
+      invoice_status: FinanceInvoiceStatus;
+      tipe_kas: FinanceTipeKas;
     };
     CompositeTypes: { [_ in never]: never };
   };
@@ -926,6 +1024,12 @@ export type TReimbursementInsert = Tables<"finance", "t_reimbursement">["Insert"
 export type MCoaInsert            = Tables<"finance", "m_coa">["Insert"];
 export type TJournalInsert        = Tables<"finance", "t_journal">["Insert"];
 export type TJournalItemInsert    = Tables<"finance", "t_journal_item">["Insert"];
+export type TInvoice              = Tables<"finance", "t_invoice">["Row"];
+export type TInvoiceInsert        = Tables<"finance", "t_invoice">["Insert"];
+export type TInvoiceItem          = Tables<"finance", "t_invoice_item">["Row"];
+export type TInvoiceItemInsert    = Tables<"finance", "t_invoice_item">["Insert"];
+export type TUtangPiutang         = Tables<"finance", "t_utang_piutang">["Row"];
+export type TUtangPiutangInsert   = Tables<"finance", "t_utang_piutang">["Insert"];
 
 // production
 export type TProduksiOrder = Tables<"production", "t_produksi_order">["Row"];

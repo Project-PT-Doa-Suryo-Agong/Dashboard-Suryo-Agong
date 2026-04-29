@@ -12,6 +12,8 @@ const navItems = [
   { label: 'Reimburse', href: '/finance/reimburse', icon: 'ReceiptText' },
   { label: 'Chart of Accounts', href: '/finance/coa', icon: 'BookOpen' },
   { label: 'Journal', href: '/finance/journal', icon: 'BookMarked' },
+  { label: 'Invoice', href: '/finance/invoice', icon: 'FileText' },
+  { label: 'Utang Piutang', href: '/finance/utang-piutang', icon: 'HandCoins' },
 ];
 
 export default function FinanceClientLayout({

@@ -81,6 +81,12 @@ Dokumen ini merangkum endpoint internal Next.js App Router di folder `app/api`, 
 | /api/finance/jurnal/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Jurnal entry by id |
 | /api/finance/jurnal-items | GET, POST | level(strategic, managerial, operational) | active | Jurnal items (GET requires `jurnal_id`) |
 | /api/finance/jurnal-items/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Jurnal items by id |
+| /api/finance/invoice | GET, POST | level(strategic, managerial, operational) | active | Administrasi penagihan |
+| /api/finance/invoice/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Invoice by id |
+| /api/finance/invoice-items | GET, POST | level(strategic, managerial, operational) | active | Invoice items (GET requires `invoice_id`) |
+| /api/finance/invoice-items/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Invoice items by id |
+| /api/finance/utang-piutang | GET, POST | level(strategic, managerial, operational) | active | Utang dan piutang |
+| /api/finance/utang-piutang/[id] | PATCH, DELETE | level(strategic, managerial, operational) | active | Utang/piutang by id |
 
 ## Logistics
 

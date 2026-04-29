@@ -50,6 +50,7 @@ import {
   ShieldAlert,
   BookMarked,
   BookOpen,
+  HandCoins,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -96,6 +97,7 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldAlert,
   BookMarked,
   BookOpen,
+  HandCoins,
 };
 
 export interface NavItem {
