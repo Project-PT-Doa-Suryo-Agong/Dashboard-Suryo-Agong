@@ -247,13 +247,15 @@ export async function deleteInvoiceItem(client: DbClient, id_invoice: string, id
 
 // t_utang_piutang
 
-export async function listUtangPiutang(client: DbClient, page = 1, limit = 100) {
+export async function listUtangPiutang(client: DbClient, page = 1, limit = 100, tipe?: "utang" | "piutang") {
   const from = (page - 1) * limit;
   let query = db(client)
     .from("t_utang_piutang")
     .select("*, coa(*)", { count: "exact" })
     .order("tanggal_awal", { ascending: false })
     .range(from, from + limit - 1);
+  
+  if (tipe) query = query.eq("tipe", tipe);
     
   const { data, error, count } = await query;
   if (error) console.error("SUPABASE ERROR UTANG_PIUTang:", error);

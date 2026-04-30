@@ -36,6 +36,7 @@ export type FinanceReimburseStatus = "pending" | "approved" | "rejected";
 export type FinanceCoaCategory = "Aset" | "Liabilitas" | "Ekuitas" | "Pendapatan" | "Beban" | "Beban Lain-lain";
 export type FinanceInvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
 export type FinanceTipeKas = "ya" | "tidak";
+export type FinanceUtangPiutangTipe = "utang" | "piutang";
 
 export type ProductionStatus = "draft" | "ongoing" | "done";
 export type ProductionQcResult = "pass" | "reject";
@@ -574,6 +575,7 @@ export interface Database {
           klien: string;
           deskripsi: string | null;
           kas: FinanceTipeKas;
+          tipe: FinanceUtangPiutangTipe;
           coa: string | null;
         };
         Insert: {
@@ -584,6 +586,7 @@ export interface Database {
           klien: string;
           deskripsi?: string | null;
           kas?: FinanceTipeKas;
+          tipe?: FinanceUtangPiutangTipe;
           coa?: string | null;
         };
         Update: {
@@ -594,6 +597,7 @@ export interface Database {
           klien?: string;
           deskripsi?: string | null;
           kas?: FinanceTipeKas;
+          tipe?: FinanceUtangPiutangTipe;
           coa?: string | null;
         };
         Relationships: [

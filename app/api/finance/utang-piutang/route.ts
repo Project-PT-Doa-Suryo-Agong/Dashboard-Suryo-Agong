@@ -2,7 +2,7 @@ import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listUtangPiutang, createUtangPiutang } from "@/lib/services/finance.service";
 import { requireNumber, requireString, requireDate, requireUUID } from "@/lib/validation/body-validator";
-import type { FinanceTipeKas } from "@/types/supabase";
+import type { FinanceTipeKas, FinanceUtangPiutangTipe } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -13,8 +13,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const page = Math.max(Number(url.searchParams.get("page")) || 1, 1);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 100, 1), 500);
+  const tipe = url.searchParams.get("tipe") as "utang" | "piutang" | null;
 
-  const { data, error, meta } = await listUtangPiutang(auth.ctx.supabase, page, limit);
+  const { data, error, meta } = await listUtangPiutang(auth.ctx.supabase, page, limit, tipe ?? undefined);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data utang/piutang.", 500, error.message);
   return ok({ utang_piutang: data, meta });
 }
@@ -50,6 +51,10 @@ export async function POST(request: Request) {
   const coa = requireUUID(input, "coa", { optional: true });
   if (!coa.ok) return fail(ErrorCode.VALIDATION_ERROR, coa.message, 400);
 
+  const tipe = requireString(input, "tipe", { optional: true });
+  if (!tipe.ok) return fail(ErrorCode.VALIDATION_ERROR, tipe.message, 400);
+  if (tipe.data && tipe.data !== "utang" && tipe.data !== "piutang") return fail(ErrorCode.VALIDATION_ERROR, "tipe harus 'utang' atau 'piutang'.", 400);
+
   const payload = {
     klien: klien.data as string,
     deskripsi: deskripsi.data,
@@ -57,6 +62,7 @@ export async function POST(request: Request) {
     tanggal_awal: tanggal_awal.data,
     jatuh_tempo: jatuh_tempo.data,
     kas: (kas.data as FinanceTipeKas) ?? "tidak",
+    tipe: (tipe.data as FinanceUtangPiutangTipe) ?? "utang",
     coa: coa.data,
   };
 

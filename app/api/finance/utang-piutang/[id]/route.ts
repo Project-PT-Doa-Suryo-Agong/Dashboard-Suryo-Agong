@@ -2,7 +2,7 @@ import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { updateUtangPiutang, deleteUtangPiutang } from "@/lib/services/finance.service";
 import { requireNumber, requireString, requireDate, requireUUID } from "@/lib/validation/body-validator";
-import type { FinanceTipeKas } from "@/types/supabase";
+import type { FinanceTipeKas, FinanceUtangPiutangTipe } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -30,6 +30,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
     if (v.data !== "ya" && v.data !== "tidak") return fail(ErrorCode.VALIDATION_ERROR, "kas harus 'ya' atau 'tidak'.", 400);
     payload.kas = v.data;
+  }
+  if ("tipe" in input) {
+    const v = requireString(input, "tipe");
+    if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
+    if (v.data !== "utang" && v.data !== "piutang") return fail(ErrorCode.VALIDATION_ERROR, "tipe harus 'utang' atau 'piutang'.", 400);
+    payload.tipe = v.data;
   }
   if ("coa" in input) { const v = requireUUID(input, "coa", { optional: true }); if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400); payload.coa = v.data; }
 

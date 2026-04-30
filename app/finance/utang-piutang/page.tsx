@@ -6,7 +6,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
-import type { FinanceTipeKas, TUtangPiutang, MCoa } from "@/types/supabase";
+import type { FinanceTipeKas, FinanceUtangPiutangTipe, TUtangPiutang, MCoa } from "@/types/supabase";
 import type { ApiSuccess } from "@/types/api";
 
 // Extended type for joined COA
@@ -29,20 +29,23 @@ export default function FinanceUtangPiutangPage() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editData, setEditData] = useState<TUtangPiutangWithCoa | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [filterTipe, setFilterTipe] = useState<"" | "utang" | "piutang">("");
 
   const [formData, setFormData] = useState({
     klien: "", deskripsi: "", nominal: "0",
     tanggal_awal: new Date().toISOString().split("T")[0],
     jatuh_tempo: new Date().toISOString().split("T")[0], 
     kas: "tidak" as FinanceTipeKas,
+    tipe: "utang" as FinanceUtangPiutangTipe,
     coa: "",
   });
 
   const fetchUtangPiutang = async () => {
     setIsLoading(true);
     try {
+      const url = `/api/finance/utang-piutang?page=1&limit=500${filterTipe ? `&tipe=${filterTipe}` : ""}`;
       const [res, coaRes] = await Promise.all([
-        apiFetch(`/api/finance/utang-piutang?page=1&limit=500`),
+        apiFetch(url),
         apiFetch(`/api/finance/coa?page=1&limit=500`)
       ]);
       const payload = await res.json() as ApiSuccess<UtangPiutangListPayload>;
@@ -57,14 +60,14 @@ export default function FinanceUtangPiutangPage() {
     }
   };
 
-  useEffect(() => { void fetchUtangPiutang(); }, []);
+  useEffect(() => { void fetchUtangPiutang(); }, [filterTipe]);
 
   const resetForm = () => {
     setFormData({
       klien: "", deskripsi: "", nominal: "0",
       tanggal_awal: new Date().toISOString().split("T")[0], 
       jatuh_tempo: new Date().toISOString().split("T")[0], 
-      kas: "tidak", coa: ""
+      kas: "tidak", tipe: "utang", coa: ""
     });
     setEditData(null);
   };
@@ -76,7 +79,7 @@ export default function FinanceUtangPiutangPage() {
       klien: item.klien, deskripsi: item.deskripsi ?? "",
       nominal: String(item.nominal),
       tanggal_awal: item.tanggal_awal, jatuh_tempo: item.jatuh_tempo, 
-      kas: item.kas, coa: item.coa?.id ?? ""
+      kas: item.kas, tipe: item.tipe, coa: item.coa?.id ?? ""
     });
     setIsFormModalOpen(true);
   };
@@ -136,11 +139,39 @@ export default function FinanceUtangPiutangPage() {
         </button>
       </section>
 
+      <section className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => setFilterTipe("")}
+          className={`px-4 py-2 rounded-lg font-semibold transition ${
+            filterTipe === "" ? "bg-blue-500 text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+          }`}
+        >
+          Semua
+        </button>
+        <button
+          onClick={() => setFilterTipe("utang")}
+          className={`px-4 py-2 rounded-lg font-semibold transition ${
+            filterTipe === "utang" ? "bg-red-500 text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+          }`}
+        >
+          Utang
+        </button>
+        <button
+          onClick={() => setFilterTipe("piutang")}
+          className={`px-4 py-2 rounded-lg font-semibold transition ${
+            filterTipe === "piutang" ? "bg-green-500 text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+          }`}
+        >
+          Piutang
+        </button>
+      </section>
+
       <section className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full min-w-max text-left text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
+                <th className="px-4 py-3 font-semibold text-slate-600">Tipe</th>
                 <th className="px-4 py-3 font-semibold text-slate-600">Pihak/Klien</th>
                 <th className="px-4 py-3 font-semibold text-slate-600">Tanggal Awal</th>
                 <th className="px-4 py-3 font-semibold text-slate-600">Jatuh Tempo</th>
@@ -152,11 +183,20 @@ export default function FinanceUtangPiutangPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <tr><td colSpan={7} className="text-center py-6 text-slate-500">Memuat...</td></tr>
+                <tr><td colSpan={8} className="text-center py-6 text-slate-500">Memuat...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-6 text-slate-500">Belum ada catatan utang/piutang</td></tr>
+                <tr><td colSpan={8} className="text-center py-6 text-slate-500">Belum ada catatan utang/piutang</td></tr>
               ) : items.map(item => (
                 <tr key={item.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+                      item.tipe === 'utang' 
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-green-100 text-green-700'
+                    }`}>
+                      {item.tipe === 'utang' ? 'UTANG' : 'PIUTANG'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 font-semibold text-slate-800">
                     {item.klien}
                     {item.deskripsi && <div className="text-xs text-slate-500 font-normal">{item.deskripsi}</div>}
@@ -188,6 +228,13 @@ export default function FinanceUtangPiutangPage() {
       <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={editData ? "Edit Catatan" : "Catat Utang/Piutang"} maxWidth="max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tipe</label>
+              <select value={formData.tipe} onChange={e => setFormData(f => ({...f, tipe: e.target.value as FinanceUtangPiutangTipe}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20">
+                <option value="utang">Utang</option>
+                <option value="piutang">Piutang</option>
+              </select>
+            </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pihak/Klien</label>
               <input required value={formData.klien} onChange={e => setFormData(f => ({...f, klien: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20" />
