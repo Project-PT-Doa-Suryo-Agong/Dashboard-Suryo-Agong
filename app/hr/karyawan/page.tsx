@@ -470,6 +470,7 @@ export default function KaryawanPage() {
     !!formData.posisi.trim() &&
     !!formData.divisi &&
     !!formData.nik &&
+    formData.nik.trim().length === 16 &&
     !!formData.nip &&
     !!formData.alamat_domisili.trim() &&
     !!formData.nomor_whatsapp &&
@@ -712,8 +713,16 @@ export default function KaryawanPage() {
                   required
                   value={formData.nik}
                   onChange={(event) => setFormData((prev) => ({ ...prev, nik: event.target.value }))}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                  maxLength={16}
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none transition ${
+                    formData.nik && formData.nik.trim().length !== 16
+                      ? 'border-red-400 text-red-900 focus:border-red-400 focus:ring-2 focus:ring-red-200'
+                      : 'border-slate-300 text-slate-700 focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20'
+                  }`}
                 />
+                {formData.nik && formData.nik.trim().length !== 16 && (
+                  <p className="text-xs text-red-500 mt-1">NIK harus terdiri dari 16 digit.</p>
+                )}
               </label>
 
               <label className="space-y-1.5">
