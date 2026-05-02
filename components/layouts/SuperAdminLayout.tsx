@@ -8,6 +8,7 @@ import { useProfile } from '@/hooks/use-profile';
 const navItems = [
   { label: 'Dashboard', href: '/super-admin', icon: 'LayoutDashboard' },
   { label: 'User Management', href: '/super-admin/users', icon: 'User' },
+  { label: 'Log Chat', href: '/super-admin/log', icon: 'ScrollText' },
   {
     label: 'Master Data',
     href: '/super-admin/master-data',
