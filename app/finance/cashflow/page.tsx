@@ -8,6 +8,7 @@ import type { ApiError, ApiSuccess } from "@/types/api";
 import type { FinanceCashflowType, TCashflow } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { SearchBar } from "@/components/ui/search-bar";
 
 type CashflowFilter = "all" | FinanceCashflowType;
 
@@ -60,6 +61,7 @@ export default function FinanceCashflowPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [cashflowNumber, setCashflowNumber] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState<{
     tipe: FinanceCashflowType;
@@ -133,9 +135,18 @@ export default function FinanceCashflowPage() {
   const netBalance = totalIncome - totalExpense;
 
   const filteredItems = useMemo(() => {
-    if (filter === "all") return items;
-    return items.filter((item) => item.tipe === filter);
-  }, [items, filter]);
+    const keyword = searchTerm.trim().toLowerCase();
+    const base = filter === "all" ? items : items.filter((item) => item.tipe === filter);
+    if (!keyword) return base;
+    return base.filter((item) => {
+      const number = item.cashflow_number ?? "";
+      const note = item.keterangan ?? "";
+      return (
+        number.toLowerCase().includes(keyword) ||
+        note.toLowerCase().includes(keyword)
+      );
+    });
+  }, [items, filter, searchTerm]);
 
   const resetForm = () => {
     setFormData({ tipe: "income", amount: "", keterangan: "" });
@@ -308,6 +319,15 @@ export default function FinanceCashflowPage() {
           </div>
         </div>
 
+        <div className="px-4 md:px-6 py-4 border-b border-slate-100">
+          <SearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Cari nomor atau keterangan..."
+            className="w-full sm:max-w-md"
+          />
+        </div>
+
         <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
           <table className="w-full min-w-max text-left">
             <thead className="bg-slate-50/80">
@@ -396,7 +416,7 @@ export default function FinanceCashflowPage() {
               onChange={(event) =>
                 setFormData((prev) => ({ ...prev, tipe: event.target.value as FinanceCashflowType }))
               }
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               required
             >
               <option value="income">income</option>
@@ -410,7 +430,7 @@ export default function FinanceCashflowPage() {
               type="text"
               value={formData.keterangan}
               onChange={(event) => setFormData((prev) => ({ ...prev, keterangan: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               placeholder="Contoh: Pembayaran invoice klien"
               required
             />
@@ -423,7 +443,7 @@ export default function FinanceCashflowPage() {
               min={1}
               value={formData.amount}
               onChange={(event) => setFormData((prev) => ({ ...prev, amount: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               placeholder="Masukkan nominal"
               required
             />

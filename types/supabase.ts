@@ -810,18 +810,21 @@ export interface Database {
       m_affiliator: {
         Row: {
           id: string;
+          affiliator_number: string | null;
           nama: string;
           platform: string | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
+          affiliator_number?: string | null;
           nama: string;
           platform?: string | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
+          affiliator_number?: string | null;
           nama?: string;
           platform?: string | null;
         };

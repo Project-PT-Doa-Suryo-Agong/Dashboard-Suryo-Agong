@@ -483,7 +483,7 @@ export default function FinancePayrollPage() {
               required
               value={formData.employee_id}
               onChange={(event) => handleEmployeeChange(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             >
               <option value="" disabled>
                 Pilih karyawan
@@ -501,7 +501,7 @@ export default function FinancePayrollPage() {
             <select
               value={formData.coa_id ?? ""}
               onChange={(event) => setFormData((prev) => ({ ...prev, coa_id: event.target.value || null }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             >
               <option value="">-- Pilih COA (opsional) --</option>
               {coaOptions.map((coa) => (
@@ -519,7 +519,7 @@ export default function FinancePayrollPage() {
               type="date"
               value={formData.bulan}
               onChange={(event) => setFormData((prev) => ({ ...prev, bulan: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             />
           </div>
 
@@ -531,7 +531,7 @@ export default function FinancePayrollPage() {
               min={1}
               value={formData.total}
               onChange={(event) => setFormData((prev) => ({ ...prev, total: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               placeholder="Terisi otomatis dari data karyawan"
             />
           </div>

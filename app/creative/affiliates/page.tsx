@@ -64,6 +64,7 @@ export default function AffiliatesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [affiliatorNumber, setAffiliatorNumber] = useState("");
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -91,16 +92,40 @@ export default function AffiliatesPage() {
 
   useEffect(() => {
     void fetchAffiliators();
+    void fetchDefaultAffiliatorNumber();
   }, []);
+
+  const fetchDefaultAffiliatorNumber = async () => {
+    try {
+      const response = await apiFetch("/api/sales/affiliator-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count ?? 0;
+
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+
+      setAffiliatorNumber(`AFF-${mm}${yy}-${nnnnn}`);
+    } catch {
+      setAffiliatorNumber("");
+    }
+  };
 
   const resetForm = () => {
     setFormData(initialFormState);
     setEditData(null);
+    setAffiliatorNumber("");
   };
 
   const openCreateModal = () => {
     resetForm();
     setIsCreateModalOpen(true);
+    void fetchDefaultAffiliatorNumber();
   };
 
   const closeCreateModal = () => {
@@ -118,6 +143,7 @@ export default function AffiliatesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          affiliator_number: affiliatorNumber || undefined,
           nama: formData.nama.trim(),
           platform: formData.platform.trim() || null,
         }),
@@ -202,6 +228,12 @@ export default function AffiliatesPage() {
     }
   };
 
+  const sortedItems = [...items].sort((a, b) => {
+    const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return bTime - aTime;
+  });
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
@@ -237,7 +269,7 @@ export default function AffiliatesPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/80">
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">ID</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Affiliator Number</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Nama</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Platform</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Created At</th>
@@ -251,7 +283,7 @@ export default function AffiliatesPage() {
                     Memuat data...
                   </td>
                 </tr>
-              ) : items.filter((item) => {
+              ) : sortedItems.filter((item) => {
                   const keyword = searchTerm.trim().toLowerCase();
                   if (!keyword) return true;
                   return (
@@ -265,7 +297,7 @@ export default function AffiliatesPage() {
                   </td>
                 </tr>
               ) : (
-                items
+                sortedItems
                 .filter((item) => {
                   const keyword = searchTerm.trim().toLowerCase();
                   if (!keyword) return true;
@@ -276,7 +308,7 @@ export default function AffiliatesPage() {
                 })
                 .map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-mono text-slate-700">{item.id}</td>
+                    <td className="px-6 py-4 text-sm font-mono text-slate-700">{item.affiliator_number?.trim() || item.id}</td>
                     <td className="px-6 py-4 text-sm font-medium text-slate-800">{item.nama}</td>
                     <td className="px-6 py-4 text-sm text-slate-700">{item.platform ?? "-"}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{formatDate(item.created_at)}</td>
@@ -303,6 +335,17 @@ export default function AffiliatesPage() {
         >
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Affiliator Number</label>
+              <input
+                type="text"
+                readOnly
+                value={affiliatorNumber}
+                className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-bold font-mono text-slate-500"
+                placeholder="Auto-generated"
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama Affiliator</label>
               <input
                 required
@@ -317,14 +360,21 @@ export default function AffiliatesPage() {
 
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Platform</label>
-              <input
-                type="text"
+              <select
                 value={formData.platform}
                 onChange={(event) => setFormData((prev) => ({ ...prev, platform: event.target.value }))}
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
-                placeholder="TikTok / Instagram"
                 disabled={isSubmitting}
-              />
+              >
+                <option value="">-- Pilih Platform --</option>
+                <option value="TikTok">TikTok</option>
+                <option value="Instagram">Instagram</option>
+                <option value="YouTube Shorts">YouTube Shorts</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Twitter / X">Twitter / X</option>
+                <option value="Website">Website</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -359,6 +409,17 @@ export default function AffiliatesPage() {
         >
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Affiliator Number</label>
+              <input
+                type="text"
+                readOnly
+                value={editData.affiliator_number ?? ""}
+                className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-bold font-mono text-slate-500"
+                placeholder="Auto-generated"
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama Affiliator</label>
               <input
                 required
@@ -371,13 +432,21 @@ export default function AffiliatesPage() {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Platform</label>
-              <input
-                type="text"
+              <select
                 value={formData.platform}
                 onChange={(event) => setFormData((prev) => ({ ...prev, platform: event.target.value }))}
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
                 disabled={isSubmitting}
-              />
+              >
+                <option value="">-- Pilih Platform --</option>
+                <option value="TikTok">TikTok</option>
+                <option value="Instagram">Instagram</option>
+                <option value="YouTube Shorts">YouTube Shorts</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Twitter / X">Twitter / X</option>
+                <option value="Website">Website</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
             </div>
             <div className="flex justify-end gap-2">
               <button

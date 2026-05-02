@@ -8,6 +8,7 @@ import type { ApiError, ApiSuccess } from "@/types/api";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { getStorageFileName } from "@/lib/utils/upload-reimburse-bukti";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
+import { SearchBar } from "@/components/ui/search-bar";
 import type {
   FinanceReimburseStatus,
   MKaryawan,
@@ -107,6 +108,7 @@ export default function FinanceReimbursePage() {
   const [activeTab, setActiveTab] = useState<"pending" | "processed">("pending");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editData, setEditData] = useState<TReimbursement | null>(null);
@@ -233,6 +235,23 @@ export default function FinanceReimbursePage() {
   );
 
   const visibleItems = activeTab === "pending" ? pendingItems : processedItems;
+  const filteredItems = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return visibleItems;
+    return visibleItems.filter((item) => {
+      const employee = employeeById[item.employee_id ?? ""];
+      const number = item.reimbursement_number ?? "";
+      const name = employee?.nama ?? "";
+      const division = employee?.divisi ?? "";
+      const coa = item.m_coa ? `${item.m_coa.kode_akun} ${item.m_coa.nama_akun}` : "";
+      return (
+        number.toLowerCase().includes(keyword) ||
+        name.toLowerCase().includes(keyword) ||
+        division.toLowerCase().includes(keyword) ||
+        coa.toLowerCase().includes(keyword)
+      );
+    });
+  }, [visibleItems, searchTerm, employeeById]);
 
   const resetForm = () => {
     setFormData({
@@ -423,7 +442,16 @@ export default function FinanceReimbursePage() {
       <section className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
         <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-2">
           <h2 className="text-sm md:text-base font-bold text-slate-900">Daftar Pengajuan Reimburse</h2>
-          <span className="text-xs text-slate-500">{visibleItems.length} data</span>
+          <span className="text-xs text-slate-500">{filteredItems.length} data</span>
+        </div>
+
+        <div className="px-4 md:px-6 py-4 border-b border-slate-100">
+          <SearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Cari nomor, karyawan, divisi, atau COA..."
+            className="w-full sm:max-w-md"
+          />
         </div>
 
         <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
@@ -448,14 +476,14 @@ export default function FinanceReimbursePage() {
                     Memuat data...
                   </td>
                 </tr>
-              ) : visibleItems.length === 0 ? (
+              ) : filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
                     Tidak ada data pada tab ini.
                   </td>
                 </tr>
               ) : (
-                visibleItems.map((item) => {
+                filteredItems.map((item) => {
                   const employee = employeeById[item.employee_id ?? ""];
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
@@ -469,10 +497,10 @@ export default function FinanceReimbursePage() {
                         <span
                           className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
                             item.status === "approved"
-                              ? "bg-emerald-50 text-emerald-700"
+                              ? "bg-emerald-500 text-white"
                               : item.status === "rejected"
-                                ? "bg-red-50 text-red-700"
-                                : "bg-blue-50 text-blue-700"
+                                ? "bg-red-500 text-white"
+                                : "bg-blue-500 text-white"
                           }`}
                         >
                           {item.status ?? "pending"}
@@ -486,7 +514,7 @@ export default function FinanceReimbursePage() {
                                 type="button"
                                 onClick={() => void updateStatus(item.id, "approved")}
                                 disabled={isSubmitting}
-                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-500 bg-emerald-500 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-100 disabled:opacity-50"
                               >
                                 <CheckCircle className="h-4 w-4" />
                                 Setujui
@@ -495,7 +523,7 @@ export default function FinanceReimbursePage() {
                                 type="button"
                                 onClick={() => void updateStatus(item.id, "rejected")}
                                 disabled={isSubmitting}
-                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+                                className="inline-flex items-center gap-1 rounded-lg border border-red-500 bg-red-500 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-100 disabled:opacity-50"
                               >
                                 <XCircle className="h-4 w-4" />
                                 Tolak
@@ -542,7 +570,7 @@ export default function FinanceReimbursePage() {
               required
               value={formData.employee_id}
               onChange={(event) => setFormData((prev) => ({ ...prev, employee_id: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             >
               <option value="" disabled>
                 Pilih karyawan
@@ -563,7 +591,7 @@ export default function FinanceReimbursePage() {
               min={1}
               value={formData.amount}
               onChange={(event) => setFormData((prev) => ({ ...prev, amount: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               placeholder="Masukkan nominal reimburse"
             />
           </div>
@@ -573,7 +601,7 @@ export default function FinanceReimbursePage() {
             <select
               value={formData.coa_id ?? ""}
               onChange={(event) => setFormData((prev) => ({ ...prev, coa_id: event.target.value || null }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             >
               <option value="">-- Pilih COA (opsional) --</option>
               {coaOptions.map((coa) => (
@@ -592,7 +620,7 @@ export default function FinanceReimbursePage() {
               onChange={(event) =>
                 setFormData((prev) => ({ ...prev, status: event.target.value as FinanceReimburseStatus }))
               }
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             >
               <option value="pending">pending</option>
               <option value="approved">approved</option>
@@ -628,7 +656,7 @@ export default function FinanceReimbursePage() {
 
                 setSelectedBuktiFile(file);
               }}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-200 file:px-3 file:py-1.5 file:text-slate-700"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-200 file:px-3 file:py-1.5 file:text-slate-700"
             />
             <p className="text-xs text-slate-500">
               {selectedBuktiFile

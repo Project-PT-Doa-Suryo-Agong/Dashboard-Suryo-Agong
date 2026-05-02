@@ -1,12 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { SearchBar } from "@/components/ui/search-bar";
 import type { TInvoice, TInvoiceItem, TSalesOrder, MVarian } from "@/types/supabase";
 import type { ApiSuccess } from "@/types/api";
 
@@ -32,6 +33,7 @@ export default function FinanceInvoicePage() {
   const [detailData, setDetailData] = useState<{ invoice: TInvoice, items: TInvoiceItem[] } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [invoiceId, setInvoiceId] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
     pelanggan: "",
@@ -82,6 +84,21 @@ export default function FinanceInvoicePage() {
     void fetchDependencies();
     void fetchDefaultInvoiceId();
   }, []);
+
+  const filteredItems = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return items;
+    return items.filter((item) => {
+      const idInvoice = item.id_invoice ?? "";
+      const pelanggan = item.pelanggan ?? "";
+      const catatan = item.catatan ?? "";
+      return (
+        idInvoice.toLowerCase().includes(keyword) ||
+        pelanggan.toLowerCase().includes(keyword) ||
+        catatan.toLowerCase().includes(keyword)
+      );
+    });
+  }, [items, searchTerm]);
 
   const resetForm = () => {
     setFormData({
@@ -187,6 +204,14 @@ export default function FinanceInvoicePage() {
       </section>
 
       <section className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-4 md:px-6 py-4 border-b border-slate-200">
+          <SearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Cari ID, klien, atau catatan..."
+            className="w-full sm:max-w-md"
+          />
+        </div>
         <div className="overflow-x-auto w-full">
           <table className="w-full min-w-max text-left text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
@@ -201,9 +226,9 @@ export default function FinanceInvoicePage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr><td colSpan={5} className="text-center py-6 text-slate-500">Memuat...</td></tr>
-              ) : items.length === 0 ? (
+              ) : filteredItems.length === 0 ? (
                 <tr><td colSpan={5} className="text-center py-6 text-slate-500">Belum ada invoice</td></tr>
-              ) : items.map(item => (
+              ) : filteredItems.map(item => (
                 <tr key={item.id_invoice} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-mono text-xs text-slate-500" title={item.id_invoice}>{item.id_invoice}</td>
                   <td className="px-4 py-3 text-slate-600">{formatDate(item.tanggal)}</td>
@@ -236,23 +261,23 @@ export default function FinanceInvoicePage() {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Klien / Pelanggan</label>
-              <input required value={formData.pelanggan} onChange={e => setFormData(f => ({...f, pelanggan: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20" />
+              <input required value={formData.pelanggan} onChange={e => setFormData(f => ({...f, pelanggan: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Nominal</label>
-              <input type="number" required value={formData.total_amount} onChange={e => setFormData(f => ({...f, total_amount: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20" />
+              <input type="number" required value={formData.total_amount} onChange={e => setFormData(f => ({...f, total_amount: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tanggal</label>
-              <input type="date" required value={formData.tanggal} onChange={e => setFormData(f => ({...f, tanggal: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20" />
+              <input type="date" required value={formData.tanggal} onChange={e => setFormData(f => ({...f, tanggal: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Jatuh Tempo</label>
-              <input type="date" value={formData.jatuh_tempo} onChange={e => setFormData(f => ({...f, jatuh_tempo: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20" />
+              <input type="date" value={formData.jatuh_tempo} onChange={e => setFormData(f => ({...f, jatuh_tempo: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Catatan</label>
-              <input value={formData.catatan} onChange={e => setFormData(f => ({...f, catatan: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20" />
+              <input value={formData.catatan} onChange={e => setFormData(f => ({...f, catatan: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
             </div>
           </div>
           
@@ -293,7 +318,7 @@ export default function FinanceInvoicePage() {
                             return {...f, items: newIt, total_amount: String(sum)}; 
                           });
                         }} 
-                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B]"
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-300"
                       >
                         <option value="" disabled>-- Pilih Sales Order --</option>
                         {salesOrders.map(so => (

@@ -476,7 +476,6 @@ export default function FinanceJournalPage() {
             <thead className="bg-slate-50/80">
               <tr>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Journal Number</th>
-                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">No Bukti</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-center">Jumlah Item</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
@@ -485,17 +484,16 @@ export default function FinanceJournalPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">Memuat data...</td>
+                  <td colSpan={3} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">Memuat data...</td>
                 </tr>
               ) : filteredJournals.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">Tidak ada jurnal ditemukan.</td>
+                  <td colSpan={3} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">Tidak ada jurnal ditemukan.</td>
                 </tr>
               ) : (
                 filteredJournals.map((journal) => (
                   <tr key={journal.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-4 md:px-6 py-3 text-sm font-bold font-mono text-slate-900 whitespace-nowrap">{journal.journal_number ?? "-"}</td>
-                    <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-900 whitespace-nowrap">{journal.no_bukti ?? "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{formatDate(journal.tanggal)}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-center text-slate-900">{journal.t_journal_item?.length ?? 0}</td>
                     <td className="px-4 md:px-6 py-3 text-right whitespace-nowrap">
@@ -533,7 +531,7 @@ export default function FinanceJournalPage() {
                 required
                 value={formData.no_bukti}
                 onChange={(event) => setFormData((prev) => ({ ...prev, no_bukti: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                 placeholder="Nomor bukti"
               />
             </div>
@@ -544,7 +542,7 @@ export default function FinanceJournalPage() {
                 type="date"
                 value={formData.tanggal}
                 onChange={(event) => setFormData((prev) => ({ ...prev, tanggal: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               />
             </div>
             <div className="space-y-2">
@@ -552,7 +550,7 @@ export default function FinanceJournalPage() {
               <input
                 value={formData.keterangan}
                 onChange={(event) => setFormData((prev) => ({ ...prev, keterangan: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                 placeholder="Keterangan opsional"
               />
             </div>
@@ -588,7 +586,7 @@ export default function FinanceJournalPage() {
                           required
                           value={item.coa_id}
                           onChange={(event) => updateItemRow(index, "coa_id", event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                           disabled={isSubmitting}
                         >
                           <option value="" disabled>
@@ -608,7 +606,7 @@ export default function FinanceJournalPage() {
                           step={1000}
                           value={item.debit}
                           onChange={(event) => updateItemRow(index, "debit", event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                           disabled={isSubmitting}
                         />
                       </td>
@@ -619,7 +617,7 @@ export default function FinanceJournalPage() {
                           step={1000}
                           value={item.kredit}
                           onChange={(event) => updateItemRow(index, "kredit", event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                           disabled={isSubmitting}
                         />
                       </td>

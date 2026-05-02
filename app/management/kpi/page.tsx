@@ -58,9 +58,9 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
 }
 
 function statusClass(score: number): string {
-  if (score < 60) return "bg-rose-100 text-rose-700";
-  if (score <= 80) return "bg-amber-100 text-amber-700";
-  return "bg-emerald-100 text-emerald-700";
+  if (score < 60) return "bg-red-500 text-white";
+  if (score <= 80) return "bg-amber-500 text-white";
+  return "bg-emerald-500 text-white";
 }
 
 function statusLabel(score: number): string {
@@ -83,6 +83,9 @@ export default function ManagementKpiPage() {
   const [formData, setFormData] = useState<FormState>(initialFormState);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editData, setEditData] = useState<TKPIWeekly | null>(null);
+
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedKpi, setSelectedKpi] = useState<TKPIWeekly | null>(null);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -180,6 +183,16 @@ export default function ManagementKpiPage() {
   const closeFormModal = () => {
     setIsFormModalOpen(false);
     resetForm();
+  };
+
+  const openDetailModal = (item: TKPIWeekly) => {
+    setSelectedKpi(item);
+    setIsDetailModalOpen(true);
+  };
+
+  const closeDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedKpi(null);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -320,7 +333,7 @@ export default function ManagementKpiPage() {
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Cari nama divisi..."
-            className="w-full sm:max-w-sm rounded-xl border border-slate-300 bg-slate-200 py-2.5 px-3 text-sm text-slate-700 shadow-sm outline-none"
+            className="w-full sm:max-w-sm rounded-xl border border-slate-300 bg-slate-200 text-sm text-slate-700 shadow-sm outline-none"
           />
 
         <button
@@ -341,9 +354,6 @@ export default function ManagementKpiPage() {
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Nomor KPI</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Divisi</th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Target</th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Realisasi</th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Pencapaian (%)</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
                 <th className="px-4 md:px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Aksi</th>
               </tr>
@@ -352,7 +362,7 @@ export default function ManagementKpiPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Memuat data...</td>
+                  <td colSpan={5} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Memuat data...</td>
                 </tr>
               ) : filteredItems.length > 0 ? (
                 filteredItems.map((item) => {
@@ -367,9 +377,6 @@ export default function ManagementKpiPage() {
                       <td className="px-4 md:px-6 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{item.kpi_number ?? item.id}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{formattedDate}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-800">{item.divisi ?? "-"}</td>
-                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.target}</td>
-                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.realisasi}</td>
-                      <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{score}%</td>
                       <td className="px-4 md:px-6 py-3">
                         <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(score)}`}>
                           {statusLabel(score)}
@@ -377,6 +384,7 @@ export default function ManagementKpiPage() {
                       </td>
                       <td className="px-4 md:px-6 py-3 text-right">
                         <RowActions>
+                          <DetailButton onClick={() => openDetailModal(item)} disabled={isSubmitting} />
                           <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
                           <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
                         </RowActions>
@@ -386,7 +394,7 @@ export default function ManagementKpiPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Data KPI tidak ditemukan.</td>
+                  <td colSpan={5} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Data KPI tidak ditemukan.</td>
                 </tr>
               )}
             </tbody>
@@ -461,6 +469,35 @@ export default function ManagementKpiPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={isDetailModalOpen} onClose={closeDetailModal} title="Detail KPI" maxWidth="max-w-lg">
+        {selectedKpi && (
+          <div className="space-y-4 text-sm">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <p className="text-slate-500">Nomor KPI</p>
+                <p className="font-semibold text-slate-900">{selectedKpi.kpi_number ?? selectedKpi.id}</p>
+                <p className="text-slate-500">Tanggal</p>
+                <p className="font-semibold text-slate-900">
+                  {new Date(selectedKpi.minggu).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+                <p className="text-slate-500">Divisi</p>
+                <p className="font-semibold text-slate-900">{selectedKpi.divisi ?? "-"}</p>
+                <p className="text-slate-500">Target</p>
+                <p className="font-semibold text-slate-900">{selectedKpi.target}</p>
+                <p className="text-slate-500">Realisasi</p>
+                <p className="font-semibold text-slate-900">{selectedKpi.realisasi}</p>
+                <p className="text-slate-500">Pencapaian</p>
+                <p className="font-semibold text-slate-900">{getScore(selectedKpi)}%</p>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <ConfirmDialog

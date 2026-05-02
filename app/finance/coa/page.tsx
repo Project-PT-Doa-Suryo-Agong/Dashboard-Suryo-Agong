@@ -303,7 +303,7 @@ export default function FinanceCoaPage() {
               required
               value={formState.kode_akun}
               onChange={(event) => setFormState((prev) => ({ ...prev, kode_akun: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               placeholder="Contoh: 1101"
             />
           </div>
@@ -314,7 +314,7 @@ export default function FinanceCoaPage() {
               required
               value={formState.nama_akun}
               onChange={(event) => setFormState((prev) => ({ ...prev, nama_akun: event.target.value }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               placeholder="Contoh: Kas"
             />
           </div>
@@ -326,7 +326,7 @@ export default function FinanceCoaPage() {
                 required
                 value={formState.kategori}
                 onChange={(event) => setFormState((prev) => ({ ...prev, kategori: event.target.value as FormState["kategori"] }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               >
                 {categoryOptions.map((category) => (
                   <option key={category} value={category}>
@@ -359,7 +359,7 @@ export default function FinanceCoaPage() {
                 required
                 value={formState.parent_id}
                 onChange={(event) => setFormState((prev) => ({ ...prev, parent_id: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               >
                 <option value="" disabled>
                   Pilih parent akun

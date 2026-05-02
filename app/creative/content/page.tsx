@@ -516,6 +516,7 @@ export default function ContentPlannerPage() {
                 <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Content Number</th>
                 <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Title</th>
                 <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Affiliator</th>
+                <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Status</th>
                 <th className="px-4 py-4 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Aksi</th>
               </tr>
             </thead>
@@ -528,7 +529,7 @@ export default function ContentPlannerPage() {
                 </tr>
               ) : contents.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500 md:px-6">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500 md:px-6">
                     Belum ada konten.
                   </td>
                 </tr>
@@ -538,6 +539,19 @@ export default function ContentPlannerPage() {
                   <td className="px-4 py-4 font-mono font-bold text-sm text-slate-700 md:px-6">{item.content_number?.trim() || item.id}</td>
                   <td className="px-4 py-4 text-sm font-medium text-slate-800 md:px-6">{item.judul}</td>
                   <td className="px-4 py-4 text-sm font-medium text-slate-800 md:px-6">{item.m_affiliator?.nama ?? '-'}</td>
+                  <td className="px-4 py-4 text-sm font-medium text-slate-800 md:px-6">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+                        item.status === 'terupload'
+                          ? 'bg-green-500 text-white'
+                          : item.status === 'dihapus'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-yellow-500 text-white'
+                      }`}
+                    >
+                      {item.status ?? '-'}
+                    </span>
+                  </td>
                   <td className="px-4 py-4 text-right md:px-6">
                     <RowActions>
                       <DetailButton onClick={() => handleOpenDetail(item)} disabled={isSubmitting} />

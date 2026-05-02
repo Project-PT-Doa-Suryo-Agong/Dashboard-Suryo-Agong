@@ -6,7 +6,7 @@
  * 
  * @see lib/supabase/hooks/use-sales.ts
  */
-import type { MAfiliator, TContentPlanner, TSalesOrder, TContentStatistic } from "@/types/supabase";
+import type { MAfiliator, MAfiliatorInsert, TContentPlanner, TSalesOrder, TContentStatistic } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -30,7 +30,7 @@ export async function getAfiliatorById(client: DbClient, id: string) {
   return { data: data as MAfiliator | null, error };
 }
 
-export async function createAfiliator(client: DbClient, input: Record<string, unknown>) {
+export async function createAfiliator(client: DbClient, input: MAfiliatorInsert) {
   const { data, error } = await db(client).from("m_affiliator").insert(input as never).select("*").single();
   return { data: data as MAfiliator | null, error };
 }
