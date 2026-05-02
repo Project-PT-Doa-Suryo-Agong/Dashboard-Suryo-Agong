@@ -210,13 +210,18 @@ export async function createInvoice(client: DbClient, input: Record<string, unkn
   return { data: data as TInvoice | null, error };
 }
 
-export async function updateInvoice(client: DbClient, id: string, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_invoice").update(input).eq("id", id).select("*").maybeSingle();
+export async function updateInvoice(client: DbClient, idInvoice: string, input: Record<string, unknown>) {
+  const { data, error } = await db(client)
+    .from("t_invoice")
+    .update(input)
+    .eq("id_invoice", idInvoice)
+    .select("*")
+    .maybeSingle();
   return { data: data as TInvoice | null, error };
 }
 
-export async function deleteInvoice(client: DbClient, id: string) {
-  const { error, count } = await db(client).from("t_invoice").delete({ count: "exact" }).eq("id", id);
+export async function deleteInvoice(client: DbClient, idInvoice: string) {
+  const { error, count } = await db(client).from("t_invoice").delete({ count: "exact" }).eq("id_invoice", idInvoice);
   return { error, deleted: (count ?? 0) > 0 };
 }
 

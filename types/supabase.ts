@@ -524,7 +524,7 @@ export interface Database {
       };
       t_invoice: {
         Row: {
-          id: string;
+          id_invoice: string;
           tanggal: string;
           jatuh_tempo: string;
           pelanggan: string;
@@ -532,7 +532,7 @@ export interface Database {
           total_amount: number;
         };
         Insert: {
-          id?: string;
+          id_invoice: string;
           tanggal: string;
           jatuh_tempo: string;
           pelanggan: string;
@@ -540,7 +540,7 @@ export interface Database {
           total_amount?: number;
         };
         Update: {
-          id?: string;
+          id_invoice?: string;
           tanggal?: string;
           jatuh_tempo?: string;
           pelanggan?: string;

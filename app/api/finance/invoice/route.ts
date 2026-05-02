@@ -42,7 +42,40 @@ export async function POST(request: Request) {
   const catatan = requireString(input, "catatan", { maxLen: 500, optional: true });
   if (!catatan.ok) return fail(ErrorCode.VALIDATION_ERROR, catatan.message, 400);
 
+  const idInvoice = requireString(input, "id_invoice", { optional: true });
+  if (!idInvoice.ok) return fail(ErrorCode.VALIDATION_ERROR, idInvoice.message, 400);
+
+  const generateInvoiceId = async () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+    const { data: countData, error: countError } = await supabaseAdmin.rpc("count_invoices_this_month", {
+      start_of_month: startOfMonth,
+      start_of_next_month: startOfNextMonth,
+    });
+
+    if (countError) {
+      return { ok: false as const, error: countError };
+    }
+
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yy = String(now.getFullYear()).slice(-2);
+    const seq = String(((countData as number) ?? 0) + 1).padStart(5, "0");
+    return { ok: true as const, id: `INVC-${mm}${yy}-${seq}` };
+  };
+
+  let finalInvoiceId = idInvoice.data ?? null;
+  if (!finalInvoiceId) {
+    const generated = await generateInvoiceId();
+    if (!generated.ok) {
+      return fail(ErrorCode.DB_ERROR, "Gagal membuat ID invoice.", 500, generated.error.message);
+    }
+    finalInvoiceId = generated.id;
+  }
+
   const payload = {
+    id_invoice: finalInvoiceId,
     pelanggan: pelanggan.data as string,
     tanggal: tanggal.data as string,
     jatuh_tempo: jatuh_tempo.data as string,
@@ -57,7 +90,7 @@ export async function POST(request: Request) {
     const validItems = input.items.filter((it: any) => it.id_sales_order && it.id_sales_order.trim() !== "");
     if (validItems.length > 0) {
       const itemsToInsert = validItems.map((it: any) => ({
-        id_invoice: data?.id,
+        id_invoice: data?.id_invoice,
         id_sales_order: it.id_sales_order,
         deskripsi: it.deskripsi || null,
       }));

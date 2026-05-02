@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   const input = body as Record<string, unknown>;
 
-  const id_invoice = requireUUID(input, "id_invoice");
+  const id_invoice = requireString(input, "id_invoice");
   if (!id_invoice.ok) return fail(ErrorCode.VALIDATION_ERROR, id_invoice.message, 400);
 
   const id_sales_order = requireUUID(input, "id_sales_order");
