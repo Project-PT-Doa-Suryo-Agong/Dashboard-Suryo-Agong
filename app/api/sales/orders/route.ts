@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listSalesOrder, createSalesOrder } from "@/lib/services/sales.service";
-import { requireNumber, requireUUID } from "@/lib/validation/body-validator";
+import { requireNumber, requireUUID, requireString } from "@/lib/validation/body-validator";
 import type { TSalesOrderInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -134,6 +134,9 @@ export async function POST(request: Request) {
   const quantity = requireNumber(input, "quantity", { min: 1 });
   if (!quantity.ok) return fail(ErrorCode.VALIDATION_ERROR, quantity.message, 400);
 
+  const orderNumber = requireString(input, "order_number", { optional: true });
+  if (!orderNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, orderNumber.message, 400);
+
   // Perhitungan total price otomatis di backend (Harga Varian x QTY)
   let calculatedTotalPrice = 0;
   if (varianId.data) {
@@ -150,6 +153,7 @@ export async function POST(request: Request) {
 
   const payload: TSalesOrderInsert = {
     ...(generatedOrderCode ? { order_code: generatedOrderCode } : {}),
+    ...(orderNumber.data ? { order_number: orderNumber.data } : {}),
     varian_id: varianId.data,
     affiliator_id: affiliatorId.data,
     quantity: quantity.data!,

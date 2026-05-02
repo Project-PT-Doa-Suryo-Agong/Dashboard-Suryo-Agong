@@ -44,7 +44,11 @@ export async function POST(request: Request) {
   const status = requireString(input, "status", { optional: true });
   if (!status.ok) return fail(ErrorCode.VALIDATION_ERROR, status.message, 400);
 
+  const contentNumber = requireString(input, "content_number", { optional: true });
+  if (!contentNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, contentNumber.message, 400);
+
   const payload: TContentPlannerInsert = {
+    ...(contentNumber.data ? { content_number: contentNumber.data } : {}),
     judul: judul.data!,
     platform: platform.data,
     affiliator_id: affiliatorId.data,

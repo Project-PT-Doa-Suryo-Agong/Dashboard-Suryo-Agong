@@ -193,10 +193,14 @@ export async function POST(request: Request) {
     return fail(ErrorCode.VALIDATION_ERROR, "foto_bukti_url maksimal 500 karakter.", 400);
   }
 
+  const returnNumber = requireString(input, "return_number", { optional: true });
+  if (!returnNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, returnNumber.message, 400);
+
   const payloadBase: TReturnOrderInsert = {
     order_id: orderId.data,
     alasan: alasan.data!,
     foto_bukti_url: fotoBuktiUrl.data ? await uploadReturnProofFromDataUrl(fotoBuktiUrl.data, orderId.data!) : null,
+    ...(returnNumber.data ? { return_number: returnNumber.data } : {}),
   };
 
   const baseCandidates = statusCandidates.length > 0 ? statusCandidates : ["pending"];

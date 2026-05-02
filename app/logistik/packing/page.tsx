@@ -120,6 +120,7 @@ export default function PackingPage() {
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editData, setEditData] = useState<TPacking | null>(null);
+  const [packingNumber, setPackingNumber] = useState("");
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -180,11 +181,32 @@ export default function PackingPage() {
     }
   };
 
+  const fetchDefaultPackingNumber = async () => {
+    try {
+      const response = await apiFetch("/api/logistics/packing-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+
+      setPackingNumber(`PCK-${mm}${yy}-${nnnnn}`);
+    } catch (error) {
+      console.error("Gagal mengambil packing number:", error);
+    }
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchPacking(), fetchOrders()]);
+        await Promise.all([fetchPacking(), fetchOrders(), fetchDefaultPackingNumber()]);
       } finally {
         setIsLoading(false);
       }
@@ -219,6 +241,7 @@ export default function PackingPage() {
   const resetForm = () => {
     setFormData({ order_id: getOrderPrimaryKey(orders[0]) || "", status: "pending" });
     setEditData(null);
+    void fetchDefaultPackingNumber();
   };
 
   const openFormModal = (item?: TPacking) => {
@@ -254,10 +277,14 @@ export default function PackingPage() {
         });
         await parseJsonResponse<PackingPayload>(response);
       } else {
+        const payload = {
+          ...formData,
+          packing_number: packingNumber || undefined
+        };
         const response = await apiFetch("/api/logistics/packing", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
         await parseJsonResponse<PackingPayload>(response);
       }
@@ -355,7 +382,7 @@ export default function PackingPage() {
                 const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
                 return (
                   <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{shortId(getOrderPrimaryKey(item))}</td>
+                    <td className="px-4 py-3 text-sm font-bold font-mono text-slate-700 whitespace-nowrap">{item.packing_number?.trim() || shortId(getOrderPrimaryKey(item))}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderDisplayCode(order, item.order_id)}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.variant?.nama_varian ?? "Varian tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}</td>
@@ -396,6 +423,18 @@ export default function PackingPage() {
 
       <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title="Form Packing" maxWidth="max-w-md">
         <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="space-y-1.5 block">
+            <span className="text-sm font-medium text-slate-700">Packing Number</span>
+            <input
+              type="text"
+              readOnly
+              value={editData?.packing_number ?? packingNumber}
+              className="w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm font-bold font-mono text-slate-500 cursor-not-allowed"
+              placeholder="Auto-generated"
+              disabled
+            />
+          </label>
+
           <label className="space-y-1.5 block">
             <span className="text-sm font-medium text-slate-700">Pilih Order</span>
             <select

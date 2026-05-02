@@ -112,6 +112,7 @@ export default function FinanceReimbursePage() {
   const [editData, setEditData] = useState<TReimbursement | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [reimbursementNumber, setReimbursementNumber] = useState("");
 
   const [formData, setFormData] = useState<{
     employee_id: string;
@@ -182,11 +183,32 @@ export default function FinanceReimbursePage() {
     }
   };
 
+  const fetchDefaultReimbursementNumber = async () => {
+    try {
+      const response = await apiFetch("/api/finance/reimbursement-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+
+      setReimbursementNumber(`RMB-${mm}${yy}-${nnnnn}`);
+    } catch (error) {
+      console.error("Gagal mengambil reimbursement number:", error);
+    }
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchReimburse(), fetchKaryawan(), fetchCoa()]);
+        await Promise.all([fetchReimburse(), fetchKaryawan(), fetchCoa(), fetchDefaultReimbursementNumber()]);
       } finally {
         setIsLoading(false);
       }
@@ -222,6 +244,7 @@ export default function FinanceReimbursePage() {
     });
     setSelectedBuktiFile(null);
     setEditData(null);
+    void fetchDefaultReimbursementNumber();
   };
 
   const openAddModal = () => {
@@ -407,6 +430,7 @@ export default function FinanceReimbursePage() {
           <table className="w-full min-w-max text-left">
             <thead className="bg-slate-50/80">
               <tr>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">ID Reimburse</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Karyawan</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">COA</th>
@@ -435,6 +459,7 @@ export default function FinanceReimbursePage() {
                   const employee = employeeById[item.employee_id ?? ""];
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-4 md:px-6 py-3 text-sm font-bold font-mono text-slate-900 whitespace-nowrap">{item.reimbursement_number ?? "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{employee?.nama ?? "Karyawan tidak ditemukan"}</td>
@@ -499,6 +524,18 @@ export default function FinanceReimbursePage() {
         maxWidth="max-w-md"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">ID Reimburse</label>
+            <input
+              type="text"
+              readOnly
+              value={editData?.reimbursement_number ?? reimbursementNumber}
+              className="w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm font-bold font-mono text-slate-500 cursor-not-allowed"
+              placeholder="Auto-generated"
+              disabled
+            />
+          </div>
+
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Karyawan</label>
             <select

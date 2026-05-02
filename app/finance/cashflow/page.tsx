@@ -59,6 +59,7 @@ export default function FinanceCashflowPage() {
   const [editData, setEditData] = useState<TCashflow | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [cashflowNumber, setCashflowNumber] = useState("");
 
   const [formData, setFormData] = useState<{
     tipe: FinanceCashflowType;
@@ -88,8 +89,29 @@ export default function FinanceCashflowPage() {
     }
   };
 
+  const fetchDefaultCashflowNumber = async () => {
+    try {
+      const response = await apiFetch("/api/finance/cashflow-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+
+      setCashflowNumber(`CSH-${mm}${yy}-${nnnnn}`);
+    } catch (error) {
+      console.error("Gagal mengambil cashflow number:", error);
+    }
+  };
+
   useEffect(() => {
-    void fetchCashflow();
+    void Promise.all([fetchCashflow(), fetchDefaultCashflowNumber()]);
   }, []);
 
   const totalIncome = useMemo(
@@ -118,6 +140,7 @@ export default function FinanceCashflowPage() {
   const resetForm = () => {
     setFormData({ tipe: "income", amount: "", keterangan: "" });
     setEditData(null);
+    void fetchDefaultCashflowNumber();
   };
 
   const openAddModal = () => {
@@ -166,6 +189,7 @@ export default function FinanceCashflowPage() {
         tipe: formData.tipe,
         amount: parsedAmount,
         keterangan: formData.keterangan.trim() || null,
+        cashflow_number: cashflowNumber || undefined,
       };
 
       if (editData) {
@@ -288,6 +312,7 @@ export default function FinanceCashflowPage() {
           <table className="w-full min-w-max text-left">
             <thead className="bg-slate-50/80">
               <tr>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">ID Cashflow</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Keterangan</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Tipe</th>
@@ -311,6 +336,7 @@ export default function FinanceCashflowPage() {
               ) : (
                 filteredItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="px-4 md:px-6 py-3 text-sm font-bold font-mono text-slate-900 whitespace-nowrap">{item.cashflow_number ?? "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-800 min-w-80">{item.keterangan ?? "-"}</td>
                     <td className="px-4 md:px-6 py-3">
@@ -351,6 +377,18 @@ export default function FinanceCashflowPage() {
         title={editData ? "Edit Transaksi" : "Catat Transaksi Baru"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">ID Cashflow</label>
+            <input
+              type="text"
+              readOnly
+              value={editData?.cashflow_number ?? cashflowNumber}
+              className="w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm font-bold font-mono text-slate-500 cursor-not-allowed"
+              placeholder="Auto-generated"
+              disabled
+            />
+          </div>
+
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tipe Transaksi</label>
             <select

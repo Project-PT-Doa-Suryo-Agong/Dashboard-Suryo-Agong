@@ -36,10 +36,14 @@ export async function POST(request: Request) {
   const resi = requireString(input, "resi", { maxLen: 120, optional: true });
   if (!resi.ok) return fail(ErrorCode.VALIDATION_ERROR, resi.message, 400);
 
+  const manifestNumber = requireString(input, "manifest_number", { optional: true });
+  if (!manifestNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, manifestNumber.message, 400);
+
   const payload: TLogistikManifestInsert = {
     ...input,
     order_id: orderId.data,
     resi: resi.data,
+    ...(manifestNumber.data ? { manifest_number: manifestNumber.data } : {}),
   };
 
   const { data, error } = await createManifest(auth.ctx.supabase, payload);

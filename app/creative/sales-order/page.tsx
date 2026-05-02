@@ -49,6 +49,7 @@ type CoaListPayload = {
 };
 
 type FormState = {
+  order_number: string;
   varian_id: string;
   affiliator_id: string;
   coa_id: string | null;
@@ -57,6 +58,7 @@ type FormState = {
 };
 
 const initialFormState: FormState = {
+  order_number: "",
   varian_id: "",
   affiliator_id: "",
   coa_id: null,
@@ -97,8 +99,8 @@ function formatDate(value: string | null): string {
   }).format(new Date(value));
 }
 
-function getOrderDisplayCode(order: { order_code?: string | null; id?: string | null } | null | undefined): string {
-  return order?.order_code?.trim() || order?.id || "-";
+function getOrderDisplayCode(order: { order_number?: string | null; order_code?: string | null; id?: string | null } | null | undefined): string {
+  return order?.order_number?.trim() || order?.order_code?.trim() || order?.id || "-";
 }
 
 function getVarianLabel(item: MVarian): string {
@@ -183,7 +185,32 @@ export default function SalesOrderPage() {
   const resetForm = () => {
     setFormData({ ...initialFormState, coa_id: null });
     setEditData(null);
+    void fetchDefaultOrderNumber();
   };
+
+  const fetchDefaultOrderNumber = useCallback(async () => {
+    try {
+      const response = await apiFetch("/api/sales/order-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+      
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, '0');
+      
+      setFormData((prev) => ({
+        ...prev,
+        order_number: `ORD-${mm}${yy}-${nnnnn}`,
+      }));
+    } catch (error) {
+      console.error("Gagal mengambil order number:", error);
+    }
+  }, []);
 
   const fetchDependencies = useCallback(async () => {
     const [ordersResponse, variantsResponse, affiliatorsResponse, coaResponse] = await Promise.all([
@@ -224,13 +251,14 @@ export default function SalesOrderPage() {
     setIsLoading(true);
     try {
       await fetchDependencies();
+      await fetchDefaultOrderNumber();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data sales order.";
       alert(message);
     } finally {
       setIsLoading(false);
     }
-  }, [fetchDependencies]);
+  }, [fetchDependencies, fetchDefaultOrderNumber]);
 
   useEffect(() => {
     void fetchOrdersAndDependencies();
@@ -241,6 +269,7 @@ export default function SalesOrderPage() {
     const initialQuantity = String(item.quantity);
     const initialVariantId = item.varian_id ?? "";
     setFormData({
+      order_number: item.order_number ?? "",
       varian_id: initialVariantId,
       affiliator_id: item.affiliator_id ?? "",
       coa_id: item.coa_id ?? null,
@@ -286,6 +315,7 @@ export default function SalesOrderPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          order_number: formData.order_number || undefined,
           varian_id: formData.varian_id,
           affiliator_id: formData.affiliator_id || null,
           coa_id: formData.coa_id || null,
@@ -382,6 +412,18 @@ export default function SalesOrderPage() {
         </div>
 
         <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+          <div className="space-y-2 lg:col-span-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Order Number</label>
+            <input
+              type="text"
+              readOnly
+              value={formData.order_number}
+              className="w-full bg-slate-100 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm cursor-not-allowed font-mono font-bold"
+              placeholder="Auto-generated"
+              disabled
+            />
+          </div>
+
           <div className="space-y-2 lg:col-span-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Product Variant</label>
             <select

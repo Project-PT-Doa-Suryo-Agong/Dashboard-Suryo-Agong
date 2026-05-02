@@ -186,6 +186,7 @@ export default function ReturnsPage() {
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editData, setEditData] = useState<TReturnOrder | null>(null);
+  const [returnNumber, setReturnNumber] = useState("");
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedReturnId, setSelectedReturnId] = useState<string | null>(null);
@@ -275,11 +276,32 @@ export default function ReturnsPage() {
     }
   };
 
+  const fetchDefaultReturnNumber = async () => {
+    try {
+      const response = await apiFetch("/api/logistics/return-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+
+      setReturnNumber(`RET-${mm}${yy}-${nnnnn}`);
+    } catch (error) {
+      console.error("Gagal mengambil return number:", error);
+    }
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchReturns(), fetchOrders(), fetchManifests()]);
+        await Promise.all([fetchReturns(), fetchOrders(), fetchManifests(), fetchDefaultReturnNumber()]);
       } finally {
         setIsLoading(false);
       }
@@ -340,6 +362,7 @@ export default function ReturnsPage() {
     setFormData({ order_id: getOrderPrimaryKey(selectableOrders[0]) || "", alasan: "", status: "pending", foto_bukti_url: null });
     setSelectedBuktiFile(null);
     setEditData(null);
+    void fetchDefaultReturnNumber();
   };
 
   const openFormModal = (item?: TReturnOrder) => {
@@ -387,6 +410,7 @@ export default function ReturnsPage() {
         alasan: formData.alasan.trim(),
         status: formData.status,
         foto_bukti_url: fotoBuktiUrl,
+        return_number: returnNumber || undefined,
       };
 
       if (editData) {
@@ -513,7 +537,7 @@ export default function ReturnsPage() {
                 const statusUi = getReturnStatusUi(item.status);
                 return (
                   <tr key={rowKey} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{returnId ? returnId.slice(0, 8).toUpperCase() : "-"}</td>
+                    <td className="px-4 py-3 text-sm font-bold font-mono text-slate-800 whitespace-nowrap">{item.return_number?.trim() || (returnId ? returnId.slice(0, 8).toUpperCase() : "-")}</td>
                     <td className="px-4 py-3 text-sm text-slate-800 whitespace-nowrap">{readableOrderCode}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.product?.nama_produk ?? "Produk tidak ditemukan"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{item.alasan ?? "-"}</td>
@@ -542,6 +566,18 @@ export default function ReturnsPage() {
 
       <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title="Form Retur" maxWidth="max-w-md">
         <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">Return Number</span>
+            <input
+              type="text"
+              readOnly
+              value={editData?.return_number ?? returnNumber}
+              className="w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm font-bold font-mono text-slate-500 cursor-not-allowed"
+              placeholder="Auto-generated"
+              disabled
+            />
+          </label>
+
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Order</span>
             <select
@@ -663,8 +699,8 @@ export default function ReturnsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">ID Retur</p>
-                <p className="text-sm font-semibold text-slate-800 break-all">
-                  {(() => {
+                <p className="text-sm font-bold font-mono text-slate-800 break-all">
+                  {selectedDetailItem.return_number?.trim() || (() => {
                     const returnId = getReturnPrimaryKey(selectedDetailItem);
                     return returnId ? returnId.slice(0, 8).toUpperCase() : "-";
                   })()}

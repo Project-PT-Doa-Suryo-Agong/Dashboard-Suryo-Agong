@@ -4,6 +4,7 @@ import { listCashflow, createCashflow } from "@/lib/services/finance.service";
 import { requireNumber, requireString } from "@/lib/validation/body-validator";
 import type { TCashflowInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -40,13 +41,17 @@ export async function POST(request: Request) {
   const keterangan = requireString(input, "keterangan", { maxLen: 255, optional: true });
   if (!keterangan.ok) return fail(ErrorCode.VALIDATION_ERROR, keterangan.message, 400);
 
+  const cashflowNumber = requireString(input, "cashflow_number", { optional: true });
+  if (!cashflowNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, cashflowNumber.message, 400);
+
   const payload: TCashflowInsert = {
     tipe: tipe.data as TCashflowInsert["tipe"],
     amount: amount.data as number,
     keterangan: keterangan.data,
+    ...(cashflowNumber.data ? { cashflow_number: cashflowNumber.data } : {}),
   };
 
-  const { data, error } = await createCashflow(auth.ctx.supabase, payload);
+  const { data, error } = await createCashflow(supabaseAdmin as any, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal membuat data cashflow.", 500, error.message);
   return ok({ cashflow: data }, "Data cashflow berhasil dibuat.", 201);
 }

@@ -39,6 +39,9 @@ export async function POST(request: Request) {
   if ("no_bukti" in input) payload.no_bukti = String(input.no_bukti);
   if ("keterangan" in input) payload.keterangan = String(input.keterangan);
   if ("referensi_id" in input) payload.referensi_id = input.referensi_id ? String(input.referensi_id) : null;
+  
+  const journalNumber = requireString(input, "journal_number", { optional: true });
+  if (journalNumber.ok && journalNumber.data) payload.journal_number = journalNumber.data;
 
   const { data, error } = await createJurnal(auth.ctx.supabase, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal membuat data jurnal.", 500, error.message);

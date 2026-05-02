@@ -19,6 +19,7 @@ type SystemRoleKey =
 	| 'creative'
 	| 'office'
 	| 'Super Admin';
+	// | 'Admin';
 
 type ProfilesListPayload = {
 	profiles: Profile[];
@@ -42,6 +43,7 @@ const ROLE_OPTIONS: Array<{ key: SystemRoleKey; label: UserRole }> = [
 	{ key: 'logistik', label: 'Logistics & Packing' },
 	{ key: 'creative', label: 'Creative & Sales' },
 	{ key: 'office', label: 'Office Support' },
+	// { key: 'Admin', label: 'Admin'},
 ];
 
 const LABEL_TO_ROLE_KEY = new Map<UserRole, SystemRoleKey>(ROLE_OPTIONS.map((item) => [item.label, item.key]));
