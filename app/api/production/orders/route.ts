@@ -4,6 +4,7 @@ import { listProduksiOrder, createProduksiOrder } from "@/lib/services/productio
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import type { TProduksiOrderInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -38,8 +39,41 @@ export async function POST(request: Request) {
     return fail(ErrorCode.VALIDATION_ERROR, "status harus draft, ongoing, atau done.", 400);
   }
 
+  const produksiNumber = requireString(input, "produksi_number", { optional: true });
+  if (!produksiNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, produksiNumber.message, 400);
+
+  const generateProduksiNumber = async () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+    const { data: countData, error: countError } = await supabaseAdmin.rpc("count_produksi_orders_this_month", {
+      start_of_month: startOfMonth,
+      start_of_next_month: startOfNextMonth,
+    });
+
+    if (countError) {
+      return { ok: false as const, error: countError };
+    }
+
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yy = String(now.getFullYear()).slice(-2);
+    const seq = String(((countData as number) ?? 0) + 1).padStart(5, "0");
+    return { ok: true as const, number: `PRD-${mm}${yy}-${seq}` };
+  };
+
+  let finalProduksiNumber = produksiNumber.data ?? null;
+  if (!finalProduksiNumber) {
+    const generated = await generateProduksiNumber();
+    if (!generated.ok) {
+      return fail(ErrorCode.DB_ERROR, "Gagal membuat nomor produksi.", 500, generated.error.message);
+    }
+    finalProduksiNumber = generated.number;
+  }
+
   // Setidaknya validasi ini memastikan payload bersih dari extraneous keys.
   const payload: TProduksiOrderInsert = {
+    produksi_number: finalProduksiNumber,
     vendor_id: vendorId.data,
     product_id: productId.data,
     quantity: quantity.data,

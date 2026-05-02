@@ -6,19 +6,19 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
-  
+
   try {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
 
-    const { data, error } = await supabaseAdmin.rpc("count_cashflow_this_month", {
+    const { data, error } = await supabaseAdmin.rpc("count_qc_inbound_this_month", {
       start_of_month: startOfMonth,
       start_of_next_month: startOfNextMonth,
     });
 
     if (error) {
-      return fail(ErrorCode.DB_ERROR, "Gagal mengambil data hitungan cashflow.", 500, error.message);
+      return fail(ErrorCode.DB_ERROR, "Gagal mengambil data hitungan QC inbound.", 500, error.message);
     }
 
     return ok({ count: (data as number) ?? 0 });

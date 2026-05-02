@@ -90,6 +90,7 @@ export default function QcOutboundPage() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [qcOutNumber, setQcOutNumber] = useState("");
 
   const [formData, setFormData] = useState<{
     produksi_order_id: string;
@@ -134,11 +135,30 @@ export default function QcOutboundPage() {
     }
   };
 
+  const fetchDefaultQcOutNumber = async () => {
+    try {
+      const response = await apiFetch("/api/production/qc-out-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count ?? 0;
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+      setQcOutNumber(`QCO-${mm}${yy}-${nnnnn}`);
+    } catch {
+      setQcOutNumber("");
+    }
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchQcOutbound(), fetchOrders()]);
+        await Promise.all([fetchQcOutbound(), fetchOrders(), fetchDefaultQcOutNumber()]);
       } finally {
         setIsLoading(false);
       }
@@ -160,7 +180,8 @@ export default function QcOutboundPage() {
       const matchStatus = filterStatus === "all" || item.hasil === filterStatus;
       const matchSearch =
         normalizedSearch.length === 0 ||
-        (order?.id ?? item.produksi_order_id ?? "").toLowerCase().includes(normalizedSearch);
+        (item.qc_out_number ?? "").toLowerCase().includes(normalizedSearch) ||
+        (order?.produksi_number ?? order?.id ?? item.produksi_order_id ?? "").toLowerCase().includes(normalizedSearch);
 
       return matchStatus && matchSearch;
     });
@@ -176,11 +197,13 @@ export default function QcOutboundPage() {
 
   const openAddModal = () => {
     resetForm();
+    void fetchDefaultQcOutNumber();
     setIsFormModalOpen(true);
   };
 
   const openEditModal = (item: TQCOutbound) => {
     setEditData(item);
+    setQcOutNumber(item.qc_out_number ?? "");
     setFormData({
       produksi_order_id: item.produksi_order_id ?? "",
       hasil: item.hasil ?? "pass",
@@ -217,6 +240,7 @@ export default function QcOutboundPage() {
       const payload = {
         produksi_order_id: formData.produksi_order_id,
         hasil: formData.hasil,
+        ...(editData ? {} : { qc_out_number: qcOutNumber || undefined }),
       };
 
       if (editData) {
@@ -238,6 +262,9 @@ export default function QcOutboundPage() {
       }
 
       await fetchQcOutbound();
+      if (!editData) {
+        await fetchDefaultQcOutNumber();
+      }
       closeFormModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Operasi simpan QC outbound gagal.";
@@ -315,6 +342,7 @@ export default function QcOutboundPage() {
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Tanggal</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Nomor QC</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Produksi Order</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Aksi</th>
@@ -323,17 +351,18 @@ export default function QcOutboundPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={4}>Memuat data...</td>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Memuat data...</td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={4}>Tidak ada data inspeksi yang sesuai filter.</td>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Tidak ada data inspeksi yang sesuai filter.</td>
                 </tr>
               ) : (
                 filteredItems.map((item) => (
                   <tr key={getQcPrimaryKey(item)} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
-                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-72">{orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan"}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.qc_out_number ?? "-"}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-72">{orderById[item.produksi_order_id ?? ""]?.produksi_number ?? orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan"}</td>
                     <td className="px-4 md:px-6 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass[item.hasil ?? "pass"]}`}>
                         {statusLabel[item.hasil ?? "pass"]}
@@ -369,6 +398,14 @@ export default function QcOutboundPage() {
       <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title="Evaluasi QC Outbound" maxWidth="max-w-lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-slate-700">Nomor QC</label>
+            <input
+              readOnly
+              value={editData?.qc_out_number ?? qcOutNumber}
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-600"
+            />
+          </div>
+          <div className="space-y-1.5">
             <label htmlFor="produksi-order-outbound" className="text-sm font-semibold text-slate-700">Produksi Order</label>
             <select
               id="produksi-order-outbound"
@@ -379,7 +416,7 @@ export default function QcOutboundPage() {
             >
               <option value="" disabled>Pilih produksi order</option>
               {orders.map((order) => (
-                <option key={order.id} value={order.id}>{order.id}</option>
+                <option key={order.id} value={order.id}>{order.produksi_number ?? order.id}</option>
               ))}
             </select>
           </div>

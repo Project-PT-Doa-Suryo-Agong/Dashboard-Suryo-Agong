@@ -638,6 +638,7 @@ export interface Database {
       t_produksi_order: {
         Row: {
           id: string;
+          produksi_number: string | null;
           vendor_id: string | null;
           product_id: string | null;
           quantity: number | null;
@@ -646,6 +647,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          produksi_number?: string | null;
           vendor_id?: string | null;
           product_id?: string | null;
           quantity?: number | null;
@@ -654,6 +656,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          produksi_number?: string | null;
           vendor_id?: string | null;
           product_id?: string | null;
           quantity?: number | null;
@@ -664,18 +667,21 @@ export interface Database {
       t_qc_inbound: {
         Row: {
           id: string;
+          qc_in_number: string | null;
           produksi_order_id: string | null;
           hasil: ProductionQcResult | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
+          qc_in_number?: string | null;
           produksi_order_id?: string | null;
           hasil?: ProductionQcResult | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
+          qc_in_number?: string | null;
           produksi_order_id?: string | null;
           hasil?: ProductionQcResult | null;
         };
@@ -684,18 +690,21 @@ export interface Database {
       t_qc_outbound: {
         Row: {
           id: string;
+          qc_out_number: string | null;
           produksi_order_id: string | null;
           hasil: ProductionQcResult | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
+          qc_out_number?: string | null;
           produksi_order_id?: string | null;
           hasil?: ProductionQcResult | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
+          qc_out_number?: string | null;
           produksi_order_id?: string | null;
           hasil?: ProductionQcResult | null;
         };

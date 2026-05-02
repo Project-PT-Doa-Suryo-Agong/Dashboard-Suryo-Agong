@@ -126,6 +126,7 @@ export default function ProductionOrdersPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailItem, setDetailItem] = useState<TProduksiOrder | null>(null);
+  const [produksiNumber, setProduksiNumber] = useState("");
 
   const [formData, setFormData] = useState<{
     product_id: string;
@@ -269,11 +270,30 @@ export default function ProductionOrdersPage() {
     }
   };
 
+  const fetchDefaultProduksiNumber = async () => {
+    try {
+      const response = await apiFetch("/api/production/produksi-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count ?? 0;
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+      setProduksiNumber(`PRD-${mm}${yy}-${nnnnn}`);
+    } catch {
+      setProduksiNumber("");
+    }
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchOrders(), fetchProduk(), fetchVendor()]);
+        await Promise.all([fetchOrders(), fetchProduk(), fetchVendor(), fetchDefaultProduksiNumber()]);
       } finally {
         setIsLoading(false);
       }
@@ -299,6 +319,7 @@ export default function ProductionOrdersPage() {
       const matchStatus = filterStatus === "all" || item.status === filterStatus;
       const matchSearch =
         normalizedSearch.length === 0 ||
+        (item.produksi_number ?? "").toLowerCase().includes(normalizedSearch) ||
         item.id.toLowerCase().includes(normalizedSearch) ||
         (productById[item.product_id ?? ""] ?? "").toLowerCase().includes(normalizedSearch) ||
         (vendorById[item.vendor_id ?? ""] ?? "").toLowerCase().includes(normalizedSearch);
@@ -319,11 +340,13 @@ export default function ProductionOrdersPage() {
 
   const openAddModal = () => {
     resetForm();
+    void fetchDefaultProduksiNumber();
     setIsFormModalOpen(true);
   };
 
   const openEditModal = (order: TProduksiOrder) => {
     setEditData(order);
+    setProduksiNumber(order.produksi_number ?? "");
     setFormData({
       product_id: order.product_id ?? "",
       vendor_id: order.vendor_id ?? "",
@@ -369,6 +392,7 @@ export default function ProductionOrdersPage() {
         vendor_id: formData.vendor_id,
         quantity: parsedQty,
         status: formData.status,
+        ...(editData ? {} : { produksi_number: produksiNumber || undefined }),
       };
 
       if (editData) {
@@ -388,6 +412,9 @@ export default function ProductionOrdersPage() {
       }
 
       await fetchOrders();
+      if (!editData) {
+        await fetchDefaultProduksiNumber();
+      }
       closeFormModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Operasi simpan pesanan produksi gagal.";
@@ -504,7 +531,7 @@ export default function ProductionOrdersPage() {
               ) : (
                 filteredItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.id}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.produksi_number ?? item.id}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-56">{productById[item.product_id ?? ""] ?? "Produk tidak ditemukan"}</td>
                     <td className="px-4 md:px-6 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass[item.status ?? "draft"]}`}>
@@ -533,6 +560,14 @@ export default function ProductionOrdersPage() {
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-slate-700">Nomor Produksi</label>
+            <input
+              readOnly
+              value={editData?.produksi_number ?? produksiNumber}
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-600"
+            />
+          </div>
           <div className="space-y-1.5">
             <label htmlFor="product-order" className="text-sm font-semibold text-slate-700">Produk</label>
             <select
@@ -634,7 +669,7 @@ export default function ProductionOrdersPage() {
           <dl className="space-y-4 text-sm">
             <div className="flex flex-col gap-1">
               <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">ID Pesanan</dt>
-              <dd className="font-mono text-slate-800 break-all">{detailItem.id}</dd>
+              <dd className="font-mono text-slate-800 break-all">{detailItem.produksi_number ?? detailItem.id}</dd>
             </div>
             <div className="flex flex-col gap-1">
               <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Produk</dt>
