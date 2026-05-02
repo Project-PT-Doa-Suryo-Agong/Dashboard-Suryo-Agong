@@ -244,9 +244,29 @@ export default function KaryawanPage() {
     setEditData(null);
   };
 
-  const openAddModal = () => {
+  const openAddModal = async () => {
     resetForm();
     setIsFormModalOpen(true);
+
+    try {
+      const response = await apiFetch("/api/hr/employees/nip-default", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+      
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnn = String(count + 1).padStart(3, '0');
+      const defaultNip = `NIP-DSA-${mm}${yy}-${nnn}`;
+      
+      setFormData((prev) => ({ ...prev, nip: defaultNip }));
+    } catch (error) {
+      console.error("Gagal mengambil default NIP:", error);
+    }
   };
 
   const openEditModal = (item: MKaryawan) => {
@@ -450,6 +470,7 @@ export default function KaryawanPage() {
     !!formData.posisi.trim() &&
     !!formData.divisi &&
     !!formData.nik &&
+    formData.nik.trim().length === 16 &&
     !!formData.nip &&
     !!formData.alamat_domisili.trim() &&
     !!formData.nomor_whatsapp &&
@@ -688,13 +709,20 @@ export default function KaryawanPage() {
               <label className="space-y-1.5">
                 <span className="text-sm font-medium text-slate-700">NIK (Nomor KTP)</span>
                 <input
-                  type="number"
-                  inputMode="numeric"
+                  type="text"
                   required
                   value={formData.nik}
                   onChange={(event) => setFormData((prev) => ({ ...prev, nik: event.target.value }))}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                  maxLength={16}
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none transition ${
+                    formData.nik && formData.nik.trim().length !== 16
+                      ? 'border-red-400 text-red-900 focus:border-red-400 focus:ring-2 focus:ring-red-200'
+                      : 'border-slate-300 text-slate-700 focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20'
+                  }`}
                 />
+                {formData.nik && formData.nik.trim().length !== 16 && (
+                  <p className="text-xs text-red-500 mt-1">NIK harus terdiri dari 16 digit.</p>
+                )}
               </label>
 
               <label className="space-y-1.5">

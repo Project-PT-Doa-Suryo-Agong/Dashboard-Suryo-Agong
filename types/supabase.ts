@@ -377,6 +377,7 @@ export interface Database {
       t_journal: {
         Row: {
           id: string;
+          journal_number: string | null;
           no_bukti: string;
           tanggal: string;
           keterangan: string | null;
@@ -386,6 +387,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          journal_number?: string | null;
           no_bukti: string;
           tanggal?: string;
           keterangan?: string | null;
@@ -395,6 +397,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          journal_number?: string | null;
           no_bukti?: string;
           tanggal?: string;
           keterangan?: string | null;
@@ -435,6 +438,7 @@ export interface Database {
       t_cashflow: {
         Row: {
           id: string;
+          cashflow_number: string | null;
           tipe: FinanceCashflowType | null;
           amount: number | null;
           keterangan: string | null;
@@ -443,6 +447,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          cashflow_number?: string | null;
           tipe?: FinanceCashflowType | null;
           amount?: number | null;
           keterangan?: string | null;
@@ -451,6 +456,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          cashflow_number?: string | null;
           tipe?: FinanceCashflowType | null;
           amount?: number | null;
           keterangan?: string | null;
@@ -487,6 +493,7 @@ export interface Database {
       t_reimbursement: {
         Row: {
           id: string;
+          reimbursement_number: string | null;
           employee_id: string | null;
           coa_id: string | null;
           amount: number | null;
@@ -496,6 +503,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          reimbursement_number?: string | null;
           employee_id?: string | null;
           coa_id?: string | null;
           amount?: number | null;
@@ -505,6 +513,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          reimbursement_number?: string | null;
           employee_id?: string | null;
           coa_id?: string | null;
           amount?: number | null;
@@ -515,7 +524,7 @@ export interface Database {
       };
       t_invoice: {
         Row: {
-          id: string;
+          id_invoice: string;
           tanggal: string;
           jatuh_tempo: string;
           pelanggan: string;
@@ -523,7 +532,7 @@ export interface Database {
           total_amount: number;
         };
         Insert: {
-          id?: string;
+          id_invoice: string;
           tanggal: string;
           jatuh_tempo: string;
           pelanggan: string;
@@ -531,7 +540,7 @@ export interface Database {
           total_amount?: number;
         };
         Update: {
-          id?: string;
+          id_invoice?: string;
           tanggal?: string;
           jatuh_tempo?: string;
           pelanggan?: string;
@@ -629,6 +638,7 @@ export interface Database {
       t_produksi_order: {
         Row: {
           id: string;
+          produksi_number: string | null;
           vendor_id: string | null;
           product_id: string | null;
           quantity: number | null;
@@ -637,6 +647,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          produksi_number?: string | null;
           vendor_id?: string | null;
           product_id?: string | null;
           quantity?: number | null;
@@ -645,6 +656,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          produksi_number?: string | null;
           vendor_id?: string | null;
           product_id?: string | null;
           quantity?: number | null;
@@ -655,18 +667,21 @@ export interface Database {
       t_qc_inbound: {
         Row: {
           id: string;
+          qc_in_number: string | null;
           produksi_order_id: string | null;
           hasil: ProductionQcResult | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
+          qc_in_number?: string | null;
           produksi_order_id?: string | null;
           hasil?: ProductionQcResult | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
+          qc_in_number?: string | null;
           produksi_order_id?: string | null;
           hasil?: ProductionQcResult | null;
         };
@@ -675,18 +690,21 @@ export interface Database {
       t_qc_outbound: {
         Row: {
           id: string;
+          qc_out_number: string | null;
           produksi_order_id: string | null;
           hasil: ProductionQcResult | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
+          qc_out_number?: string | null;
           produksi_order_id?: string | null;
           hasil?: ProductionQcResult | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
+          qc_out_number?: string | null;
           produksi_order_id?: string | null;
           hasil?: ProductionQcResult | null;
         };
@@ -708,16 +726,19 @@ export interface Database {
       t_packing: {
         Row: {
           order_id: string;
+          packing_number: string | null;
           status: LogisticsPackingStatus | null;
           created_at: string | null;
         };
         Insert: {
           order_id: string;
+          packing_number?: string | null;
           status?: LogisticsPackingStatus | null;
           created_at?: string | null;
         };
         Update: {
           order_id?: string;
+          packing_number?: string | null;
           status?: LogisticsPackingStatus | null;
         };
         Relationships: [];
@@ -725,16 +746,19 @@ export interface Database {
       t_logistik_manifest: {
         Row: {
           order_id: string;
+          manifest_number: string | null;
           resi: string | null;
           created_at: string | null;
         };
         Insert: {
           order_id: string;
+          manifest_number?: string | null;
           resi?: string | null;
           created_at?: string | null;
         };
         Update: {
           order_id?: string;
+          manifest_number?: string | null;
           resi?: string | null;
         };
         Relationships: [];
@@ -742,6 +766,7 @@ export interface Database {
       t_return_order: {
         Row: {
           id: string;
+          return_number: string | null;
           order_id: string | null;
           alasan: string;
           status: string | null;
@@ -751,6 +776,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          return_number?: string | null;
           order_id?: string | null;
           alasan: string;
           status?: string | null;
@@ -760,6 +786,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          return_number?: string | null;
           order_id?: string | null;
           alasan?: string;
           status?: string | null;
@@ -783,18 +810,21 @@ export interface Database {
       m_affiliator: {
         Row: {
           id: string;
+          affiliator_number: string | null;
           nama: string;
           platform: string | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
+          affiliator_number?: string | null;
           nama: string;
           platform?: string | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
+          affiliator_number?: string | null;
           nama?: string;
           platform?: string | null;
         };
@@ -803,6 +833,7 @@ export interface Database {
       t_content_planner: {
         Row: {
           id: string;
+          content_number: string | null;
           judul: string;
           platform: string | null;
           affiliator_id: string | null;
@@ -813,6 +844,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          content_number?: string | null;
           judul: string;
           platform?: string | null;
           affiliator_id?: string | null;
@@ -823,6 +855,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          content_number?: string | null;
           judul?: string;
           platform?: string | null;
           affiliator_id?: string | null;
@@ -835,18 +868,21 @@ export interface Database {
       t_live_performance: {
         Row: {
           id: string;
+          live_number: string | null;
           platform: string;
           revenue: number | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
+          live_number?: string | null;
           platform: string;
           revenue?: number | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
+          live_number?: string | null;
           platform?: string;
           revenue?: number | null;
         };
@@ -886,6 +922,7 @@ export interface Database {
         Row: {
           id: string;
           order_code: string | null;
+          order_number: string | null;
           coa_id: string | null;
           varian_id: string | null;
           affiliator_id: string | null;
@@ -896,6 +933,7 @@ export interface Database {
         Insert: {
           id?: string;
           order_code?: string | null;
+          order_number?: string | null;
           coa_id?: string | null;
           varian_id?: string | null;
           affiliator_id?: string | null;
@@ -906,6 +944,7 @@ export interface Database {
         Update: {
           id?: string;
           order_code?: string | null;
+          order_number?: string | null;
           coa_id?: string | null;
           varian_id?: string | null;
           affiliator_id?: string | null;
@@ -927,6 +966,7 @@ export interface Database {
       t_budget_request: {
         Row: {
           id: string;
+          budget_number: string | null;
           divisi: string;
           coa_id: string | null;
           amount: number;
@@ -935,6 +975,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          budget_number?: string | null;
           divisi: string;
           coa_id?: string | null;
           amount: number;
@@ -943,6 +984,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          budget_number?: string | null;
           divisi?: string;
           coa_id?: string | null;
           amount?: number;
@@ -953,6 +995,7 @@ export interface Database {
       t_kpi_weekly: {
         Row: {
           id: string;
+          kpi_number: string | null;
           minggu: string;
           divisi: string | null;
           target: number;
@@ -961,6 +1004,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          kpi_number?: string | null;
           minggu: string;
           divisi?: string | null;
           target: number;
@@ -969,6 +1013,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          kpi_number?: string | null;
           minggu?: string;
           divisi?: string | null;
           target?: number;

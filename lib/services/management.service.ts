@@ -15,14 +15,44 @@ const db = (client: DbClient) => (client as unknown as SchemaClient).schema("man
 
 //  t_budget_request 
 
+import { createClient } from "@supabase/supabase-js";
+
 export async function listBudgetRequest(client: DbClient, page = 1, limit = 50) {
   const from = (page - 1) * limit;
+  // Step 1: fetch budget requests without COA join
   const { data, error, count } = await db(client)
     .from("t_budget_request")
-    .select("*, m_coa(kode_akun,nama_akun)", { count: "exact" })
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, from + limit - 1);
-  return { data: (data ?? []) as TBudgetRequest[], error, meta: { page, limit, total: count ?? 0 } };
+
+  if (error || !data) return { data: [], error, meta: { page, limit, total: 0 } };
+
+  // Step 2: fetch COA names separately for non-null coa_ids
+  const coaIds = [...new Set(data.map(r => r.coa_id).filter(Boolean))];
+  let coaMap: Record<string, { kode_akun: string; nama_akun: string }> = {};
+
+  if (coaIds.length > 0) {
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const { data: coaData } = await supabaseAdmin
+      .schema('finance')
+      .from('m_coa')
+      .select('id, kode_akun, nama_akun')
+      .in('id', coaIds);
+
+    coaMap = Object.fromEntries((coaData ?? []).map(c => [c.id, c]));
+  }
+
+  // Step 3: merge COA data into budget requests
+  const merged = data.map(r => ({
+    ...r,
+    m_coa: r.coa_id ? (coaMap[r.coa_id] ?? null) : null
+  }));
+
+  return { data: merged as TBudgetRequest[], error: null, meta: { page, limit, total: count ?? 0 } };
 }
 
 export async function getBudgetRequestById(client: DbClient, id: string) {

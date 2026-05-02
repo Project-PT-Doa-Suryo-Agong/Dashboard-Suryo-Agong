@@ -426,6 +426,60 @@ test.describe.serial("Authenticated CRUD routes", () => {
         }
     });
 
+    test("reimburse retry generates new number on duplicate", async () => {
+        const suffix = uniqueTag("reimburse");
+        const createdEmployee = `Employee ${suffix}`;
+        const reimbursementNumber = `RMB-TEST-${suffix}`;
+
+        let employee: { id: string; profile_id: string | null } | null = null;
+        let firstReimburseId = "";
+        let secondReimburseId = "";
+
+        try {
+            employee = await createRecord<{ id: string; profile_id: string | null; nama: string; posisi: string | null; divisi: string | null; status: string | null; gaji_pokok: number | null }>(managementPage, "/api/hr/employees", {
+                email: `${suffix}@reimburse.test`,
+                password: "HrPass123!",
+                profile_id: null,
+                nama: createdEmployee,
+                posisi: "QA Analyst",
+                divisi: "Developer",
+                role: "developer",
+                status: "aktif",
+                gaji_pokok: 7500000,
+            }, "karyawan");
+
+            const firstReimburse = await createRecord<{ id: string; reimbursement_number: string | null }>(managementPage, "/api/finance/reimburse", {
+                employee_id: employee.id,
+                amount: 150000,
+                status: "pending",
+                reimbursement_number: reimbursementNumber,
+            }, "reimburse");
+
+            const secondReimburse = await createRecord<{ id: string; reimbursement_number: string | null }>(managementPage, "/api/finance/reimburse", {
+                employee_id: employee.id,
+                amount: 200000,
+                status: "pending",
+                reimbursement_number: reimbursementNumber,
+            }, "reimburse");
+
+            firstReimburseId = firstReimburse.id;
+            secondReimburseId = secondReimburse.id;
+
+            expect(firstReimburse.reimbursement_number).toBe(reimbursementNumber);
+            expect(secondReimburse.reimbursement_number).not.toBe(reimbursementNumber);
+        } finally {
+            if (firstReimburseId) {
+                await deleteRecord(managementPage, "/api/finance/reimburse", firstReimburseId).catch(() => undefined);
+            }
+            if (secondReimburseId) {
+                await deleteRecord(managementPage, "/api/finance/reimburse", secondReimburseId).catch(() => undefined);
+            }
+            if (employee?.profile_id) {
+                await deleteRecord(managementPage, "/api/profiles", employee.profile_id).catch(() => undefined);
+            }
+        }
+    });
+
     test("management KPI route reflects seeded performance rows", async () => {
         const createdDivision = "Developer";
         const updatedDivision = "Management & Strategy";

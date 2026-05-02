@@ -34,11 +34,14 @@ export async function POST(request: Request) {
   if (!nama.ok) return fail(ErrorCode.VALIDATION_ERROR, nama.message, 400);
   const platform = requireString(input, "platform", { maxLen: 120, optional: true });
   if (!platform.ok) return fail(ErrorCode.VALIDATION_ERROR, platform.message, 400);
+  const affiliatorNumber = requireString(input, "affiliator_number", { maxLen: 32, optional: true });
+  if (!affiliatorNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, affiliatorNumber.message, 400);
 
   const payload: MAfiliatorInsert = {
     ...input,
     nama: nama.data!,
     platform: platform.data,
+    affiliator_number: affiliatorNumber.data,
   };
 
   const { data, error } = await createAfiliator(auth.ctx.supabase, payload);

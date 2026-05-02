@@ -139,6 +139,7 @@ export default function ManifestPage() {
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editData, setEditData] = useState<TLogistikManifest | null>(null);
+  const [manifestNumber, setManifestNumber] = useState("");
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -214,11 +215,32 @@ export default function ManifestPage() {
     }
   };
 
+  const fetchDefaultManifestNumber = async () => {
+    try {
+      const response = await apiFetch("/api/logistics/manifest-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+
+      setManifestNumber(`MNF-${mm}${yy}-${nnnnn}`);
+    } catch (error) {
+      console.error("Gagal mengambil manifest number:", error);
+    }
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchManifest(), fetchOrders(), fetchVariants()]);
+        await Promise.all([fetchManifest(), fetchOrders(), fetchVariants(), fetchDefaultManifestNumber()]);
       } finally {
         setIsLoading(false);
       }
@@ -272,6 +294,7 @@ export default function ManifestPage() {
   const resetForm = () => {
     setFormData({ order_id: getOrderPrimaryKey(orders[0]) || "", resi: "" });
     setEditData(null);
+    void fetchDefaultManifestNumber();
   };
 
   const openFormModal = (item?: TLogistikManifest) => {
@@ -303,7 +326,11 @@ export default function ManifestPage() {
 
     setIsSubmitting(true);
     try {
-      const payload = { order_id: formData.order_id, resi: formData.resi.trim() };
+      const payload = { 
+        order_id: formData.order_id, 
+        resi: formData.resi.trim(),
+        manifest_number: manifestNumber || undefined
+      };
 
       if (editData) {
         const response = await apiFetch(`/api/logistics/manifest/${getOrderPrimaryKey(editData)}`, {
@@ -417,6 +444,7 @@ export default function ManifestPage() {
         <table className="min-w-max w-full border-separate border-spacing-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
           <thead className="bg-slate-50">
             <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Manifest Number</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Order</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Varian</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Resi</th>
@@ -434,6 +462,7 @@ export default function ManifestPage() {
                 const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
                 return (
                   <tr key={getOrderPrimaryKey(item)} className="border-t border-slate-100">
+                    <td className="px-4 py-3 text-sm font-bold font-mono text-slate-700 whitespace-nowrap">{item.manifest_number?.trim() || getOrderPrimaryKey(item)}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{getOrderDisplayCode(order, item.order_id)}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{resolveVariantName(item)}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.resi ?? "-"}</td>
@@ -454,6 +483,18 @@ export default function ManifestPage() {
 
       <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title="Form Manifest" maxWidth="max-w-md">
         <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-slate-700">Manifest Number</span>
+            <input
+              type="text"
+              readOnly
+              value={editData?.manifest_number ?? manifestNumber}
+              className="w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm font-bold font-mono text-slate-500 cursor-not-allowed"
+              placeholder="Auto-generated"
+              disabled
+            />
+          </label>
+
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-slate-700">Order</span>
             <select

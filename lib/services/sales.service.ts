@@ -6,7 +6,7 @@
  * 
  * @see lib/supabase/hooks/use-sales.ts
  */
-import type { MAfiliator, TContentPlanner, TSalesOrder, TContentStatistic } from "@/types/supabase";
+import type { MAfiliator, MAfiliatorInsert, TContentPlanner, TSalesOrder, TContentStatistic } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -30,7 +30,7 @@ export async function getAfiliatorById(client: DbClient, id: string) {
   return { data: data as MAfiliator | null, error };
 }
 
-export async function createAfiliator(client: DbClient, input: Record<string, unknown>) {
+export async function createAfiliator(client: DbClient, input: MAfiliatorInsert) {
   const { data, error } = await db(client).from("m_affiliator").insert(input as never).select("*").single();
   return { data: data as MAfiliator | null, error };
 }
@@ -197,3 +197,37 @@ export async function deleteSalesOrder(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
+//  t_live_performance
+
+export async function listLivePerformance(client: DbClient, page = 1, limit = 50) {
+  const from = (page - 1) * limit;
+  const { data, error, count } = await db(client)
+    .from("t_live_performance")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, from + limit - 1);
+  return { data: (data ?? []) as import("@/types/supabase").TLivePerformance[], error, meta: { page, limit, total: count ?? 0 } };
+}
+
+export async function createLivePerformance(client: DbClient, input: Record<string, unknown>) {
+  const { data, error } = await db(client).from("t_live_performance").insert(input as never).select("*").single();
+  return { data: data as import("@/types/supabase").TLivePerformance | null, error };
+}
+
+export async function updateLivePerformance(client: DbClient, id: string, input: Record<string, unknown>) {
+  const { data, error } = await db(client)
+    .from("t_live_performance")
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+  return { data: data as import("@/types/supabase").TLivePerformance | null, error };
+}
+
+export async function deleteLivePerformance(client: DbClient, id: string) {
+  const { error, count } = await db(client)
+    .from("t_live_performance")
+    .delete({ count: "exact" })
+    .eq("id", id);
+  return { error, deleted: (count ?? 0) > 0 };
+}

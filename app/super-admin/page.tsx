@@ -96,6 +96,11 @@ export default function SuperAdminDashboard() {
       title: "Office Support",
       description: "Kelola data office perusahaan.",
     },
+    {
+      href: "/super-admin/log",
+      title: "Log",
+      description: "Lihat log chat WhatsApp"
+    }
   ];
   useEffect(() => {
     const loadStats = async () => {

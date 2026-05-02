@@ -122,15 +122,74 @@ export async function POST(request: Request) {
   const coaId = requireUUID(input, "coa_id", { optional: true });
   if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
 
+  const reimbursementNumber = requireString(input, "reimbursement_number", { optional: true });
+  if (!reimbursementNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, reimbursementNumber.message, 400);
+
+  const isDuplicateNumberError = (dbError: { message?: string; details?: string } | null) => {
+    const details = dbError?.details ?? "";
+    const message = dbError?.message ?? "";
+    return (
+      details.includes("idx_reimbursement_number") ||
+      message.includes("idx_reimbursement_number") ||
+      message.includes("duplicate key value")
+    );
+  };
+
+  const generateReimbursementNumber = async () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+    const { data: countData, error: countError } = await supabaseAdmin.rpc("count_reimbursements_this_month", {
+      start_of_month: startOfMonth,
+      start_of_next_month: startOfNextMonth,
+    });
+
+    if (countError) {
+      return {
+        ok: false as const,
+        error: countError,
+      };
+    }
+
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yy = String(now.getFullYear()).slice(-2);
+    const seq = String(((countData as number) ?? 0) + 1).padStart(5, "0");
+    return {
+      ok: true as const,
+      number: `RMB-${mm}${yy}-${seq}`,
+    };
+  };
+
+  let finalReimbursementNumber = reimbursementNumber.data ?? null;
+  if (!finalReimbursementNumber) {
+    const generated = await generateReimbursementNumber();
+    if (!generated.ok) {
+      return fail(ErrorCode.DB_ERROR, "Gagal membuat nomor reimburse.", 500, generated.error.message);
+    }
+    finalReimbursementNumber = generated.number;
+  }
+
   const payload: TReimbursementInsert = {
     employee_id: employeeId.data,
     coa_id: coaId.data,
     amount: amount.data,
     bukti: finalBukti,
     status: (status.data ?? "pending") as TReimbursementInsert["status"],
+    reimbursement_number: finalReimbursementNumber,
   };
 
-  const { data, error } = await createReimbursement(auth.ctx.supabase, payload);
+  let { data, error } = await createReimbursement(supabaseAdmin as any, payload);
+  if (error && isDuplicateNumberError(error)) {
+    const regenerated = await generateReimbursementNumber();
+    if (!regenerated.ok) {
+      return fail(ErrorCode.DB_ERROR, "Gagal membuat nomor reimburse.", 500, regenerated.error.message);
+    }
+
+    payload.reimbursement_number = regenerated.number;
+    ({ data, error } = await createReimbursement(supabaseAdmin as any, payload));
+  }
+
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengajukan reimburse.", 500, error.message);
   return ok({ reimburse: data }, "Reimburse berhasil diajukan.", 201);
 }

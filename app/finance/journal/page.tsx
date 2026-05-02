@@ -100,6 +100,7 @@ export default function FinanceJournalPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editData, setEditData] = useState<TJournal | null>(null);
   const [detailData, setDetailData] = useState<TJournal | null>(null);
+  const [journalNumber, setJournalNumber] = useState("");
   const [detailItems, setDetailItems] = useState<JournalItemForm[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [journalItems, setJournalItems] = useState<JournalItemForm[]>([initialItemRow]);
@@ -145,8 +146,29 @@ export default function FinanceJournalPage() {
     }
   };
 
+  const fetchDefaultJournalNumber = async () => {
+    try {
+      const response = await apiFetch("/api/finance/journal-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+
+      setJournalNumber(`JRN-${mm}${yy}-${nnnnn}`);
+    } catch (error) {
+      console.error("Gagal mengambil journal number:", error);
+    }
+  };
+
   useEffect(() => {
-    void Promise.all([fetchJournals(), fetchCoa()]);
+    void Promise.all([fetchJournals(), fetchCoa(), fetchDefaultJournalNumber()]);
   }, []);
 
   const filteredJournals = useMemo(() => {
@@ -160,6 +182,7 @@ export default function FinanceJournalPage() {
     setJournalItems([initialItemRow]);
     setOriginalItems([]);
     setFormData({ no_bukti: "", tanggal: "", keterangan: "" });
+    void fetchDefaultJournalNumber();
     setIsFormModalOpen(true);
   };
 
@@ -236,6 +259,7 @@ export default function FinanceJournalPage() {
     setJournalItems([initialItemRow]);
     setOriginalItems([]);
     setEditData(null);
+    void fetchDefaultJournalNumber();
   };
 
   const closeFormModal = () => {
@@ -318,6 +342,7 @@ export default function FinanceJournalPage() {
             no_bukti: formData.no_bukti.trim(),
             tanggal: formData.tanggal,
             keterangan: formData.keterangan || null,
+            journal_number: journalNumber || undefined,
           }),
         });
         const payload = await parseJsonResponse<JournalPayload>(response);
@@ -450,7 +475,7 @@ export default function FinanceJournalPage() {
           <table className="w-full min-w-max text-left">
             <thead className="bg-slate-50/80">
               <tr>
-                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">No Bukti</th>
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Journal Number</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-center">Jumlah Item</th>
                 <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
@@ -459,16 +484,16 @@ export default function FinanceJournalPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">Memuat data...</td>
+                  <td colSpan={3} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">Memuat data...</td>
                 </tr>
               ) : filteredJournals.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">Tidak ada jurnal ditemukan.</td>
+                  <td colSpan={3} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">Tidak ada jurnal ditemukan.</td>
                 </tr>
               ) : (
                 filteredJournals.map((journal) => (
                   <tr key={journal.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-900 whitespace-nowrap">{journal.no_bukti ?? "-"}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm font-bold font-mono text-slate-900 whitespace-nowrap">{journal.journal_number ?? "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{formatDate(journal.tanggal)}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-center text-slate-900">{journal.t_journal_item?.length ?? 0}</td>
                     <td className="px-4 md:px-6 py-3 text-right whitespace-nowrap">
@@ -488,14 +513,25 @@ export default function FinanceJournalPage() {
 
       <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editData ? "Edit Jurnal" : "Tambah Jurnal"} maxWidth="max-w-4xl">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Journal Number</label>
+              <input
+                type="text"
+                readOnly
+                value={editData?.journal_number ?? journalNumber}
+                className="w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm font-bold font-mono text-slate-500 cursor-not-allowed"
+                placeholder="Auto-generated"
+                disabled
+              />
+            </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">No Bukti</label>
               <input
                 required
                 value={formData.no_bukti}
                 onChange={(event) => setFormData((prev) => ({ ...prev, no_bukti: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                 placeholder="Nomor bukti"
               />
             </div>
@@ -506,7 +542,7 @@ export default function FinanceJournalPage() {
                 type="date"
                 value={formData.tanggal}
                 onChange={(event) => setFormData((prev) => ({ ...prev, tanggal: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               />
             </div>
             <div className="space-y-2">
@@ -514,7 +550,7 @@ export default function FinanceJournalPage() {
               <input
                 value={formData.keterangan}
                 onChange={(event) => setFormData((prev) => ({ ...prev, keterangan: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                 placeholder="Keterangan opsional"
               />
             </div>
@@ -550,7 +586,7 @@ export default function FinanceJournalPage() {
                           required
                           value={item.coa_id}
                           onChange={(event) => updateItemRow(index, "coa_id", event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                           disabled={isSubmitting}
                         >
                           <option value="" disabled>
@@ -570,7 +606,7 @@ export default function FinanceJournalPage() {
                           step={1000}
                           value={item.debit}
                           onChange={(event) => updateItemRow(index, "debit", event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                           disabled={isSubmitting}
                         />
                       </td>
@@ -581,7 +617,7 @@ export default function FinanceJournalPage() {
                           step={1000}
                           value={item.kredit}
                           onChange={(event) => updateItemRow(index, "kredit", event.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                           disabled={isSubmitting}
                         />
                       </td>
@@ -641,7 +677,11 @@ export default function FinanceJournalPage() {
 
       <Modal isOpen={isDetailModalOpen} onClose={closeDetailModal} title="Detail Jurnal" maxWidth="max-w-4xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Journal Number</p>
+              <p className="mt-2 text-sm font-bold font-mono text-slate-900">{detailData?.journal_number ?? "-"}</p>
+            </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-xs uppercase tracking-wide text-slate-500">No Bukti</p>
               <p className="mt-2 text-sm font-semibold text-slate-900">{detailData?.no_bukti ?? "-"}</p>

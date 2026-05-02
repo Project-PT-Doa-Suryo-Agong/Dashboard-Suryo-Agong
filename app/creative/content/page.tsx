@@ -69,6 +69,7 @@ const PLATFORM_BADGE: Record<Platform, string> = {
 };
 
 type ContentFormProps = {
+  contentNumber: string;
   title: string;
   platform: string;
   affiliatorId: string;
@@ -90,6 +91,7 @@ type ContentFormProps = {
 };
 
 function ContentForm({
+  contentNumber,
   title,
   platform,
   affiliatorId,
@@ -112,6 +114,20 @@ function ContentForm({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-2 md:col-span-1">
+          <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
+            Content Number
+          </label>
+          <input
+            type="text"
+            value={contentNumber}
+            readOnly
+            className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-bold font-mono text-slate-500 outline-none transition-all"
+            placeholder="Auto-generated"
+            disabled
+          />
+        </div>
+
         <div className="space-y-2 md:col-span-1">
           <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
             Content Title
@@ -258,6 +274,7 @@ export default function ContentPlannerPage() {
   const [contents, setContents] = useState<(TContentPlanner & { m_affiliator?: { nama: string } | null })[]>([]);
   const [affiliators, setAffiliators] = useState<MAfiliator[]>([]);
 
+  const [contentNumber, setContentNumber] = useState('');
   const [title, setTitle] = useState('');
   const [platform, setPlatform] = useState<Platform | ''>('');
   const [affiliatorId, setAffiliatorId] = useState('');
@@ -307,9 +324,31 @@ export default function ContentPlannerPage() {
     }
   };
 
+  const fetchDefaultContentNumber = async () => {
+    try {
+      const response = await apiFetch("/api/sales/content-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+      
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, '0');
+      
+      setContentNumber(`CNT-${mm}${yy}-${nnnnn}`);
+    } catch (error) {
+      console.error("Gagal mengambil content number:", error);
+    }
+  };
+
   useEffect(() => {
     void fetchDependencies();
     void fetchContent();
+    void fetchDefaultContentNumber();
   }, []);
 
   const resetCreateForm = () => {
@@ -319,6 +358,7 @@ export default function ContentPlannerPage() {
     setJadwal('');
     setTipe('');
     setStatus('direncanakan');
+    void fetchDefaultContentNumber();
   };
 
   const handleSaveContent = async (event: FormEvent<HTMLFormElement>) => {
@@ -331,6 +371,7 @@ export default function ContentPlannerPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          content_number: contentNumber || undefined,
           judul: title.trim(),
           platform,
           affiliator_id: affiliatorId || null,
@@ -436,6 +477,7 @@ export default function ContentPlannerPage() {
         </div>
 
         <ContentForm
+          contentNumber={contentNumber}
           title={title}
           platform={platform}
           affiliatorId={affiliatorId}
@@ -471,9 +513,10 @@ export default function ContentPlannerPage() {
           <table className="min-w-205 w-full text-left">
             <thead className="bg-slate-50/80">
               <tr>
-                <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Content ID</th>
+                <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Content Number</th>
                 <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Title</th>
                 <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Affiliator</th>
+                <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Status</th>
                 <th className="px-4 py-4 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500 md:px-6">Aksi</th>
               </tr>
             </thead>
@@ -486,16 +529,29 @@ export default function ContentPlannerPage() {
                 </tr>
               ) : contents.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500 md:px-6">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500 md:px-6">
                     Belum ada konten.
                   </td>
                 </tr>
               ) : (
                 contents.map((item) => (
                 <tr key={item.id} className="transition-colors hover:bg-slate-50/50">
-                  <td className="px-4 py-4 font-mono text-sm text-slate-500 md:px-6">{item.id}</td>
+                  <td className="px-4 py-4 font-mono font-bold text-sm text-slate-700 md:px-6">{item.content_number?.trim() || item.id}</td>
                   <td className="px-4 py-4 text-sm font-medium text-slate-800 md:px-6">{item.judul}</td>
                   <td className="px-4 py-4 text-sm font-medium text-slate-800 md:px-6">{item.m_affiliator?.nama ?? '-'}</td>
+                  <td className="px-4 py-4 text-sm font-medium text-slate-800 md:px-6">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+                        item.status === 'terupload'
+                          ? 'bg-green-500 text-white'
+                          : item.status === 'dihapus'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-yellow-500 text-white'
+                      }`}
+                    >
+                      {item.status ?? '-'}
+                    </span>
+                  </td>
                   <td className="px-4 py-4 text-right md:px-6">
                     <RowActions>
                       <DetailButton onClick={() => handleOpenDetail(item)} disabled={isSubmitting} />
@@ -539,6 +595,7 @@ export default function ContentPlannerPage() {
           }
         >
           <ContentForm
+            contentNumber={editData.content_number ?? ''}
             title={editData.judul}
             platform={editData.platform ?? ''}
             affiliatorId={editData.affiliator_id ?? ''}
@@ -595,8 +652,8 @@ export default function ContentPlannerPage() {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Content ID</label>
-              <p className="mt-1 text-sm text-slate-800 font-medium">{detailData.id}</p>
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Content Number</label>
+              <p className="mt-1 text-sm font-mono font-bold text-slate-800">{detailData.content_number?.trim() || detailData.id}</p>
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Title</label>

@@ -39,10 +39,14 @@ export async function POST(request: Request) {
     return fail(ErrorCode.VALIDATION_ERROR, "status harus pending, packed, atau shipped.", 400);
   }
 
+  const packingNumber = requireString(input, "packing_number", { optional: true });
+  if (!packingNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, packingNumber.message, 400);
+
   const payload: TPackingInsert = {
     ...input,
     order_id: orderId.data,
     status: status.data as TPackingInsert["status"],
+    ...(packingNumber.data ? { packing_number: packingNumber.data } : {}),
   };
 
   const { data, error } = await createPacking(auth.ctx.supabase, payload);

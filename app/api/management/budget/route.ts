@@ -4,6 +4,7 @@ import { listBudgetRequest, createBudgetRequest } from "@/lib/services/managemen
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import type { TBudgetRequestInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial");
@@ -39,12 +40,45 @@ export async function POST(request: Request) {
   const coaId = requireUUID(input, "coa_id", { optional: true });
   if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
 
+  const budgetNumber = requireString(input, "budget_number", { optional: true });
+  if (!budgetNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, budgetNumber.message, 400);
+
+  const generateBudgetNumber = async () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+    const { data: countData, error: countError } = await supabaseAdmin.rpc("count_budget_requests_this_month", {
+      start_of_month: startOfMonth,
+      start_of_next_month: startOfNextMonth,
+    });
+
+    if (countError) {
+      return { ok: false as const, error: countError };
+    }
+
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yy = String(now.getFullYear()).slice(-2);
+    const seq = String(((countData as number) ?? 0) + 1).padStart(5, "0");
+    return { ok: true as const, number: `BDG-${mm}${yy}-${seq}` };
+  };
+
+  let finalBudgetNumber = budgetNumber.data ?? null;
+  if (!finalBudgetNumber) {
+    const generated = await generateBudgetNumber();
+    if (!generated.ok) {
+      return fail(ErrorCode.DB_ERROR, "Gagal membuat nomor budget.", 500, generated.error.message);
+    }
+    finalBudgetNumber = generated.number;
+  }
+
   const payload: TBudgetRequestInsert = {
     ...input,
     divisi: divisi.data!,
     amount: amount.data!,
     status: status.data as TBudgetRequestInsert["status"],
     coa_id: coaId.data,
+    budget_number: finalBudgetNumber,
   };
 
   const { data, error } = await createBudgetRequest(auth.ctx.supabase, payload);
