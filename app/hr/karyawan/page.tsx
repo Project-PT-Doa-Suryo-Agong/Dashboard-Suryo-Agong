@@ -244,9 +244,29 @@ export default function KaryawanPage() {
     setEditData(null);
   };
 
-  const openAddModal = () => {
+  const openAddModal = async () => {
     resetForm();
     setIsFormModalOpen(true);
+
+    try {
+      const response = await apiFetch("/api/hr/employees/nip-default", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count;
+      
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnn = String(count + 1).padStart(3, '0');
+      const defaultNip = `NIP-DSA-${mm}${yy}-${nnn}`;
+      
+      setFormData((prev) => ({ ...prev, nip: defaultNip }));
+    } catch (error) {
+      console.error("Gagal mengambil default NIP:", error);
+    }
   };
 
   const openEditModal = (item: MKaryawan) => {
@@ -688,8 +708,7 @@ export default function KaryawanPage() {
               <label className="space-y-1.5">
                 <span className="text-sm font-medium text-slate-700">NIK (Nomor KTP)</span>
                 <input
-                  type="number"
-                  inputMode="numeric"
+                  type="text"
                   required
                   value={formData.nik}
                   onChange={(event) => setFormData((prev) => ({ ...prev, nik: event.target.value }))}
