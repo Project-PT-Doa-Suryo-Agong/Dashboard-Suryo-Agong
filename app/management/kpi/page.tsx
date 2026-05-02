@@ -86,6 +86,7 @@ export default function ManagementKpiPage() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [kpiNumber, setKpiNumber] = useState("");
 
   const fetchKpi = async () => {
     setIsLoading(true);
@@ -105,14 +106,36 @@ export default function ManagementKpiPage() {
     }
   };
 
+  const fetchDefaultKpiNumber = async () => {
+    try {
+      const response = await apiFetch("/api/management/kpi-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count ?? 0;
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+      setKpiNumber(`KPI-${mm}${yy}-${nnnnn}`);
+    } catch {
+      setKpiNumber("");
+    }
+  };
+
   useEffect(() => {
-    void fetchKpi();
+    void Promise.all([fetchKpi(), fetchDefaultKpiNumber()]);
   }, []);
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     if (!keyword) return items;
-    return items.filter((item) => (item.divisi ?? "").toLowerCase().includes(keyword));
+    return items.filter((item) =>
+      (item.kpi_number ?? "").toLowerCase().includes(keyword) ||
+      (item.divisi ?? "").toLowerCase().includes(keyword),
+    );
   }, [items, searchTerm]);
 
   const averagePerformance = useMemo(() => {
@@ -138,11 +161,13 @@ export default function ManagementKpiPage() {
 
   const openCreateModal = () => {
     resetForm();
+    void fetchDefaultKpiNumber();
     setIsFormModalOpen(true);
   };
 
   const openEditModal = (item: TKPIWeekly) => {
     setEditData(item);
+    setKpiNumber(item.kpi_number ?? "");
     setFormData({
       minggu: item.minggu.split("T")[0],
       divisi: item.divisi ?? "",
@@ -180,6 +205,7 @@ export default function ManagementKpiPage() {
         divisi: formData.divisi.trim(),
         target: parsedTarget,
         realisasi: parsedRealisasi,
+        ...(editData ? {} : { kpi_number: kpiNumber || undefined }),
       };
 
       if (editData) {
@@ -199,6 +225,9 @@ export default function ManagementKpiPage() {
       }
 
       await fetchKpi();
+      if (!editData) {
+        await fetchDefaultKpiNumber();
+      }
       closeFormModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal menyimpan KPI.";
@@ -309,6 +338,7 @@ export default function ManagementKpiPage() {
           <table className="min-w-max w-full">
             <thead className="bg-slate-50">
               <tr>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Nomor KPI</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Divisi</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Target</th>
@@ -322,7 +352,7 @@ export default function ManagementKpiPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Memuat data...</td>
+                  <td colSpan={8} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Memuat data...</td>
                 </tr>
               ) : filteredItems.length > 0 ? (
                 filteredItems.map((item) => {
@@ -334,6 +364,7 @@ export default function ManagementKpiPage() {
                   });
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 md:px-6 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{item.kpi_number ?? item.id}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{formattedDate}</td>
                       <td className="px-4 md:px-6 py-3 text-sm font-medium text-slate-800">{item.divisi ?? "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.target}</td>
@@ -355,7 +386,7 @@ export default function ManagementKpiPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Data KPI tidak ditemukan.</td>
+                  <td colSpan={8} className="px-4 md:px-6 py-8 text-center text-sm text-slate-500">Data KPI tidak ditemukan.</td>
                 </tr>
               )}
             </tbody>
@@ -365,6 +396,14 @@ export default function ManagementKpiPage() {
 
       <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editData ? "Edit KPI" : "Tambah KPI"} maxWidth="max-w-lg">
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Nomor KPI</label>
+            <input
+              readOnly
+              value={editData?.kpi_number ?? kpiNumber}
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600"
+            />
+          </div>
           <input
             required
             type="date"

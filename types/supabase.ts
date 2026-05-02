@@ -963,6 +963,7 @@ export interface Database {
       t_budget_request: {
         Row: {
           id: string;
+          budget_number: string | null;
           divisi: string;
           coa_id: string | null;
           amount: number;
@@ -971,6 +972,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          budget_number?: string | null;
           divisi: string;
           coa_id?: string | null;
           amount: number;
@@ -979,6 +981,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          budget_number?: string | null;
           divisi?: string;
           coa_id?: string | null;
           amount?: number;
@@ -989,6 +992,7 @@ export interface Database {
       t_kpi_weekly: {
         Row: {
           id: string;
+          kpi_number: string | null;
           minggu: string;
           divisi: string | null;
           target: number;
@@ -997,6 +1001,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          kpi_number?: string | null;
           minggu: string;
           divisi?: string | null;
           target: number;
@@ -1005,6 +1010,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          kpi_number?: string | null;
           minggu?: string;
           divisi?: string | null;
           target?: number;

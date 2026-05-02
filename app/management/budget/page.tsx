@@ -115,6 +115,7 @@ export default function ManagementBudgetPage() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [budgetNumber, setBudgetNumber] = useState("");
 
   const fetchBudgetRequests = async () => {
     setIsLoading(true);
@@ -149,15 +150,36 @@ export default function ManagementBudgetPage() {
     }
   };
 
+  const fetchDefaultBudgetNumber = async () => {
+    try {
+      const response = await apiFetch("/api/management/budget-number", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ count: number }>(response);
+      const count = payload.data.count ?? 0;
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const nnnnn = String(count + 1).padStart(5, "0");
+      setBudgetNumber(`BDG-${mm}${yy}-${nnnnn}`);
+    } catch {
+      setBudgetNumber("");
+    }
+  };
+
   useEffect(() => {
-    void Promise.all([fetchBudgetRequests(), fetchCoa()]);
+    void Promise.all([fetchBudgetRequests(), fetchCoa(), fetchDefaultBudgetNumber()]);
   }, []);
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
     return items.filter((item) => {
-      const matchesSearch = (item.divisi ?? "").toLowerCase().includes(keyword);
+      const matchesSearch =
+        (item.budget_number ?? "").toLowerCase().includes(keyword) ||
+        (item.divisi ?? "").toLowerCase().includes(keyword);
       const matchesStatus = filterStatus === "all" ? true : item.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
@@ -170,11 +192,13 @@ export default function ManagementBudgetPage() {
 
   const openCreateModal = () => {
     resetForm();
+    void fetchDefaultBudgetNumber();
     setIsFormModalOpen(true);
   };
 
   const openEditModal = (item: TBudgetRequest) => {
     setEditData(item);
+    setBudgetNumber(item.budget_number ?? "");
     setFormData({
       divisi: item.divisi,
       coa_id: item.coa_id ?? null,
@@ -207,7 +231,10 @@ export default function ManagementBudgetPage() {
     try {
       const payload = {
         divisi: formData.divisi.trim(),
-      coa_id: formData.coa_id,
+        coa_id: formData.coa_id,
+        amount: parsedAmount,
+        status: formData.status,
+        ...(editData ? {} : { budget_number: budgetNumber || undefined }),
       };
 
       if (editData) {
@@ -227,6 +254,9 @@ export default function ManagementBudgetPage() {
       }
 
       await fetchBudgetRequests();
+      if (!editData) {
+        await fetchDefaultBudgetNumber();
+      }
       closeFormModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal menyimpan budget request.";
@@ -310,7 +340,7 @@ export default function ManagementBudgetPage() {
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Cari divisi..."
-            className="w-full sm:flex-1 rounded-xl border border-slate-300 bg-slate-200 py-2.5 px-3 text-sm text-slate-700 shadow-sm"
+            className="w-full sm:flex-1 rounded-xl bg-slate-200 text-sm text-slate-700 shadow-sm"
           />
 
           <select
@@ -339,7 +369,7 @@ export default function ManagementBudgetPage() {
         <table className="min-w-max w-full border-separate border-spacing-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">ID Pengajuan</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Nomor Pengajuan</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tanggal</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Divisi</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">COA</th>
@@ -360,7 +390,7 @@ export default function ManagementBudgetPage() {
 
                 return (
                   <tr key={item.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{item.id}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-slate-800 whitespace-nowrap">{item.budget_number ?? item.id}</td>
                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
                       {item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-"}
                     </td>
@@ -393,6 +423,14 @@ export default function ManagementBudgetPage() {
 
       <Modal isOpen={isFormModalOpen} onClose={closeFormModal} title={editData ? "Edit Pengajuan Anggaran" : "Tambah Pengajuan Anggaran"} maxWidth="max-w-lg">
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Nomor Pengajuan</label>
+            <input
+              readOnly
+              value={editData?.budget_number ?? budgetNumber}
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600"
+            />
+          </div>
           <select
             required
             value={formData.divisi}
@@ -464,6 +502,8 @@ export default function ManagementBudgetPage() {
         <div className="space-y-5">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+              <p className="text-slate-500">Nomor</p>
+              <p className="font-semibold text-slate-900">{selectedRequest?.budget_number ?? "-"}</p>
               <p className="text-slate-500">Divisi</p>
               <p className="font-semibold text-slate-900">{selectedRequest?.divisi ?? "-"}</p>
               <p className="text-slate-500">Nominal</p>
