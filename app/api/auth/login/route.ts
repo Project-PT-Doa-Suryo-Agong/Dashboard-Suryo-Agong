@@ -65,8 +65,8 @@ function slugifyRole(role: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function mapRoleToSubdomain(role: string | null | undefined): string {
-  if (!role) return "management";
+function mapRoleToSubdomain(role: string | null | undefined): string | null {
+  if (!role) return null;
   const slug = slugifyRole(role);
 
   const exactMap: Record<string, string> = {
@@ -249,6 +249,17 @@ export async function POST(request: NextRequest) {
     }
 
     const subdomain = mapRoleToSubdomain(role);
+
+    if (!subdomain) {
+      const response = fail(
+        ErrorCode.UNAUTHORIZED,
+        "Akun ini belum memiliki role yang terdaftar. Hubungi administrator.",
+        401
+      );
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+      return response;
+    }
+
     const redirectUrl = buildTenantRedirectUrl(subdomain, fallbackOrigin);
 
     const finalResponse = ok({ redirectUrl }, "Login berhasil.");
@@ -273,7 +284,7 @@ export async function POST(request: NextRequest) {
         maxAge: 60 * 60 * 24 * 30, // 30 days
         sameSite: "lax",
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
       });
     }
 
