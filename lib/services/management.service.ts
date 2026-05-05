@@ -68,7 +68,7 @@ export async function createBudgetRequest(client: DbClient, input: Record<string
 export async function updateBudgetRequest(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_budget_request")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -102,7 +102,7 @@ export async function createKPIWeekly(client: DbClient, input: Record<string, un
 export async function updateKPIWeekly(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_kpi_weekly")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();

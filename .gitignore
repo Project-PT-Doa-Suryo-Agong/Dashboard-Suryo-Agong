@@ -41,6 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 database.md
+api.md
 
 # supabase
 supabase/.temp

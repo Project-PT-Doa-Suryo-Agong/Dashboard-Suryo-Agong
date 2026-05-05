@@ -162,7 +162,7 @@ export default function KaryawanPage() {
         const payload = await parseJsonResponse<RolesPayload>(response);
         const fromProfiles = payload.data.roles_in_profiles ?? [];
         const allSupported = payload.data.all_supported_roles ?? [];
-        const options = fromProfiles.length > 0 ? fromProfiles : allSupported;
+        const options = allSupported.length > 0 ? allSupported : fromProfiles;
         setRoleOptions(Array.from(new Set(options)));
       } catch (error) {
         const message = error instanceof Error ? error.message : "Gagal memuat daftar role.";
