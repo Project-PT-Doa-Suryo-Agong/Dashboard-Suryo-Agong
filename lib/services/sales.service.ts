@@ -38,7 +38,7 @@ export async function createAfiliator(client: DbClient, input: MAfiliatorInsert)
 export async function updateAfiliator(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("m_affiliator")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -70,7 +70,7 @@ export async function createContentPlanner(client: DbClient, input: Record<strin
 export async function updateContentPlanner(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_content_planner")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -139,7 +139,7 @@ export async function createContentStatistic(client: DbClient, input: Record<str
 export async function updateContentStatistic(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_content_statistic")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -182,7 +182,7 @@ export async function createSalesOrder(client: DbClient, input: Record<string, u
 export async function updateSalesOrder(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_sales_order")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -217,7 +217,7 @@ export async function createLivePerformance(client: DbClient, input: Record<stri
 export async function updateLivePerformance(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_live_performance")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();

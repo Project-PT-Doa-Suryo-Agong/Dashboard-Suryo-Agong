@@ -26,14 +26,14 @@ export async function listCashflow(client: DbClient, page = 1, limit = 100) {
 }
 
 export async function createCashflow(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_cashflow").insert(input).select("*").single();
+  const { data, error } = await db(client).from("t_cashflow").insert(input as never).select("*").single();
   return { data: data as TCashflow | null, error };
 }
 
 export async function updateCashflow(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_cashflow")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -60,14 +60,14 @@ export async function listPayroll(client: DbClient, page = 1, limit = 50, employ
 }
 
 export async function createPayroll(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_payroll_history").insert(input).select("*").single();
+  const { data, error } = await db(client).from("t_payroll_history").insert(input as never).select("*").single();
   return { data: data as TPayrollHistory | null, error };
 }
 
 export async function updatePayroll(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_payroll_history")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -94,14 +94,14 @@ export async function listReimbursement(client: DbClient, page = 1, limit = 50, 
 }
 
 export async function createReimbursement(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_reimbursement").insert(input).select("*").single();
+  const { data, error } = await db(client).from("t_reimbursement").insert(input as never).select("*").single();
   return { data: data as TReimbursement | null, error };
 }
 
 export async function updateReimbursement(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_reimbursement")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -131,7 +131,7 @@ export async function createCoa(client: DbClient, input: MCoaInsert) {
 }
 
 export async function updateCoa(client: DbClient, id: string, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("m_coa").update(input).eq("id", id).select("*").maybeSingle();
+  const { data, error } = await db(client).from("m_coa").update(input as never).eq("id", id).select("*").maybeSingle();
   return { data: data as MCoa | null, error };
 }
 
@@ -158,7 +158,7 @@ export async function createJurnal(client: DbClient, input: Record<string, unkno
 }
 
 export async function updateJurnal(client: DbClient, id: string, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_journal").update(input).eq("id", id).select("*").maybeSingle();
+  const { data, error } = await db(client).from("t_journal").update(input as never).eq("id", id).select("*").maybeSingle();
   return { data: data as TJournal | null, error };
 }
 
@@ -184,7 +184,7 @@ export async function createJurnalItem(client: DbClient, input: Record<string, u
 }
 
 export async function updateJurnalItem(client: DbClient, id: string, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_journal_item").update(input).eq("id", id).select("*").maybeSingle();
+  const { data, error } = await db(client).from("t_journal_item").update(input as never).eq("id", id).select("*").maybeSingle();
   return { data: data as TJournalItem | null, error };
 }
 
@@ -213,7 +213,7 @@ export async function createInvoice(client: DbClient, input: Record<string, unkn
 export async function updateInvoice(client: DbClient, idInvoice: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_invoice")
-    .update(input)
+    .update(input as never)
     .eq("id_invoice", idInvoice)
     .select("*")
     .maybeSingle();
@@ -241,7 +241,7 @@ export async function createInvoiceItem(client: DbClient, input: Record<string, 
 }
 
 export async function updateInvoiceItem(client: DbClient, id_invoice: string, id_sales_order: string, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_invoice_item").update(input).eq("id_invoice", id_invoice).eq("id_sales_order", id_sales_order).select("*").maybeSingle();
+  const { data, error } = await db(client).from("t_invoice_item").update(input as never).eq("id_invoice", id_invoice).eq("id_sales_order", id_sales_order).select("*").maybeSingle();
   return { data: data as TInvoiceItem | null, error };
 }
 
@@ -273,7 +273,7 @@ export async function createUtangPiutang(client: DbClient, input: Record<string,
 }
 
 export async function updateUtangPiutang(client: DbClient, id: string, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_utang_piutang").update(input).eq("id", id).select("*").maybeSingle();
+  const { data, error } = await db(client).from("t_utang_piutang").update(input as never).eq("id", id).select("*").maybeSingle();
   return { data: data as TUtangPiutang | null, error };
 }
 

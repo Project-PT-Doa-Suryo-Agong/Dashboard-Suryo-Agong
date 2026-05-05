@@ -31,14 +31,14 @@ export async function getProduksiOrderById(client: DbClient, id: string) {
 }
 
 export async function createProduksiOrder(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_produksi_order").insert(input).select("*").single();
+  const { data, error } = await db(client).from("t_produksi_order").insert(input as never).select("*").single();
   return { data: data as TProduksiOrder | null, error };
 }
 
 export async function updateProduksiOrder(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("t_produksi_order")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -65,14 +65,14 @@ export async function listQCInbound(client: DbClient, page = 1, limit = 50, prod
 }
 
 export async function createQCInbound(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_qc_inbound").insert(input).select("*").single();
+  const { data, error } = await db(client).from("t_qc_inbound").insert(input as never).select("*").single();
   return { data: data as TQCInbound | null, error };
 }
 
 export async function updateQCInbound(client: DbClient, id: string, input: Record<string, unknown>) {
   const byOrder = await db(client)
     .from("t_qc_inbound")
-    .update(input)
+    .update(input as never)
     .eq("produksi_order_id", id)
     .select("*")
     .maybeSingle();
@@ -105,14 +105,14 @@ export async function listQCOutbound(client: DbClient, page = 1, limit = 100) {
 }
 
 export async function createQCOutbound(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("t_qc_outbound").insert(input).select("*").single();
+  const { data, error } = await db(client).from("t_qc_outbound").insert(input as never).select("*").single();
   return { data: data as TQCOutbound | null, error };
 }
 
 export async function updateQCOutbound(client: DbClient, id: string, input: Record<string, unknown>) {
   const byOrder = await db(client)
     .from("t_qc_outbound")
-    .update(input)
+    .update(input as never)
     .eq("produksi_order_id", id)
     .select("*")
     .maybeSingle();
