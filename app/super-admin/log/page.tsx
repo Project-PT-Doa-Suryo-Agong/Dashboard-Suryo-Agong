@@ -226,19 +226,19 @@ export default function LogPage() {
                   return (
                     <div
                       key={log.id ?? i}
-                      className="group flex flex-col gap-1.5 rounded-xl bg-slate-100 px-4 py-3 transition-colors hover:bg-slate-600"
+                      className="flex flex-col gap-1.5 rounded-xl bg-slate-100 px-4 py-3"
                     >
                       {/* Sender + timestamp */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-indigo-700 group-hover:text-slate-200">
+                        <span className="text-xs font-semibold text-blue-700">
                           {senderName}
                         </span>
-                        {formattedTime && <span className="shrink-0 text-[11px] text-slate-500 group-hover:text-slate-200">{formattedTime}</span>}
+                        {formattedTime && <span className="shrink-0 text-xs text-slate-700">{formattedTime}</span>}
                       </div>
 
                       {/* Bubble pesan */}
                       <div className="rounded-lg bg-slate-500 px-3 py-2">
-                        <p className="whitespace-pre-line break-words text-sm text-slate-200">
+                        <p className="whitespace-pre-line break-words text-md text-slate-200">
                           {message}
                         </p>
                       </div>
