@@ -31,7 +31,7 @@ export default function SsoDocsPage() {
           ))}
         </div>
         <button className="docs-print-btn" onClick={() => window.print()}>
-          🖨️ Print / Save PDF
+          Print / Save PDF
         </button>
       </nav>
 
