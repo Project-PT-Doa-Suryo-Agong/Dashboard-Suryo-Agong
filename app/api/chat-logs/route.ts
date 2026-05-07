@@ -55,7 +55,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(json, { status: 200 });
+    // Extract data array from upstream response
+    let items: unknown[] = [];
+    if (Array.isArray(json)) {
+      items = json;
+    } else if (Array.isArray((json as { data?: unknown[] }).data)) {
+      items = (json as { data: unknown[] }).data;
+    } else if (Array.isArray((json as { logs?: unknown[] }).logs)) {
+      items = (json as { logs: unknown[] }).logs;
+    }
+
+    // Filter by group_id
+    const filtered = items.filter(
+      (item) => (item as { group_id?: string }).group_id === groupId
+    );
+
+    return NextResponse.json({ data: filtered }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
