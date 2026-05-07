@@ -6,18 +6,27 @@
  *
  * Browsers require a leading dot for subdomain cookie sharing.
  */
-export function getCookieDomain(): string | undefined {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+function parseHostname(value: string) {
+  try {
+    const url = new URL(value.includes("://") ? value : `http://${value}`);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
 
-  if (siteUrl) {
-    try {
-      const url = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`);
-      const hostname = url.hostname.replace(/^www\./, "");
-      // Return ".domain.com" for subdomain sharing
-      return `.${hostname}`;
-    } catch {
-      // Malformed URL, fall through to localhost default
-    }
+export function getCookieDomain(fallbackHost?: string): string | undefined {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const hostname = siteUrl
+    ? parseHostname(siteUrl)
+    : fallbackHost
+      ? parseHostname(fallbackHost)
+      : null;
+
+  if (hostname) {
+    if (hostname === "localhost" || hostname.endsWith(".localhost")) return ".localhost";
+    if (hostname === "lvh.me" || hostname.endsWith(".lvh.me")) return ".lvh.me";
+    return `.${hostname}`;
   }
 
   // Local dev: ".localhost" allows cookie sharing across *.localhost

@@ -11,6 +11,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 type UserRole = CoreUserRole;
 
 type SystemRoleKey =
+	| 'Admin'
 	| 'management'
 	| 'finance'
 	| 'hr'
@@ -36,6 +37,7 @@ type ProfilePayload = {
 
 const ROLE_OPTIONS: Array<{ key: SystemRoleKey; label: UserRole }> = [
 	{ key: 'Super Admin', label: 'Super Admin' },
+	{ key: 'Admin', label: 'Admin' },
 	{ key: 'management', label: 'Management & Strategy' },
 	{ key: 'finance', label: 'Finance & Administration' },
 	{ key: 'hr', label: 'HR & Operation Manager' },
@@ -50,6 +52,7 @@ const LABEL_TO_ROLE_KEY = new Map<UserRole, SystemRoleKey>(ROLE_OPTIONS.map((ite
 
 const ROLE_BADGE_MAP: Record<UserRole, string> = {
 	'Super Admin': 'bg-purple-500 text-white border-purple-500',
+	Admin: 'bg-purple-400 text-white border-purple-400',
 	'Management & Strategy': 'bg-slate-500 text-white border-slate-500',
 	'Finance & Administration': 'bg-emerald-500 text-white border-emerald-500',
 	'HR & Operation Manager': 'bg-sky-500 text-white border-sky-500',
