@@ -99,7 +99,7 @@ NEXT_PUBLIC_SITE_URL=http://lvh.me:3000`}</CodeBlock>
             "<code>Management</code>",
             '<span class="docs-badge docs-badge-blue">Operational</span>',
             "cluster_1",
-            "Menu Management",
+            "Overview, Pengajuan Budget Divisi, KPI Divisi",
           ],
           [
             "<code>Finance</code>",
