@@ -231,12 +231,12 @@ export default function Sidebar(props: SidebarProps) {
       await Promise.race([logoutPromise, timeoutPromise]);
 
       clearClientSessionFallback();
-      router.push("/login");
+      window.location.href = "http://lvh.me:3000/auth/login";
     } catch {
       clearClientSessionFallback();
       const supabase = createSupabaseBrowserClient();
       void supabase.auth.signOut().catch(() => undefined);
-      router.push("/login");
+      window.location.href = "http://lvh.me:3000/auth/login";
     } finally {
       setIsLoggingOut(false);
     }

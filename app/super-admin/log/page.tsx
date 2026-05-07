@@ -14,6 +14,7 @@ type ChatLog = {
   sender_id?: string;
   message?: string;
   message_body?: unknown;
+  message_answer?: string;
   timestamp?: string;
   created_at?: string;
   [key: string]: unknown;
@@ -28,6 +29,8 @@ export default function LogPage() {
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [isAnswerModalOpen, setIsAnswerModalOpen] = useState(false);
+  const [activeAnswer, setActiveAnswer] = useState<string | null>(null);
 
   // Ambil daftar grup dari server — GROUP_ID tidak pernah ada di client
   useEffect(() => {
@@ -93,6 +96,16 @@ export default function LogPage() {
   }, [logs]);
 
   const activeGroupLabel = groups.find((g) => g.id === activeGroup)?.label ?? activeGroup;
+
+  const openAnswerModal = (answer: string) => {
+    setActiveAnswer(answer);
+    setIsAnswerModalOpen(true);
+  };
+
+  const closeAnswerModal = () => {
+    setActiveAnswer(null);
+    setIsAnswerModalOpen(false);
+  };
 
   return (
     // Full-height container — header page + padding sudah di-handle oleh layout
@@ -223,6 +236,15 @@ export default function LogPage() {
                       : null) ??
                     "Pesan tidak tersedia";
 
+                  const fullAnswer =
+                    typeof log.message_answer === "string" ? log.message_answer : "";
+                  const hasAnswer = fullAnswer.trim().length > 0;
+                  const truncatedAnswer = hasAnswer
+                    ? fullAnswer.length > 150
+                      ? `${fullAnswer.slice(0, 150)}...`
+                      : fullAnswer
+                    : "";
+
                   return (
                     <div
                       key={log.id ?? i}
@@ -242,6 +264,21 @@ export default function LogPage() {
                           {message}
                         </p>
                       </div>
+
+                      {hasAnswer && (
+                        <div className="rounded-lg bg-indigo-900/40 px-3 py-2">
+                          <p className="whitespace-pre-line break-words text-md text-slate-700">
+                            {truncatedAnswer}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => openAnswerModal(fullAnswer)}
+                            className="mt-2 text-xs font-medium text-white bg-blue-500 hover:text-slate-100 px-2 py-1 rounded hover:bg-blue-700 transition"
+                          >
+                            Detail
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -250,6 +287,31 @@ export default function LogPage() {
           </div>
         </div>
       </div>
+
+      {isAnswerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={closeAnswerModal}
+          />
+          <div className="relative w-full max-w-2xl rounded-xl bg-white p-4 shadow-xl">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-sm font-semibold text-slate-900">Detail Jawaban AI</h2>
+              <button
+                type="button"
+                onClick={closeAnswerModal}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                aria-label="Tutup"
+              >
+                X
+              </button>
+            </div>
+            <div className="mt-3 max-h-[60vh] overflow-y-auto whitespace-pre-wrap text-sm text-slate-700 scrollbar-hide">
+              {activeAnswer}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 
 type AppRole =
   | "Super Admin"
+  | "Admin"
   | "management"
   | "finance"
   | "hr"
@@ -22,6 +23,7 @@ const DEV_ROOT_HOST = "lvh.me";
 const VALID_SUBDOMAINS: string[] = [
   "creative",
   "super-admin",
+  "admin",
   "finance",
   "hr",
   "logistik",
@@ -31,18 +33,20 @@ const VALID_SUBDOMAINS: string[] = [
 ];
 
 const ACCESS_CONTROL_LIST: ProtectedRoute[] = [
-  { prefix: "/finance", allowed: ["finance", "management", "Super Admin"] },
-  { prefix: "/logistik", allowed: ["logistik", "management", "Super Admin"] },
-  { prefix: "/hr", allowed: ["hr", "management", "Super Admin"] },
-  { prefix: "/management", allowed: ["management", "Super Admin"] },
-  { prefix: "/produksi", allowed: ["produksi", "management", "Super Admin"] },
-  { prefix: "/creative", allowed: ["creative", "management", "Super Admin"] },
-  { prefix: "/office", allowed: ["office", "management", "Super Admin"] },
+  { prefix: "/finance", allowed: ["finance", "management", "Super Admin", "Admin"] },
+  { prefix: "/logistik", allowed: ["logistik", "management", "Super Admin", "Admin"] },
+  { prefix: "/hr", allowed: ["hr", "management", "Super Admin", "Admin"] },
+  { prefix: "/management", allowed: ["management", "Super Admin", "Admin"] },
+  { prefix: "/produksi", allowed: ["produksi", "management", "Super Admin", "Admin"] },
+  { prefix: "/creative", allowed: ["creative", "management", "Super Admin", "Admin"] },
+  { prefix: "/office", allowed: ["office", "management", "Super Admin", "Admin"] },
+  { prefix: "/admin", allowed: ["Admin"] },
   { prefix: "/super-admin", allowed: ["Super Admin"] },
 ];
 
 const ROLE_DASHBOARD: Record<AppRole, string> = {
   "Super Admin": "/super-admin",
+  Admin: "/admin",
   management: "/management",
   finance: "/finance",
   hr: "/hr",
@@ -61,6 +65,7 @@ function normalizeRole(input: string | null | undefined): AppRole | null {
   // ── Pass 1: exact slug match ──────────────────────────────────────────────
   const exactMap: Record<string, AppRole> = {
     "super-admin":         "Super Admin",
+    "admin":               "Admin",
     "developer":           "Super Admin",
     "ceo":                 "management",
     "management":          "management",
@@ -92,6 +97,7 @@ function normalizeRole(input: string | null | undefined): AppRole | null {
   if (exactMap[slug]) return exactMap[slug];
 
   // ── Pass 2: substring keyword fallback (handles arbitrary compound names) ─
+  if (slug.includes("admin") && !slug.includes("super")) return "Admin";
   if (slug.includes("super-admin") || slug.includes("developer"))  return "Super Admin";
   if (slug.includes("management")) return "management";
   if (slug.includes("ceo"))        return "management";
@@ -179,6 +185,7 @@ async function readRoleFromSupabaseSession(request: NextRequest, response: NextR
 
   if (userError) {
     console.log("[PROXY] getUser error:", userError.message);
+    return null;
   }
 
   console.log("[PROXY] session user:", user?.email ?? "(no session)");
