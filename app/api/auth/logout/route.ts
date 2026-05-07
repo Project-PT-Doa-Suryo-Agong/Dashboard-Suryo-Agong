@@ -15,7 +15,7 @@ import { env } from "@/lib/env";
 
 export async function POST(request: Request) {
   const response = ok(null, "Logout berhasil.") as NextResponse;
-  const cookieDomain = getCookieDomain();
+  const cookieDomain = getCookieDomain(request.headers.get("host") ?? request.headers.get("origin") ?? undefined);
 
   // Call Supabase signOut to clear the session securely
   const supabase = createServerClient(

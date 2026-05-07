@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    const cookieDomain = getCookieDomain();
+    const cookieDomain = getCookieDomain(request.headers.get("host") ?? fallbackOrigin);
 
     // Collect all cookies Supabase sets, including chunked auth cookies.
     const cookieMap = new Map<string, {
