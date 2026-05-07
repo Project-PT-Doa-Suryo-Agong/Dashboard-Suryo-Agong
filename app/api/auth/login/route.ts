@@ -11,6 +11,7 @@ import { ErrorCode } from "@/lib/http/error-codes";
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://lvh.me:3000",
+  "http://admin.lvh.me:3000",
   "http://super-admin.lvh.me:3000",
   "http://management.lvh.me:3000",
   "http://finance.lvh.me:3000",
@@ -71,6 +72,7 @@ function mapRoleToSubdomain(role: string | null | undefined): string | null {
 
   const exactMap: Record<string, string> = {
     "super-admin":         "super-admin",
+    "admin":               "admin",
     "developer":           "super-admin",
     "senior-developer":    "super-admin",
     "ceo":                 "management",
@@ -102,6 +104,7 @@ function mapRoleToSubdomain(role: string | null | undefined): string | null {
 
   if (exactMap[slug]) return exactMap[slug];
 
+  if (slug.includes("admin") && !slug.includes("super")) return "admin";
   if (slug.includes("super-admin") || slug.includes("developer")) return "super-admin";
   if (slug.includes("management")) return "management";
   if (slug.includes("ceo"))        return "management";
