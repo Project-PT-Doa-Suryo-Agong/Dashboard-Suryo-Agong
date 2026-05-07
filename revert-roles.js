@@ -81,9 +81,16 @@ updateFile('./supabase/phase4-realtime-storage.sql', c => {
 
 // 7. README.md
 updateFile('./README.md', c => {
-  let res = c.replace(/developer, management, finance, hr, produksi, logistik, creative, office/g, "Developer, Management & Strategy, Finance & Administration, HR & Operation Manager, Produksi & Quality Control, Logistics & Packing, Creative & Sales, Office Support");
-  // update instruction
-  res = res.replace(/Gunakan \ole === 'management'\/g, "Gunakan ole === 'Management & Strategy'");
+  let res = c.replace(
+    /developer, management, finance, hr, produksi, logistik, creative, office/g,
+    "Developer, Management & Strategy, Finance & Administration, HR & Operation Manager, Produksi & Quality Control, Logistics & Packing, Creative & Sales, Office Support"
+  );
+
+  // update instruction – replace the old role string with the new, human‑readable version
+  res = res.replace(
+    /Gunakan role === 'management'/g,
+    "Gunakan role === 'Management & Strategy'"
+  );
+
   return res;
 });
-
