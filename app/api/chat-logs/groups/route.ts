@@ -13,8 +13,6 @@ const GROUP_NAME_MAP: Record<string, string> = {
   "120363426777266765@g.us": "BRANDING ARTIKEL - WEBSITE",
   "120363405961066852@g.us": "KONSULTAN DWC + PT DOA",
   "120363426381858397@g.us": "SOP SDM",
-  "120363406626096535@g.us": "Private Chat",
-  "Private Chat": "Private Chat",
 };
 
 // Endpoint ini mengembalikan daftar grup dengan label — tanpa expose

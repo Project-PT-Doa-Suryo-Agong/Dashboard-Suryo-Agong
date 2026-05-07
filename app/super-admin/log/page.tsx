@@ -214,7 +214,13 @@ export default function LogPage() {
             {/* Daftar pesan */}
             {!isLoadingLogs && !error && logs.length > 0 && (
               <div className="flex flex-col gap-2">
-                {logs.map((log, i) => {
+                {[...logs]
+                  .sort((a, b) => {
+                    const tA = new Date(a.timestamp ?? a.created_at ?? 0).getTime();
+                    const tB = new Date(b.timestamp ?? b.created_at ?? 0).getTime();
+                    return tA - tB; // ascending: terlama di atas, terbaru di bawah
+                  })
+                  .map((log, i) => {
                   const timestamp = log.timestamp ?? log.created_at;
                   const formattedTime = timestamp
                     ? new Date(timestamp).toLocaleString("id-ID", {
