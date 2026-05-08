@@ -88,6 +88,7 @@ const navItems = [
       { label: "Content Planner", href: "/creative/content", icon: "CalendarDays" },
       { label: "Content Stats", href: "/creative/content-stats", icon: "TrendingUp" },
       { label: "Sales Order", href: "/creative/sales-order", icon: "ScrollText" },
+      { label: "Log Chat Sales", href: "/creative/log-chat-sales", icon: "MessageCircle" },
     ]
   },
   {
