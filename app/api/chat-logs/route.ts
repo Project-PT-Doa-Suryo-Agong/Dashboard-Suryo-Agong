@@ -41,7 +41,10 @@ export async function GET(request: NextRequest) {
       `${API_URL}?group_id=${encodeURIComponent(groupId)}`,
       {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.CHAT_LOGS_SUPABASE_KEY}`
+        },
         cache: "no-store",
       }
     );
