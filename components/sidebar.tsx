@@ -176,8 +176,6 @@ export default function Sidebar(props: SidebarProps) {
     expireCookie("role");
     expireCookie("role", "localhost");
     expireCookie("role", ".localhost");
-    expireCookie("role", "lvh.me");
-    expireCookie("role", ".lvh.me");
   };
 
   const clearSupabaseAuthCookie = () => {
@@ -188,8 +186,6 @@ export default function Sidebar(props: SidebarProps) {
     expireCookie(cookieName);
     expireCookie(cookieName, "localhost");
     expireCookie(cookieName, ".localhost");
-    expireCookie(cookieName, "lvh.me");
-    expireCookie(cookieName, ".lvh.me");
   };
 
   const clearClientSessionFallback = () => {
@@ -231,12 +227,12 @@ export default function Sidebar(props: SidebarProps) {
       await Promise.race([logoutPromise, timeoutPromise]);
 
       clearClientSessionFallback();
-      window.location.href = "http://lvh.me:3000/auth/login";
+      window.location.href = "/auth/login";
     } catch {
       clearClientSessionFallback();
       const supabase = createSupabaseBrowserClient();
       void supabase.auth.signOut().catch(() => undefined);
-      window.location.href = "http://lvh.me:3000/auth/login";
+      window.location.href = "/auth/login";
     } finally {
       setIsLoggingOut(false);
     }
