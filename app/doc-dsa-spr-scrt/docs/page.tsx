@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import "../docs.css";
+import "./docs.css";
 import TabDokumentasi from "./tab-dokumentasi";
 import TabKontrakApi from "./tab-kontrak-api";
 
@@ -12,7 +12,7 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
-export default function SsoDocsPage() {
+export default function DocsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("dokumentasi");
 
   return (
