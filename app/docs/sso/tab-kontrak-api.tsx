@@ -73,7 +73,7 @@ export default function TabKontrakApi() {
   "ok": true,
   "success": true,
   "data": {
-    "redirectUrl": "http://finance.lvh.me:3000/finance"
+    "redirectUrl": "http://localhost:3000/finance"
   },
   "message": "Login berhasil."
 }`}</CodeBlock>
@@ -216,27 +216,18 @@ export default function TabKontrakApi() {
       {/* ── CORS ─────────────────────────────────────────────────── */}
       <h2 className="docs-h2">CORS — Allowed Origins</h2>
       <p className="docs-p">
-        Endpoint login mendukung CORS untuk request cross-origin dari subdomain tenant.
+        Endpoint login mendukung CORS untuk request cross-origin.
         Berikut daftar origin yang diizinkan:
       </p>
       <Table
         headers={["Domain", "Keterangan"]}
         rows={[
           ["<code>http://localhost:3000</code>", "Development (direct)"],
-          ["<code>http://lvh.me:3000</code>", "Development (base domain)"],
-          ["<code>http://finance.lvh.me:3000</code>", "Finance subdomain"],
-          ["<code>http://hr.lvh.me:3000</code>", "HR subdomain"],
-          ["<code>http://produksi.lvh.me:3000</code>", "Produksi subdomain"],
-          ["<code>http://logistik.lvh.me:3000</code>", "Logistik subdomain"],
-          ["<code>http://creative.lvh.me:3000</code>", "Creative subdomain"],
-          ["<code>http://office.lvh.me:3000</code>", "Office subdomain"],
-          ["<code>http://super-admin.lvh.me:3000</code>", "Super Admin subdomain"],
-          ["<code>http://management.lvh.me:3000</code>", "Management subdomain"],
           ["<code>*.vercel.app</code>", "Vercel preview & production"],
         ]}
       />
       <p className="docs-p">
-        Selain daftar di atas, origin yang cocok dengan <code className="docs-inline">NEXT_PUBLIC_SITE_URL</code> (termasuk subdomain-nya)
+        Selain daftar di atas, origin yang cocok dengan <code className="docs-inline">NEXT_PUBLIC_SITE_URL</code>
         juga otomatis diizinkan.
       </p>
     </>

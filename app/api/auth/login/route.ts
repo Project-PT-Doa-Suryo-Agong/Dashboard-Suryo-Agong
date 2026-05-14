@@ -10,16 +10,6 @@ import { ErrorCode } from "@/lib/http/error-codes";
 
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
-  "http://lvh.me:3000",
-  "http://admin.lvh.me:3000",
-  "http://super-admin.lvh.me:3000",
-  "http://management.lvh.me:3000",
-  "http://finance.lvh.me:3000",
-  "http://hr.lvh.me:3000",
-  "http://produksi.lvh.me:3000",
-  "http://logistik.lvh.me:3000",
-  "http://creative.lvh.me:3000",
-  "http://office.lvh.me:3000",
 ];
 
 function isAllowedOrigin(origin: string | null): origin is string {
@@ -66,87 +56,77 @@ function slugifyRole(role: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function mapRoleToSubdomain(role: string | null | undefined): string | null {
+function mapRoleToDashboardPath(role: string | null | undefined): string | null {
   if (!role) return null;
   const slug = slugifyRole(role);
 
   const exactMap: Record<string, string> = {
-    "super-admin":         "super-admin",
-    "admin":               "admin",
-    "developer":           "super-admin",
-    "senior-developer":    "super-admin",
-    "ceo":                 "management",
-    "management":          "management",
-    "manager":             "management",
-    "management-strategy": "management",
-    "management-strategic":"management",
-    "finance":             "finance",
-    "finance-accounting":  "finance",
-    "finance-team":        "finance",
-    "hr":                  "hr",
-    "human-resource":      "hr",
-    "human-resources":     "hr",
-    "human-resource-dept": "hr",
-    "human-resources-dept":"hr",
-    "produksi":            "produksi",
-    "production":          "produksi",
-    "produksi-team":       "produksi",
-    "logistik":            "logistik",
-    "logistics":           "logistik",
-    "logistik-team":       "logistik",
-    "creative":            "creative",
-    "creative-manager":    "creative",
-    "sales":               "creative",
-    "creative-sales":      "creative",
-    "office":              "office",
-    "office-support":      "office",
+    "super-admin":         "/super-admin",
+    "admin":               "/admin",
+    "developer":           "/super-admin",
+    "senior-developer":    "/super-admin",
+    "ceo":                 "/management",
+    "management":          "/management",
+    "manager":             "/management",
+    "management-strategy": "/management",
+    "management-strategic":"/management",
+    "finance":             "/finance",
+    "finance-accounting":  "/finance",
+    "finance-team":        "/finance",
+    "hr":                  "/hr",
+    "human-resource":      "/hr",
+    "human-resources":     "/hr",
+    "human-resource-dept": "/hr",
+    "human-resources-dept":"/hr",
+    "produksi":            "/produksi",
+    "production":          "/produksi",
+    "produksi-team":       "/produksi",
+    "logistik":            "/logistik",
+    "logistics":           "/logistik",
+    "logistik-team":       "/logistik",
+    "creative":            "/creative",
+    "creative-manager":    "/creative",
+    "sales":               "/creative",
+    "creative-sales":      "/creative",
+    "office":              "/office",
+    "office-support":      "/office",
   };
 
   if (exactMap[slug]) return exactMap[slug];
 
-  if (slug.includes("admin") && !slug.includes("super")) return "admin";
-  if (slug.includes("super-admin") || slug.includes("developer")) return "super-admin";
-  if (slug.includes("management")) return "management";
-  if (slug.includes("ceo"))        return "management";
-  if (slug.includes("finance"))    return "finance";
-  if (slug.includes("human-resource")) return "hr";
-  if (slug.includes("produksi"))   return "produksi";
-  if (slug.includes("production")) return "produksi";
-  if (slug.includes("logistik"))   return "logistik";
-  if (slug.includes("logistics"))  return "logistik";
-  if (slug.includes("creative"))   return "creative";
-  if (slug.includes("sales"))      return "creative";
-  if (slug.includes("office"))     return "office";
-  if (slug.includes("hr"))         return "hr";
+  if (slug.includes("admin") && !slug.includes("super")) return "/admin";
+  if (slug.includes("super-admin") || slug.includes("developer")) return "/super-admin";
+  if (slug.includes("management")) return "/management";
+  if (slug.includes("ceo"))        return "/management";
+  if (slug.includes("finance"))    return "/finance";
+  if (slug.includes("human-resource")) return "/hr";
+  if (slug.includes("produksi"))   return "/produksi";
+  if (slug.includes("production")) return "/produksi";
+  if (slug.includes("logistik"))   return "/logistik";
+  if (slug.includes("logistics"))  return "/logistik";
+  if (slug.includes("creative"))   return "/creative";
+  if (slug.includes("sales"))      return "/creative";
+  if (slug.includes("office"))     return "/office";
+  if (slug.includes("hr"))         return "/hr";
 
-  return "management";
+  return "/management";
 }
 
-function buildTenantRedirectUrl(subdomain: string, requestOrigin: string): string {
-  const dashboardPath = `/${subdomain}`;
-
-  const fallbackBase = new URL(requestOrigin);
+function buildRedirectUrl(dashboardPath: string, requestOrigin: string): string {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
-  let baseUrl = fallbackBase;
   if (siteUrl) {
     const base = siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`;
-    baseUrl = new URL(base);
+    const baseUrl = new URL(base);
+    return `${baseUrl.origin}${dashboardPath}`;
   }
 
-  const hostname = baseUrl.hostname.replace(/^www\./, "");
-  const isLocalHost =
-    hostname === "localhost" ||
-    hostname.endsWith(".localhost") ||
-    hostname === "lvh.me" ||
-    hostname.endsWith(".lvh.me");
-
-  if (isLocalHost) {
-    return `${baseUrl.protocol}//${subdomain}.${hostname}${baseUrl.port ? `:${baseUrl.port}` : ""}${dashboardPath}`;
+  try {
+    const fallback = new URL(requestOrigin);
+    return `${fallback.origin}${dashboardPath}`;
+  } catch {
+    return dashboardPath;
   }
-
-  // In hosted environments without wildcard subdomain setup, keep same host and route by path.
-  return `${baseUrl.protocol}//${hostname}${baseUrl.port ? `:${baseUrl.port}` : ""}${dashboardPath}`;
 }
 
 // --------------- CORS preflight ---------------
@@ -251,9 +231,9 @@ export async function POST(request: NextRequest) {
       if (!displayName) displayName = typeof profile?.nama === "string" ? profile.nama : null;
     }
 
-    const subdomain = mapRoleToSubdomain(role);
+    const dashboardPath = mapRoleToDashboardPath(role);
 
-    if (!subdomain) {
+    if (!dashboardPath) {
       const response = fail(
         ErrorCode.UNAUTHORIZED,
         "Akun ini belum memiliki role yang terdaftar. Hubungi administrator.",
@@ -263,7 +243,7 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    const redirectUrl = buildTenantRedirectUrl(subdomain, fallbackOrigin);
+    const redirectUrl = buildRedirectUrl(dashboardPath, fallbackOrigin);
 
     const finalResponse = ok({ redirectUrl }, "Login berhasil.");
     Object.entries(corsHeaders).forEach(([key, value]) => finalResponse.headers.set(key, value));
@@ -273,7 +253,7 @@ export async function POST(request: NextRequest) {
         name,
         value,
         ...(options as object),
-        domain: cookieDomain,
+        ...(cookieDomain ? { domain: cookieDomain } : {}),
         sameSite: "lax",
         httpOnly: false,
         secure: process.env.NODE_ENV === "production",
@@ -282,7 +262,7 @@ export async function POST(request: NextRequest) {
 
     if (role) {
       finalResponse.cookies.set("role", role, {
-        domain: cookieDomain,
+        ...(cookieDomain ? { domain: cookieDomain } : {}),
         path: "/",
         maxAge: 60 * 60 * 24 * 30, // 30 days
         sameSite: "lax",
@@ -293,7 +273,7 @@ export async function POST(request: NextRequest) {
 
     if (displayName) {
       finalResponse.cookies.set("display_name", displayName, {
-        domain: cookieDomain,
+        ...(cookieDomain ? { domain: cookieDomain } : {}),
         path: "/",
         maxAge: 60 * 60 * 24 * 30,
         sameSite: "lax",

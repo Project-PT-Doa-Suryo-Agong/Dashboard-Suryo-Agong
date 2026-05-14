@@ -1,10 +1,10 @@
 /**
- * Resolves the cookie domain for subdomain-based multi-tenant auth.
+ * Resolves the cookie domain for auth cookies.
  *
- * In local dev  → ".localhost"   (shared across *.localhost)
- * In production → ".example.com" (shared across *.example.com)
+ * With path-based routing (no subdomains), we generally don't need to
+ * set a cookie domain — the browser defaults to the current host.
  *
- * Browsers require a leading dot for subdomain cookie sharing.
+ * Returns undefined when no cross-domain sharing is needed.
  */
 function parseHostname(value: string) {
   try {
@@ -23,12 +23,16 @@ export function getCookieDomain(fallbackHost?: string): string | undefined {
       ? parseHostname(fallbackHost)
       : null;
 
-  if (hostname) {
-    if (hostname === "localhost" || hostname.endsWith(".localhost")) return ".localhost";
-    if (hostname === "lvh.me" || hostname.endsWith(".lvh.me")) return ".lvh.me";
+  if (!hostname) return undefined;
+
+  // In local dev, no domain needed (browser defaults to current host)
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) return undefined;
+
+  // For production with a custom domain, set domain for cookie sharing
+  // e.g., "dashboard.example.com" → ".dashboard.example.com"
+  if (hostname !== "localhost" && !hostname.includes("localhost")) {
     return `.${hostname}`;
   }
 
-  // Local dev: ".localhost" allows cookie sharing across *.localhost
-  return ".localhost";
+  return undefined;
 }
