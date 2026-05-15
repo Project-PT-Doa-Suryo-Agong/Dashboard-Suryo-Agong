@@ -101,7 +101,8 @@ const navItems = [
       { label: 'Product', href: '/office/products', icon: 'Package' },
       { label: 'Vendors', href: '/office/vendors', icon: 'Handshake' },
     ]
-  }
+  },
+  { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
 ];
 
 export default function SuperAdminLayout({
