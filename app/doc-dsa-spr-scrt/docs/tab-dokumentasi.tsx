@@ -10,7 +10,7 @@ export default function TabDokumentasi() {
       <div className="docs-banner">
         Dokumentasi teknis sistem autentikasi (SSO) untuk Dashboard PT. Doa Suryo Agong.
         Sistem ini menggunakan <strong>Supabase Auth</strong> dengan arsitektur multi-tenant
-        berbasis role dan cookie-based session sharing antar subdomain.
+        berbasis role dan path-based routing.
       </div>
 
       {/* ── Arsitektur ───────────────────────────────────────────── */}
@@ -18,8 +18,7 @@ export default function TabDokumentasi() {
       <p className="docs-p">
         Dashboard menggunakan <strong>Supabase Auth</strong> (email + password) sebagai identity provider.
         Setelah login berhasil, session token disimpan di <code className="docs-inline">httpOnly cookie</code> dengan
-        domain <code className="docs-inline">.localhost</code> (dev) atau <code className="docs-inline">.your-domain.com</code> (prod)
-        sehingga session dapat di-share ke seluruh subdomain tenant.
+        domain <code className="docs-inline">localhost</code> (dev) atau <code className="docs-inline">your-domain.com</code> (prod).
       </p>
 
       <CodeBlock title="Auth Flow">{`Browser ──→ POST /api/auth/login  (email + password)
@@ -34,21 +33,20 @@ export default function TabDokumentasi() {
           3. core.profiles.role
                 │
                 ▼
-        Map role → subdomain (finance, hr, produksi, dll)
+        Map role → dashboard path (/finance, /hr, /produksi, dll)
                 │
                 ▼
         Set cookies (auth token + role + display_name)
-        domain: .localhost / .your-domain.com
                 │
                 ▼
-        Redirect → /{subdomain}  (e.g. /finance)`}</CodeBlock>
+        Redirect → /{role-path}  (e.g. /finance)`}</CodeBlock>
 
       {/* ── Environment ──────────────────────────────────────────── */}
       <h2 className="docs-h2">Environment Variables</h2>
       <CodeBlock title=".env">{`NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-NEXT_PUBLIC_SITE_URL=http://lvh.me:3000`}</CodeBlock>
+NEXT_PUBLIC_SITE_URL=http://localhost:3000`}</CodeBlock>
 
       <Table
         headers={["Variable", "Scope", "Deskripsi"]}
@@ -61,21 +59,21 @@ NEXT_PUBLIC_SITE_URL=http://lvh.me:3000`}</CodeBlock>
       />
 
       {/* ── Role Matrix ──────────────────────────────────────────── */}
-      <h2 className="docs-h2">Role → Subdomain Mapping</h2>
+      <h2 className="docs-h2">Role → Dashboard Path Mapping</h2>
       <p className="docs-p">
-        Setelah login, role user di-resolve dari profile database dan di-map ke subdomain dashboard yang sesuai.
+        Setelah login, role user di-resolve dari profile database dan di-map ke path dashboard yang sesuai.
       </p>
       <Table
-        headers={["Role", "Subdomain", "Access Level"]}
+        headers={["Role", "Path", "Access Level"]}
         rows={[
-          ["<code>Super-Admin</code>", "<code>super-admin</code>", '<span class="docs-badge docs-badge-red">Strategic</span>'],
-          ["<code>Management</code>", "<code>management</code>", '<span class="docs-badge docs-badge-red">Strategic</span>'],
-          ["<code>Finance</code>", "<code>finance</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
-          ["<code>HR</code>", "<code>hr</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
-          ["<code>Produksi</code>", "<code>produksi</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
-          ["<code>Logistik</code>", "<code>logistik</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
-          ["<code>Creative</code>", "<code>creative</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
-          ["<code>Office</code>", "<code>office</code>", '<span class="docs-badge docs-badge-green">Support</span>'],
+          ["<code>Super-Admin</code>", "<code>/super-admin</code>", '<span class="docs-badge docs-badge-red">Strategic</span>'],
+          ["<code>Management</code>", "<code>/management</code>", '<span class="docs-badge docs-badge-red">Strategic</span>'],
+          ["<code>Finance</code>", "<code>/finance</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
+          ["<code>HR</code>", "<code>/hr</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
+          ["<code>Produksi</code>", "<code>/produksi</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
+          ["<code>Logistik</code>", "<code>/logistik</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
+          ["<code>Creative</code>", "<code>/creative</code>", '<span class="docs-badge docs-badge-blue">Operational</span>'],
+          ["<code>Office</code>", "<code>/office</code>", '<span class="docs-badge docs-badge-green">Support</span>'],
         ]}
       />
 
@@ -163,14 +161,14 @@ NEXT_PUBLIC_SITE_URL=http://lvh.me:3000`}</CodeBlock>
       {/* ── Cookie Strategy ──────────────────────────────────────── */}
       <h2 className="docs-h2">Cookie Strategy</h2>
       <p className="docs-p">
-        Sistem menggunakan cookie-based session sharing agar satu kali login berlaku di seluruh subdomain.
+        Sistem menggunakan cookie-based session untuk autentikasi. Semua cookie disimpan pada host yang sama (path-based routing).
       </p>
       <Table
         headers={["Cookie", "Domain", "HttpOnly", "MaxAge", "Deskripsi"]}
         rows={[
-          ["<code>sb-*-auth-token</code>", "<code>.localhost</code>", "No", "Session", "Supabase auth session (bisa chunked)"],
-          ["<code>role</code>", "<code>.localhost</code>", "Yes", "30 hari", "Role user untuk routing & guard"],
-          ["<code>display_name</code>", "<code>.localhost</code>", "No", "30 hari", "Nama tampilan user"],
+          ["<code>sb-*-auth-token</code>", "<code>localhost</code>", "No", "Session", "Supabase auth session (bisa chunked)"],
+          ["<code>role</code>", "<code>localhost</code>", "Yes", "30 hari", "Role user untuk routing & guard"],
+          ["<code>display_name</code>", "<code>localhost</code>", "No", "30 hari", "Nama tampilan user"],
         ]}
       />
     </>
