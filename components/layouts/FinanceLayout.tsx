@@ -14,6 +14,7 @@ const navItems = [
   { label: 'Journal', href: '/finance/journal', icon: 'BookMarked' },
   { label: 'Invoice', href: '/finance/invoice', icon: 'FileText' },
   { label: 'Utang Piutang', href: '/finance/utang-piutang', icon: 'HandCoins' },
+  { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
 ];
 
 export default function FinanceClientLayout({
