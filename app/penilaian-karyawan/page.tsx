@@ -577,7 +577,7 @@ export default function PenilaianKaryawanPage() {
             {/* Presensi Karyawan Bulan Ini */}
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
               <p className="font-semibold text-blue-900 flex items-center gap-2">
-                📋 Presensi Bulan {MONTHS[selectedItem.bulan - 1]} {selectedItem.tahun}
+                Presensi Bulan {MONTHS[selectedItem.bulan - 1]} {selectedItem.tahun}
               </p>
 
               {isLoadingAttendance ? (
