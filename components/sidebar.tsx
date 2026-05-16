@@ -52,6 +52,7 @@ import {
   BookOpen,
   HandCoins,
   MessageCircle,
+  FileUser,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -100,6 +101,7 @@ const ICONS: Record<string, LucideIcon> = {
   BookOpen,
   HandCoins,
   MessageCircle,
+  FileUser,
 };
 
 export interface NavItem {
