@@ -929,6 +929,9 @@ export interface Database {
           affiliator_id: string | null;
           quantity: number;
           total_price: number;
+          nama_pelanggan: string | null;
+          nomor_telepon: string | null;
+          lokasi: string | null;
           created_at: string | null;
         };
         Insert: {
@@ -940,6 +943,9 @@ export interface Database {
           affiliator_id?: string | null;
           quantity: number;
           total_price: number;
+          nama_pelanggan?: string | null;
+          nomor_telepon?: string | null;
+          lokasi?: string | null;
           created_at?: string | null;
         };
         Update: {
@@ -951,6 +957,9 @@ export interface Database {
           affiliator_id?: string | null;
           quantity?: number;
           total_price?: number;
+          nama_pelanggan?: string | null;
+          nomor_telepon?: string | null;
+          lokasi?: string | null;
         };
         Relationships: [];
       };

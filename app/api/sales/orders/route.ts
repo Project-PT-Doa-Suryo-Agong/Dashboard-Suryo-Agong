@@ -151,6 +151,16 @@ export async function POST(request: Request) {
   const coaId = requireUUID(input, "coa_id", { optional: true });
   if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
 
+  const namaPelanggan = requireString(input, "nama_pelanggan", { optional: true });
+  if (!namaPelanggan.ok) return fail(ErrorCode.VALIDATION_ERROR, namaPelanggan.message, 400);
+
+  const nomorTelepon = requireString(input, "nomor_telepon", { optional: true });
+  if (!nomorTelepon.ok) return fail(ErrorCode.VALIDATION_ERROR, nomorTelepon.message, 400);
+
+  const lokasi = requireString(input, "lokasi", { optional: true });
+  if (!lokasi.ok) return fail(ErrorCode.VALIDATION_ERROR, lokasi.message, 400);
+
+
   const payload: TSalesOrderInsert = {
     ...(generatedOrderCode ? { order_code: generatedOrderCode } : {}),
     ...(orderNumber.data ? { order_number: orderNumber.data } : {}),
@@ -159,6 +169,9 @@ export async function POST(request: Request) {
     quantity: quantity.data!,
     total_price: calculatedTotalPrice,
     coa_id: coaId.data,
+    nama_pelanggan: namaPelanggan.data,
+    nomor_telepon: nomorTelepon.data,
+    lokasi: lokasi.data,
     created_at: new Date().toISOString(),
   };
 

@@ -98,6 +98,20 @@ export default function KaryawanPage() {
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
   const [photoFiles, setPhotoFiles] = useState<EmployeePhotoFiles>(EMPTY_PHOTO_FILES);
 
+  // Metrics for Detail Modal
+  const [metrics, setMetrics] = useState<{
+    assessmentScore: number | null;
+    attendanceRate: number | null;
+    hadir: number;
+    workingDays: number;
+  }>({
+    assessmentScore: null,
+    attendanceRate: null,
+    hadir: 0,
+    workingDays: 0,
+  });
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+
   const divisiOptions = useMemo(() => {
     return roleOptions.length > 0 ? roleOptions : FALLBACK_DIVISI_OPTIONS;
   }, [roleOptions]);
@@ -299,9 +313,48 @@ export default function KaryawanPage() {
     setIsFormModalOpen(true);
   };
 
-  const openDetailModal = (item: MKaryawan) => {
+  const openDetailModal = async (item: MKaryawan) => {
     setDetailItem(item);
     setIsDetailOpen(true);
+    setMetrics({ assessmentScore: null, attendanceRate: null, hadir: 0, workingDays: 0 });
+
+    // Fetch Performance & Attendance Metrics
+    try {
+      setIsLoadingMetrics(true);
+      const now = new Date();
+      const bulan = now.getMonth() + 1;
+      const tahun = now.getFullYear();
+
+      const params = new URLSearchParams({
+        nama: item.nama ?? "",
+        bulan: String(bulan),
+        tahun: String(tahun),
+      });
+
+      // Fetch Attendance
+      const attRes = await fetch(`/api/management/penilaian/attendance?${params}`);
+      const attResult = await attRes.json();
+      const attData = attResult.data?.summary || attResult.summary;
+
+      // Fetch Assessment (Latest rekap)
+      const assessRes = await fetch(`/api/management/penilaian`);
+      const assessResult = await assessRes.json();
+      const assessments = assessResult.data?.items || assessResult.items || [];
+      const myAssessment = assessments.find((a: any) => 
+        a.nama_karyawan === item.nama && a.bulan === bulan && a.tahun === tahun
+      );
+
+      setMetrics({
+        attendanceRate: attData?.persentase ?? null,
+        hadir: attData?.hadir ?? 0,
+        workingDays: attData?.workingDays ?? 0,
+        assessmentScore: myAssessment?.skor_akhir_total ?? null,
+      });
+    } catch (err) {
+      console.error("Failed to fetch metrics:", err);
+    } finally {
+      setIsLoadingMetrics(false);
+    }
   };
 
   const closeDetailModal = () => {
@@ -1021,6 +1074,62 @@ export default function KaryawanPage() {
                 <div>
                   <div className="text-xs text-slate-500">Gaji Pokok</div>
                   <div className="text-sm text-slate-900">{rupiahFormatter.format(detailItem.gaji_pokok ?? 0)}</div>
+                </div>
+              </div>
+            </section>
+
+            {/* Performance & Attendance Section */}
+            <section className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                Performa & Presensi (Bulan Ini)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Attendance Metric */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium text-slate-500">Tingkat Kehadiran</span>
+                    <span className="text-xs font-bold text-slate-900">
+                      {isLoadingMetrics ? "..." : metrics.attendanceRate !== null ? `${metrics.attendanceRate}%` : "-"}
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        (metrics.attendanceRate ?? 0) >= 80 ? 'bg-emerald-500' : 
+                        (metrics.attendanceRate ?? 0) >= 60 ? 'bg-amber-500' : 'bg-rose-500'
+                      }`}
+                      style={{ width: `${isLoadingMetrics ? 0 : Math.min(metrics.attendanceRate ?? 0, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    {isLoadingMetrics ? "Memuat..." : `${metrics.hadir}/${metrics.workingDays} Hari Kerja`}
+                  </p>
+                </div>
+
+                {/* Performance Score */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium text-slate-500">Nilai Penilaian</span>
+                    <span className="text-xs font-bold text-slate-900">
+                      {isLoadingMetrics ? "..." : metrics.assessmentScore !== null ? `${Number(metrics.assessmentScore).toFixed(2)}%` : "-"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 transition-all duration-500"
+                        style={{ width: `${isLoadingMetrics ? 0 : Math.min(metrics.assessmentScore ?? 0, 100)}%` }}
+                      />
+                    </div>
+                    {metrics.assessmentScore !== null && !isLoadingMetrics && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                        {metrics.assessmentScore >= 80 ? 'A' : metrics.assessmentScore >= 70 ? 'B' : metrics.assessmentScore >= 60 ? 'C' : 'D'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    {isLoadingMetrics ? "Memuat..." : metrics.assessmentScore !== null ? "Berdasarkan rekap terbaru" : "Belum ada penilaian"}
+                  </p>
                 </div>
               </div>
             </section>

@@ -55,6 +55,9 @@ type FormState = {
   coa_id: string | null;
   quantity: string;
   total_price: string;
+  nama_pelanggan: string;
+  nomor_telepon: string;
+  lokasi: string;
 };
 
 const initialFormState: FormState = {
@@ -64,6 +67,9 @@ const initialFormState: FormState = {
   coa_id: null,
   quantity: "",
   total_price: "",
+  nama_pelanggan: "",
+  nomor_telepon: "",
+  lokasi: "",
 };
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
@@ -275,6 +281,9 @@ export default function SalesOrderPage() {
       coa_id: item.coa_id ?? null,
       quantity: initialQuantity,
       total_price: resolveCalculatedTotal(initialVariantId, initialQuantity) || String(item.total_price),
+      nama_pelanggan: item.nama_pelanggan ?? "",
+      nomor_telepon: item.nomor_telepon ?? "",
+      lokasi: item.lokasi ?? "",
     });
     setIsEditModalOpen(true);
   };
@@ -321,6 +330,9 @@ export default function SalesOrderPage() {
           coa_id: formData.coa_id || null,
           quantity: parsedQuantity,
           total_price: parsedTotalPrice,
+          nama_pelanggan: formData.nama_pelanggan || null,
+          nomor_telepon: formData.nomor_telepon || null,
+          lokasi: formData.lokasi || null,
         }),
       });
       await parseJsonResponse<SalesOrderPayload>(response);
@@ -360,6 +372,9 @@ export default function SalesOrderPage() {
           coa_id: formData.coa_id || null,
           quantity: parsedQuantity,
           total_price: parsedTotalPrice,
+          nama_pelanggan: formData.nama_pelanggan || null,
+          nomor_telepon: formData.nomor_telepon || null,
+          lokasi: formData.lokasi || null,
         }),
       });
       await parseJsonResponse<SalesOrderPayload>(response);
@@ -442,6 +457,44 @@ export default function SalesOrderPage() {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-2 lg:col-span-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama Pelanggan</label>
+                <input
+                  type="text"
+                  value={formData.nama_pelanggan}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, nama_pelanggan: event.target.value }))}
+                  className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="Nama Pelanggan"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nomor Telepon</label>
+                <input
+                  type="text"
+                  value={formData.nomor_telepon}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, nomor_telepon: event.target.value }))}
+                  className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="Nomor Telepon"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Lokasi</label>
+                <input
+                  type="text"
+                  value={formData.lokasi}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, lokasi: event.target.value }))}
+                  className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="Lokasi"
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2 lg:col-span-2">
@@ -605,6 +658,42 @@ export default function SalesOrderPage() {
             </div>
 
             <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama Pelanggan</label>
+              <input
+                type="text"
+                value={formData.nama_pelanggan}
+                onChange={(event) => setFormData((prev) => ({ ...prev, nama_pelanggan: event.target.value }))}
+                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                placeholder="Nama Pelanggan"
+                disabled={isSubmitting}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nomor Telepon</label>
+              <input
+                type="text"
+                value={formData.nomor_telepon}
+                onChange={(event) => setFormData((prev) => ({ ...prev, nomor_telepon: event.target.value }))}
+                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                placeholder="Nomor Telepon"
+                disabled={isSubmitting}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Lokasi</label>
+              <input
+                type="text"
+                value={formData.lokasi}
+                onChange={(event) => setFormData((prev) => ({ ...prev, lokasi: event.target.value }))}
+                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                placeholder="Lokasi"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Affiliator</label>
               <select
                 value={formData.affiliator_id}
@@ -691,6 +780,23 @@ export default function SalesOrderPage() {
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Order Code</label>
               <p className="mt-1 text-sm text-slate-800 font-medium font-mono">{getOrderDisplayCode(detailData)}</p>
             </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Nama Pelanggan</label>
+                <p className="mt-1 text-sm text-slate-800 font-medium">{detailData.nama_pelanggan || "-"}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Nomor Telepon</label>
+                <p className="mt-1 text-sm text-slate-800 font-medium">{detailData.nomor_telepon || "-"}</p>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Lokasi</label>
+              <p className="mt-1 text-sm text-slate-800 font-medium">{detailData.lokasi || "-"}</p>
+            </div>
+
             <div>
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Product Variant</label>
               <p className="mt-1 text-sm text-slate-800 font-medium">

@@ -14,7 +14,7 @@ export function CodeBlock({ title, children }: { title: string; children: string
       <div className="docs-code-header">
         <span>{title}</span>
         <button className={`docs-code-copy${copied ? " copied" : ""}`} onClick={copy}>
-          {copied ? "✓ Copied" : "📋 Copy"}
+          {copied ? "✓ Copied" : "Copy"}
         </button>
       </div>
       <pre className="docs-code">{children}</pre>

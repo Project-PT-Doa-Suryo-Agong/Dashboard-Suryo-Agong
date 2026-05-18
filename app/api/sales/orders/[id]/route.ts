@@ -61,6 +61,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const coaId = requireUUID(input, "coa_id", { optional: true });
     if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
   }
+  if ("nama_pelanggan" in input && input.nama_pelanggan !== null) {
+    if (typeof input.nama_pelanggan !== "string") {
+      return fail(ErrorCode.VALIDATION_ERROR, "nama_pelanggan harus string.", 400);
+    }
+  }
+  if ("nomor_telepon" in input && input.nomor_telepon !== null) {
+    if (typeof input.nomor_telepon !== "string") {
+      return fail(ErrorCode.VALIDATION_ERROR, "nomor_telepon harus string.", 400);
+    }
+  }
+  if ("lokasi" in input && input.lokasi !== null) {
+    if (typeof input.lokasi !== "string") {
+      return fail(ErrorCode.VALIDATION_ERROR, "lokasi harus string.", 400);
+    }
+  }
 
   const { data, error } = await updateSalesOrder(auth.ctx.supabase, id, input);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update sales order.", 500, error.message);
