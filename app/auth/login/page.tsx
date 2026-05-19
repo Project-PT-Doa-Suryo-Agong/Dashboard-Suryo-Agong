@@ -16,6 +16,7 @@ export default function LoginPage() {
 
 	async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault();
+		if (isLoading) return;
 		setError(null);
 		setIsLoading(true);
 

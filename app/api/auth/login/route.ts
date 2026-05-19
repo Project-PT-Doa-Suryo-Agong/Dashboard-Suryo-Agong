@@ -201,6 +201,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
+      if (error.message.toLowerCase().includes("rate limit")) {
+        console.warn("[auth/login] Supabase rate limit hit", {
+          email,
+          ip: request.headers.get("x-forwarded-for"),
+        });
+      } else {
+        console.warn("[auth/login] Supabase auth error", {
+          email,
+          message: error.message,
+        });
+      }
+
       const response = fail(ErrorCode.UNAUTHORIZED, error.message, 401);
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
       return response;
