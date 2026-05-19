@@ -25,7 +25,6 @@ const navItems = [
     children: [
       { label: "Overview", href: "/management", icon: "LayoutDashboard" },
       { label: "Budget", href: "/management/budget", icon: "Banknote" },
-      { label: "KPI", href: "/management/kpi", icon: "TrendingUp" },
     ]
   },
   {
@@ -100,7 +99,8 @@ const navItems = [
       { label: "Product", href: "/office/products", icon: "Package" },
       { label: "Vendors", href: "/office/vendors", icon: "Handshake" },
     ]
-  }
+  },
+  { label: "Penilaian Karyawan", href: "/penilaian-karyawan", icon: "FileUser" }
 ];
 
 export default function AdminLayout({

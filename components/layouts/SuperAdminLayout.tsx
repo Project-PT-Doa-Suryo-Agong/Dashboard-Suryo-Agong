@@ -26,7 +26,6 @@ const navItems = [
     children: [
       { label: 'Overview', href: '/management', icon: 'LayoutDashboard' },
       { label: 'Budget', href: '/management/budget', icon: 'Banknote' },
-      { label: 'KPI', href: '/management/kpi', icon: 'TrendingUp' },
     ]
   },
   {
