@@ -17,6 +17,7 @@ const navItems = [
       { label: 'Vendor', href: '/super-admin/master-data/vendor', icon: 'Truck' },
       { label: 'Produk Induk', href: '/super-admin/master-data/produk', icon: 'Package' },
       { label: 'Varian Produk', href: '/super-admin/master-data/varian', icon: 'Tags' },
+      { label: 'Membership', href: '/creative/membership', icon: 'Crown' },
     ],
   },
   {

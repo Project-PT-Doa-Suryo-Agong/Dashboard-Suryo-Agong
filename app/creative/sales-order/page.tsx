@@ -5,7 +5,7 @@ import { Edit, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { MAfiliator, MCOA, MVarian, TSalesOrder } from "@/types/supabase";
+import type { MCOA, MVarian, TSalesOrder, TMembership } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 
 type TSalesOrderWithCoa = TSalesOrder & {
@@ -26,15 +26,6 @@ type SalesOrderPayload = {
   order: TSalesOrder | null;
 };
 
-type AffiliatorListPayload = {
-  afiliator: MAfiliator[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-};
-
 type VarianListPayload = {
   varian: MVarian[];
 };
@@ -48,28 +39,56 @@ type CoaListPayload = {
   };
 };
 
+type MembershipListPayload = {
+  membership: TMembership[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+type FormItem = {
+  varian_id: string;
+  quantity: string;
+};
+
 type FormState = {
   order_number: string;
   varian_id: string;
-  affiliator_id: string;
-  coa_id: string | null;
+  coa_cash_id: string | null;
+  coa_credit_id: string | null;
   quantity: string;
   total_price: string;
   nama_pelanggan: string;
   nomor_telepon: string;
   lokasi: string;
+  terms_of_payment: string;
+  diskon: string;
+  jumlah_cash: string;
+  jumlah_piutang: string;
+  total_bayar: string;
+  total_item: string;
+  items: FormItem[];
 };
 
 const initialFormState: FormState = {
   order_number: "",
   varian_id: "",
-  affiliator_id: "",
-  coa_id: null,
+  coa_cash_id: null,
+  coa_credit_id: null,
   quantity: "",
   total_price: "",
   nama_pelanggan: "",
   nomor_telepon: "",
   lokasi: "",
+  terms_of_payment: "0",
+  diskon: "0",
+  jumlah_cash: "",
+  jumlah_piutang: "0",
+  total_bayar: "",
+  total_item: "",
+  items: [{ varian_id: "", quantity: "1" }],
 };
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
@@ -105,8 +124,8 @@ function formatDate(value: string | null): string {
   }).format(new Date(value));
 }
 
-function getOrderDisplayCode(order: { order_number?: string | null; order_code?: string | null; id?: string | null } | null | undefined): string {
-  return order?.order_number?.trim() || order?.order_code?.trim() || order?.id || "-";
+function getOrderDisplayCode(order: { order_number?: string | null; id?: string | null } | null | undefined): string {
+  return order?.order_number?.trim() || order?.id || "-";
 }
 
 function getVarianLabel(item: MVarian): string {
@@ -116,11 +135,25 @@ function getVarianLabel(item: MVarian): string {
   return `${nama} (${sku}) - ${harga}`;
 }
 
+function normalizeCoaName(name: string | null | undefined): string {
+  return (name ?? "").trim().toLowerCase();
+}
+
+function findCoaByExactName(coaList: MCOA[], name: string): MCOA | undefined {
+  const target = normalizeCoaName(name);
+  return coaList.find((coa) => normalizeCoaName(coa.nama_akun) === target);
+}
+
+function findCoaByNameContains(coaList: MCOA[], keyword: string): MCOA | undefined {
+  const target = normalizeCoaName(keyword);
+  return coaList.find((coa) => normalizeCoaName(coa.nama_akun).includes(target));
+}
+
 export default function SalesOrderPage() {
   const [orders, setOrders] = useState<TSalesOrderWithCoa[]>([]);
   const [variants, setVariants] = useState<MVarian[]>([]);
-  const [affiliators, setAffiliators] = useState<MAfiliator[]>([]);
   const [coaOptions, setCoaOptions] = useState<MCOA[]>([]);
+  const [memberships, setMemberships] = useState<TMembership[]>([]);
   const [formData, setFormData] = useState<FormState>(initialFormState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -164,32 +197,167 @@ export default function SalesOrderPage() {
     }));
   };
 
+  const handleItemChange = (index: number, field: keyof FormItem, value: string) => {
+    setFormData((prev) => {
+      const nextItems = [...prev.items];
+      nextItems[index] = {
+        ...nextItems[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        items: nextItems
+      };
+    });
+  };
+
+  const addItemRow = () => {
+    setFormData((prev) => ({
+      ...prev,
+      items: [...prev.items, { varian_id: "", quantity: "1" }]
+    }));
+  };
+
+  const removeItemRow = (index: number) => {
+    setFormData((prev) => {
+      if (prev.items.length <= 1) return prev;
+      return {
+        ...prev,
+        items: prev.items.filter((_, idx) => idx !== index)
+      };
+    });
+  };
+
   useEffect(() => {
     setFormData((prev) => {
-      const nextTotal = resolveCalculatedTotal(prev.varian_id, prev.quantity);
-      if (prev.total_price === nextTotal) {
+      let totalProductPrice = 0;
+      let totalProductQty = 0;
+
+      if (prev.items && prev.items.length > 0) {
+        prev.items.forEach((item) => {
+          const itemPrice = Number(resolveCalculatedTotal(item.varian_id, item.quantity) || 0);
+          totalProductPrice += itemPrice;
+          totalProductQty += Number(item.quantity || 0);
+        });
+      } else {
+        totalProductPrice = Number(resolveCalculatedTotal(prev.varian_id, prev.quantity) || 0);
+        totalProductQty = Number(prev.quantity || 0);
+      }
+
+      const parsedTotal = totalProductPrice;
+      const parsedDiskon = Number(prev.diskon || 0);
+      const nextTotalBayar = Math.max(0, parsedTotal - parsedDiskon);
+
+      const isTopZero = Number(prev.terms_of_payment || 0) === 0;
+      const rawCash = Number(prev.jumlah_cash !== "" ? prev.jumlah_cash : nextTotalBayar);
+      const cappedCash = Math.min(rawCash, nextTotalBayar);
+      const parsedCash = isTopZero ? nextTotalBayar : cappedCash;
+      const nextPiutang = isTopZero ? 0 : Math.max(0, nextTotalBayar - parsedCash);
+
+      // Set fallback values for single varian legacy fields
+      const fallbackVarianId = prev.items && prev.items.length > 0 ? prev.items[0].varian_id : prev.varian_id;
+      const fallbackQuantity = prev.items && prev.items.length > 0 ? String(totalProductQty) : prev.quantity;
+
+      if (
+        prev.total_price === String(parsedTotal) && 
+        prev.total_bayar === String(nextTotalBayar) && 
+        prev.jumlah_piutang === String(nextPiutang) &&
+        prev.total_item === String(totalProductQty) &&
+        prev.varian_id === fallbackVarianId &&
+        prev.quantity === fallbackQuantity &&
+        (prev.jumlah_cash !== "" || String(parsedCash) === prev.jumlah_cash)
+      ) {
         return prev;
       }
 
       return {
         ...prev,
-        total_price: nextTotal,
+        varian_id: fallbackVarianId,
+        quantity: fallbackQuantity,
+        total_price: String(parsedTotal),
+        total_item: String(totalProductQty),
+        total_bayar: String(nextTotalBayar),
+        jumlah_cash: isTopZero ? String(parsedCash) : (prev.jumlah_cash === "" ? String(parsedCash) : String(cappedCash)),
+        jumlah_piutang: String(nextPiutang),
       };
     });
-  }, [formData.varian_id, formData.quantity, resolveCalculatedTotal]);
-
-  const affiliatorMap = useMemo(
-    () => new Map<string, MAfiliator>(affiliators.map((item) => [item.id, item])),
-    [affiliators],
-  );
+  }, [formData.items, formData.varian_id, formData.quantity, formData.diskon, formData.jumlah_cash, formData.terms_of_payment, resolveCalculatedTotal]);
 
   const coaMap = useMemo(
     () => new Map<string, MCOA>(coaOptions.map((item) => [item.id, item])),
     [coaOptions],
   );
 
+  const bankOptionsMeta = useMemo(() => {
+    const cashParent = findCoaByExactName(coaOptions, "Kas Penjualan");
+    const creditParent = findCoaByExactName(coaOptions, "Piutang Usaha");
+
+    const cashBanks = cashParent ? coaOptions.filter((coa) => coa.parent_id === cashParent.id) : [];
+    const creditBanks = creditParent ? coaOptions.filter((coa) => coa.parent_id === creditParent.id) : [];
+
+    const preferredCash =
+      findCoaByNameContains(cashBanks, "Bank BCA") ??
+      findCoaByNameContains(cashBanks, "BCA") ??
+      cashBanks[0];
+
+    const preferredCredit =
+      findCoaByNameContains(creditBanks, "Bank Dummy") ??
+      findCoaByNameContains(creditBanks, "Dummy") ??
+      creditBanks[0];
+
+    return {
+      cashBanks,
+      creditBanks,
+      preferredCashId: preferredCash?.id ?? null,
+      preferredCreditId: preferredCredit?.id ?? null,
+    };
+  }, [coaOptions]);
+
+  const isCreditPayment = Number(formData.terms_of_payment || 0) > 0;
+  const cashBankOptions = bankOptionsMeta.cashBanks;
+  const creditBankOptions = bankOptionsMeta.creditBanks;
+
+  useEffect(() => {
+    if (cashBankOptions.length === 0 && creditBankOptions.length === 0) return;
+
+    setFormData((prev) => {
+      let next = prev;
+      let changed = false;
+
+      if (!prev.coa_cash_id || !cashBankOptions.some((item) => item.id === prev.coa_cash_id)) {
+        next = {
+          ...next,
+          coa_cash_id: bankOptionsMeta.preferredCashId ?? cashBankOptions[0]?.id ?? null,
+        };
+        changed = true;
+      }
+
+      if (isCreditPayment) {
+        if (!prev.coa_credit_id || !creditBankOptions.some((item) => item.id === prev.coa_credit_id)) {
+          next = {
+            ...next,
+            coa_credit_id: bankOptionsMeta.preferredCreditId ?? creditBankOptions[0]?.id ?? null,
+          };
+          changed = true;
+        }
+      } else if (prev.coa_credit_id !== null) {
+        next = {
+          ...next,
+          coa_credit_id: null,
+        };
+        changed = true;
+      }
+
+      return changed ? next : prev;
+    });
+  }, [cashBankOptions, creditBankOptions, bankOptionsMeta.preferredCashId, bankOptionsMeta.preferredCreditId, isCreditPayment]);
+
   const resetForm = () => {
-    setFormData({ ...initialFormState, coa_id: null });
+    setFormData({
+      ...initialFormState,
+      coa_cash_id: bankOptionsMeta.preferredCashId ?? cashBankOptions[0]?.id ?? null,
+      coa_credit_id: null,
+    });
     setEditData(null);
     void fetchDefaultOrderNumber();
   };
@@ -219,7 +387,7 @@ export default function SalesOrderPage() {
   }, []);
 
   const fetchDependencies = useCallback(async () => {
-    const [ordersResponse, variantsResponse, affiliatorsResponse, coaResponse] = await Promise.all([
+    const [ordersResponse, variantsResponse, coaResponse, membershipResponse] = await Promise.all([
       apiFetch("/api/sales/orders?page=1&limit=500", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -230,12 +398,12 @@ export default function SalesOrderPage() {
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       }),
-      apiFetch("/api/sales/affiliates?page=1&limit=500", {
+      apiFetch("/api/finance/coa?page=1&limit=500", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       }),
-      apiFetch("/api/finance/coa?page=1&limit=500", {
+      apiFetch("/api/sales/membership?page=1&limit=500", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -244,13 +412,13 @@ export default function SalesOrderPage() {
 
     const ordersPayload = await parseJsonResponse<SalesOrderListPayload>(ordersResponse);
     const varianPayload = await parseJsonResponse<VarianListPayload>(variantsResponse);
-    const affiliatorPayload = await parseJsonResponse<AffiliatorListPayload>(affiliatorsResponse);
     const coaPayload = await parseJsonResponse<CoaListPayload>(coaResponse);
+    const membershipPayload = await parseJsonResponse<MembershipListPayload>(membershipResponse);
 
     setOrders(ordersPayload.data.orders ?? []);
     setVariants(varianPayload.data.varian ?? []);
-    setAffiliators(affiliatorPayload.data.afiliator ?? []);
     setCoaOptions(coaPayload.data.coa ?? []);
+    setMemberships(membershipPayload.data.membership ?? []);
   }, []);
 
   const fetchOrdersAndDependencies = useCallback(async () => {
@@ -274,16 +442,32 @@ export default function SalesOrderPage() {
     setEditData(item);
     const initialQuantity = String(item.quantity);
     const initialVariantId = item.varian_id ?? "";
+    
+    // Extract enriched items array
+    const enrichedItems = (item as any).items && Array.isArray((item as any).items) && (item as any).items.length > 0
+      ? (item as any).items.map((it: any) => ({
+          varian_id: it.id_varian ?? "",
+          quantity: String(it.qty ?? 1)
+        }))
+      : [{ varian_id: initialVariantId, quantity: initialQuantity }];
+
     setFormData({
       order_number: item.order_number ?? "",
       varian_id: initialVariantId,
-      affiliator_id: item.affiliator_id ?? "",
-      coa_id: item.coa_id ?? null,
+      coa_cash_id: (item as any).coa_cash_id ?? null,
+      coa_credit_id: (item as any).coa_credit_id ?? null,
       quantity: initialQuantity,
-      total_price: resolveCalculatedTotal(initialVariantId, initialQuantity) || String(item.total_price),
+      total_price: String(item.total_price),
       nama_pelanggan: item.nama_pelanggan ?? "",
       nomor_telepon: item.nomor_telepon ?? "",
       lokasi: item.lokasi ?? "",
+      terms_of_payment: String(item.terms_of_payment ?? 0),
+      diskon: String(item.diskon ?? 0),
+      jumlah_cash: String(item.jumlah_cash ?? (item.total_price || 0)),
+      jumlah_piutang: String(item.jumlah_piutang ?? 0),
+      total_bayar: String(item.total_bayar ?? (item.total_price || 0)),
+      total_item: String(item.total_item ?? initialQuantity),
+      items: enrichedItems
     });
     setIsEditModalOpen(true);
   };
@@ -307,10 +491,10 @@ export default function SalesOrderPage() {
     event.preventDefault();
     if (isSubmitting) return;
 
-    const parsedQuantity = Number(formData.quantity);
+    const parsedQuantity = Number(formData.total_item || formData.quantity);
     const parsedTotalPrice = Number(formData.total_price);
     if (Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
-      alert("Quantity harus lebih dari 0.");
+      alert("Total quantity harus lebih dari 0.");
       return;
     }
     if (Number.isNaN(parsedTotalPrice) || parsedTotalPrice < 0) {
@@ -325,14 +509,21 @@ export default function SalesOrderPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           order_number: formData.order_number || undefined,
-          varian_id: formData.varian_id,
-          affiliator_id: formData.affiliator_id || null,
-          coa_id: formData.coa_id || null,
-          quantity: parsedQuantity,
-          total_price: parsedTotalPrice,
+          coa_cash_id: formData.coa_cash_id || null,
+          coa_credit_id: formData.coa_credit_id || null,
           nama_pelanggan: formData.nama_pelanggan || null,
           nomor_telepon: formData.nomor_telepon || null,
           lokasi: formData.lokasi || null,
+          terms_of_payment: Number(formData.terms_of_payment || 0),
+          diskon: Number(formData.diskon || 0),
+          jumlah_cash: Number(formData.jumlah_cash || parsedTotalPrice),
+          jumlah_piutang: Number(formData.jumlah_piutang || 0),
+          total_bayar: Number(formData.total_bayar || parsedTotalPrice),
+          total_item: Number(formData.total_item || parsedQuantity),
+          items: formData.items.map(it => ({
+            varian_id: it.varian_id,
+            quantity: Number(it.quantity)
+          }))
         }),
       });
       await parseJsonResponse<SalesOrderPayload>(response);
@@ -350,10 +541,10 @@ export default function SalesOrderPage() {
     event.preventDefault();
     if (!editData || isSubmitting) return;
 
-    const parsedQuantity = Number(formData.quantity);
+    const parsedQuantity = Number(formData.total_item || formData.quantity);
     const parsedTotalPrice = Number(formData.total_price);
     if (Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
-      alert("Quantity harus lebih dari 0.");
+      alert("Total quantity harus lebih dari 0.");
       return;
     }
     if (Number.isNaN(parsedTotalPrice) || parsedTotalPrice < 0) {
@@ -367,14 +558,21 @@ export default function SalesOrderPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          varian_id: formData.varian_id,
-          affiliator_id: formData.affiliator_id || null,
-          coa_id: formData.coa_id || null,
-          quantity: parsedQuantity,
-          total_price: parsedTotalPrice,
+          coa_cash_id: formData.coa_cash_id || null,
+          coa_credit_id: formData.coa_credit_id || null,
           nama_pelanggan: formData.nama_pelanggan || null,
           nomor_telepon: formData.nomor_telepon || null,
           lokasi: formData.lokasi || null,
+          terms_of_payment: Number(formData.terms_of_payment || 0),
+          diskon: Number(formData.diskon || 0),
+          jumlah_cash: Number(formData.jumlah_cash || parsedTotalPrice),
+          jumlah_piutang: Number(formData.jumlah_piutang || 0),
+          total_bayar: Number(formData.total_bayar || parsedTotalPrice),
+          total_item: Number(formData.total_item || parsedQuantity),
+          items: formData.items.map(it => ({
+            varian_id: it.varian_id,
+            quantity: Number(it.quantity)
+          }))
         }),
       });
       await parseJsonResponse<SalesOrderPayload>(response);
@@ -387,7 +585,6 @@ export default function SalesOrderPage() {
       setIsSubmitting(false);
     }
   };
-
   const openDeleteModal = (id: string) => {
     setDeleteId(id);
     setIsDeleteModalOpen(true);
@@ -423,7 +620,7 @@ export default function SalesOrderPage() {
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-6">
           <ShoppingBag className="text-slate-500 w-6 h-6" />
-          <h2 className="text-xl font-bold text-slate-800">Affiliate Sales Management</h2>
+          <h2 className="text-xl font-bold text-slate-800">Sales Management</h2>
         </div>
 
         <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
@@ -439,28 +636,36 @@ export default function SalesOrderPage() {
             />
           </div>
 
-          <div className="space-y-2 lg:col-span-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Product Variant</label>
-            <select
-              required
-              value={formData.varian_id}
-              onChange={(event) => handleVariantChange(event.target.value)}
-              className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              disabled={isSubmitting}
-            >
-              <option value="" disabled>
-                -- Choose a Product --
-              </option>
-              {variants.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {getVarianLabel(item)}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="space-y-2 lg:col-span-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Member</label>
+                <select
+                  value=""
+                  onChange={(event) => {
+                    const memberId = event.target.value;
+                    if (!memberId) return;
+                    const member = memberships.find((m) => m.id === memberId);
+                    if (member) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        nama_pelanggan: member.nama ?? "",
+                        nomor_telepon: member.telepon ?? "",
+                        lokasi: member.lokasi ?? "",
+                      }));
+                    }
+                  }}
+                  className="w-full bg-amber-50 border text-slate-700 border-amber-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-400"
+                  disabled={isSubmitting}
+                >
+                  <option value="">-- Pilih dari Member (opsional) --</option>
+                  {memberships.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nama ?? "Tanpa Nama"} {m.telepon ? `(${m.telepon})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama Pelanggan</label>
                 <input
@@ -497,64 +702,205 @@ export default function SalesOrderPage() {
             </div>
           </div>
 
-          <div className="space-y-2 lg:col-span-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Affiliator</label>
-            <select
-              value={formData.affiliator_id}
-              onChange={(event) => setFormData((prev) => ({ ...prev, affiliator_id: event.target.value }))}
-              className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              disabled={isSubmitting}
-            >
-              <option value="">-- Without Affiliator --</option>
-              {affiliators.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nama} ({item.platform ?? "-"})
-                </option>
+
+
+          {/* DYNAMIC VARIANT/ITEM SECTION */}
+          <div className="space-y-4 lg:col-span-4 border border-slate-100 rounded-2xl p-4 bg-slate-50/50">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-slate-700">Daftar Item / Varian Produk</h4>
+              <button
+                type="button"
+                onClick={addItemRow}
+                disabled={isSubmitting}
+                className="bg-blue-600 hover:bg-blue-750 active:bg-blue-800 disabled:opacity-60 text-white font-bold py-2 px-4 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-md shadow-blue-100"
+              >
+                + Tambah Item
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {formData.items.map((it, idx) => (
+                <div key={idx} className="flex flex-col md:flex-row items-end gap-4 bg-white border border-slate-200 p-3 rounded-xl shadow-sm">
+                  <div className="flex-1 w-full space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pilih Varian Produk</label>
+                    <select
+                      required
+                      value={it.varian_id}
+                      onChange={(event) => handleItemChange(idx, "varian_id", event.target.value)}
+                      className="w-full bg-slate-50 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                      disabled={isSubmitting}
+                    >
+                      <option value="" disabled>-- Pilih Produk Varian --</option>
+                      {variants.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {getVarianLabel(v)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="w-full md:w-32 space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Qty</label>
+                    <input
+                      required
+                      type="number"
+                      min={1}
+                      value={it.quantity}
+                      onChange={(event) => handleItemChange(idx, "quantity", event.target.value)}
+                      className="w-full bg-slate-50 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="1"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div className="w-full md:w-44 space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Subtotal</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={formatRupiah(Number(resolveCalculatedTotal(it.varian_id, it.quantity) || 0))}
+                      className="w-full bg-slate-100 border text-slate-500 border-slate-200 rounded-lg py-2 px-3 text-sm font-semibold cursor-not-allowed"
+                      disabled
+                    />
+                  </div>
+
+                  {formData.items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeItemRow(idx)}
+                      disabled={isSubmitting}
+                      className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold p-2 rounded-lg text-sm transition-all flex items-center justify-center border border-red-200 h-9 w-9"
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </div>
               ))}
-            </select>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">COA</label>
-            <select
-              value={formData.coa_id ?? ""}
-              onChange={(event) => setFormData((prev) => ({ ...prev, coa_id: event.target.value || null }))}
-              className="w-full rounded-xl border border-slate-200 bg-slate-200 text-slate-700 py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            >
-              <option value="">-- Pilih COA (opsional) --</option>
-              {coaOptions.map((coa) => (
-                <option key={coa.id} value={coa.id}>
-                  {coa.kode_akun} - {coa.nama_akun}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="space-y-4 lg:col-span-4 border-t border-slate-100 pt-4">
+            <h4 className="text-sm font-bold text-slate-700">Detail Pembayaran & Transaksi</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
+              {/* Row 1: Summary */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Harga Barang</label>
+                <input
+                  type="text"
+                  value={formatRupiah(Number(formData.total_price))}
+                  readOnly
+                  className="w-full bg-slate-150 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm cursor-not-allowed font-bold"
+                  placeholder="0"
+                  disabled
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Diskon (IDR)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={formData.diskon}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, diskon: event.target.value }))}
+                  className="w-full bg-white border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="0"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Bayar</label>
+                <input
+                  type="text"
+                  value={formatRupiah(Number(formData.total_bayar))}
+                  readOnly
+                  className="w-full bg-slate-150 border border-slate-200 rounded-lg py-2 px-3 text-sm cursor-not-allowed font-bold text-green-600"
+                  disabled
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Terms of Payment (Hari)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={formData.terms_of_payment}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, terms_of_payment: event.target.value }))}
+                  className="w-full bg-white border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="0"
+                  disabled={isSubmitting}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Quantity</label>
-            <input
-              required
-              type="number"
-              min={1}
-              value={formData.quantity}
-              onChange={(event) => handleQuantityChange(event.target.value)}
-              className="w-full bg-slate-200 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              placeholder="Qty"
-              disabled={isSubmitting}
-            />
-          </div>
+              {/* Row 2: Bank Cash (selalu tampil) */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Bank Cash</label>
+                <select
+                  value={formData.coa_cash_id ?? ""}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, coa_cash_id: event.target.value || null }))}
+                  className="w-full rounded-lg border border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  disabled={isSubmitting || cashBankOptions.length === 0}
+                >
+                  <option value="" disabled>
+                    {cashBankOptions.length === 0 ? "Bank cash tidak tersedia" : "-- Pilih Bank Cash --"}
+                  </option>
+                  {cashBankOptions.map((coa) => (
+                    <option key={coa.id} value={coa.id}>
+                      {coa.kode_akun} - {coa.nama_akun}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Price</label>
-            <input
-              type="number"
-              min={0}
-              value={formData.total_price}
-              readOnly
-              className="w-full bg-slate-100 border text-slate-700 border-slate-200 rounded-xl py-3 px-4 text-sm cursor-not-allowed"
-              placeholder="0"
-              disabled
-            />
+              {/* Row 3: Hybrid Payment (TOP > 0) — Cash + Kredit */}
+              {isCreditPayment && (
+                <>
+                  <div className="lg:col-span-4 border-t border-dashed border-slate-200 my-1" />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Jumlah Cash (Bayar)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={formData.jumlah_cash}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        const totalBayar = Number(formData.total_bayar || 0);
+                        const parsed = value === "" ? "" : String(Math.min(Number(value || 0), totalBayar));
+                        setFormData((prev) => ({ ...prev, jumlah_cash: parsed }));
+                      }}
+                      className="w-full bg-white border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      placeholder="0"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Jumlah Piutang (Kredit)</label>
+                    <input
+                      type="text"
+                      value={formatRupiah(Number(formData.jumlah_piutang))}
+                      readOnly
+                      className="w-full bg-slate-150 border text-slate-600 border-slate-200 rounded-lg py-2 px-3 text-sm cursor-not-allowed font-bold"
+                      disabled
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Bank Kredit</label>
+                    <select
+                      value={formData.coa_credit_id ?? ""}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, coa_credit_id: event.target.value || null }))}
+                      className="w-full rounded-lg border border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:bg-slate-100 disabled:cursor-not-allowed"
+                      disabled={isSubmitting || creditBankOptions.length === 0}
+                    >
+                      <option value="" disabled>
+                        {creditBankOptions.length === 0 ? "Bank kredit tidak tersedia" : "-- Pilih Bank Kredit --"}
+                      </option>
+                      {creditBankOptions.map((coa) => (
+                        <option key={coa.id} value={coa.id}>
+                          {coa.kode_akun} - {coa.nama_akun}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="lg:col-span-2">
@@ -602,15 +948,34 @@ export default function SalesOrderPage() {
                 </tr>
               ) : (
                 orders.map((item) => {
-                  const varian = item.varian_id ? variantMap.get(item.varian_id) : null;
-                  const affiliator = item.affiliator_id ? affiliatorMap.get(item.affiliator_id) : null;
-                  const coa = item.coa_id ? coaMap.get(item.coa_id) : null;
+                  const orderItems = (item as any).items || [];
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-bold text-slate-700 font-mono">{getOrderDisplayCode(item)}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-800">{varian?.nama_varian ?? "-"}</td>
-                      <td className="px-6 py-4 text-sm text-slate-700 text-center font-bold">{item.quantity}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-800">
+                        {orderItems.length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            {orderItems.map((it: any, idx: number) => {
+                              const v = variantMap.get(it.id_varian);
+                              return (
+                                <span key={idx} className="text-xs bg-slate-100 text-slate-750 px-2 py-0.5 rounded-md w-fit font-semibold border border-slate-200">
+                                  {v?.nama_varian ?? "Produk"} ({it.qty}x)
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span>
+                            {item.varian_id && variantMap.get(item.varian_id)
+                              ? `${variantMap.get(item.varian_id)?.nama_varian} (${item.quantity}x)`
+                              : "-"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700 text-center font-bold">
+                        {item.total_item || item.quantity || 0}
+                      </td>
                       <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">{formatRupiah(item.total_price)}</td>
                       <td className="px-6 py-4 text-sm text-slate-500 text-right">{formatDate(item.created_at)}</td>
                       <td className="px-6 py-4 text-right">
@@ -633,103 +998,275 @@ export default function SalesOrderPage() {
         <Modal
           isOpen={isEditModalOpen}
           onClose={closeEditModal}
-          maxWidth="max-w-lg"
+          maxWidth="max-w-3xl"
           title="Edit Sales Order"
         >
           <form onSubmit={handleUpdate} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Product Variant</label>
-              <select
-                required
-                value={formData.varian_id}
-                onChange={(event) => handleVariantChange(event.target.value)}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
-                disabled={isSubmitting}
-              >
-                <option value="" disabled>
-                  -- Choose a Product --
-                </option>
-                {variants.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {getVarianLabel(item)}
-                  </option>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Member</label>
+                <select
+                  value=""
+                  onChange={(event) => {
+                    const memberId = event.target.value;
+                    if (!memberId) return;
+                    const member = memberships.find((m) => m.id === memberId);
+                    if (member) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        nama_pelanggan: member.nama ?? "",
+                        nomor_telepon: member.telepon ?? "",
+                        lokasi: member.lokasi ?? "",
+                      }));
+                    }
+                  }}
+                  className="w-full bg-amber-50 border text-slate-700 border-amber-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-400"
+                  disabled={isSubmitting}
+                >
+                  <option value="">-- Pilih dari Member (opsional) --</option>
+                  {memberships.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nama ?? "Tanpa Nama"} {m.telepon ? `(${m.telepon})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama Pelanggan</label>
+                <input
+                  type="text"
+                  value={formData.nama_pelanggan}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, nama_pelanggan: event.target.value }))}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="Nama Pelanggan"
+                  disabled={isSubmitting}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nomor Telepon</label>
+                <input
+                  type="text"
+                  value={formData.nomor_telepon}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, nomor_telepon: event.target.value }))}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="Nomor Telepon"
+                  disabled={isSubmitting}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Lokasi</label>
+                <input
+                  type="text"
+                  value={formData.lokasi}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, lokasi: event.target.value }))}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="Lokasi"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+
+            </div>
+
+            {/* DYNAMIC EDIT VARIANT/ITEM SECTION */}
+            <div className="space-y-4 border border-slate-100 rounded-2xl p-4 bg-slate-50/50">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-700">Daftar Item / Varian Produk</h4>
+                <button
+                  type="button"
+                  onClick={addItemRow}
+                  disabled={isSubmitting}
+                  className="bg-blue-600 hover:bg-blue-750 active:bg-blue-800 disabled:opacity-60 text-white font-bold py-2 px-4 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-md shadow-blue-100"
+                >
+                  + Tambah Item
+                </button>
+              </div>
+              
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {formData.items.map((it, idx) => (
+                  <div key={idx} className="flex flex-col sm:flex-row items-end gap-3 bg-white border border-slate-200 p-3 rounded-xl shadow-sm">
+                    <div className="flex-1 w-full space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pilih Varian Produk</label>
+                      <select
+                        required
+                        value={it.varian_id}
+                        onChange={(event) => handleItemChange(idx, "varian_id", event.target.value)}
+                        className="w-full bg-slate-50 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none"
+                        disabled={isSubmitting}
+                      >
+                        <option value="" disabled>-- Pilih Produk Varian --</option>
+                        {variants.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {getVarianLabel(v)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="w-full sm:w-20 space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Qty</label>
+                      <input
+                        required
+                        type="number"
+                        min={1}
+                        value={it.quantity}
+                        onChange={(event) => handleItemChange(idx, "quantity", event.target.value)}
+                        className="w-full bg-slate-50 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none"
+                        placeholder="1"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+
+                    <div className="w-full sm:w-36 space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Subtotal</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={formatRupiah(Number(resolveCalculatedTotal(it.varian_id, it.quantity) || 0))}
+                        className="w-full bg-slate-100 border text-slate-500 border-slate-200 rounded-lg py-2 px-3 text-sm font-semibold cursor-not-allowed"
+                        disabled
+                      />
+                    </div>
+
+                    {formData.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItemRow(idx)}
+                        disabled={isSubmitting}
+                        className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold p-2 rounded-lg text-sm transition-all flex items-center justify-center border border-red-200 h-9 w-9"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
                 ))}
-              </select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama Pelanggan</label>
-              <input
-                type="text"
-                value={formData.nama_pelanggan}
-                onChange={(event) => setFormData((prev) => ({ ...prev, nama_pelanggan: event.target.value }))}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                placeholder="Nama Pelanggan"
-                disabled={isSubmitting}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nomor Telepon</label>
-              <input
-                type="text"
-                value={formData.nomor_telepon}
-                onChange={(event) => setFormData((prev) => ({ ...prev, nomor_telepon: event.target.value }))}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                placeholder="Nomor Telepon"
-                disabled={isSubmitting}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Lokasi</label>
-              <input
-                type="text"
-                value={formData.lokasi}
-                onChange={(event) => setFormData((prev) => ({ ...prev, lokasi: event.target.value }))}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                placeholder="Lokasi"
-                disabled={isSubmitting}
-              />
-            </div>
+            <div className="border-t border-slate-100 pt-3 space-y-3">
+              <h5 className="text-xs font-bold text-slate-750">Detail Pembayaran & Transaksi</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
+                {/* Summary */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Total Harga Barang</label>
+                  <input
+                    type="text"
+                    value={formatRupiah(Number(formData.total_price))}
+                    readOnly
+                    className="w-full bg-slate-150 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm cursor-not-allowed font-bold"
+                    placeholder="0"
+                    disabled
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Diskon (IDR)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={formData.diskon}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, diskon: event.target.value }))}
+                    className="w-full bg-white border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none"
+                    placeholder="0"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Total Bayar</label>
+                  <input
+                    type="text"
+                    value={formatRupiah(Number(formData.total_bayar))}
+                    readOnly
+                    className="w-full bg-slate-150 border border-slate-200 rounded-lg py-2 px-3 text-sm cursor-not-allowed font-bold text-green-600"
+                    disabled
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Terms of Payment (Hari)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={formData.terms_of_payment}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, terms_of_payment: event.target.value }))}
+                    className="w-full bg-white border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none"
+                    placeholder="0"
+                    disabled={isSubmitting}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Affiliator</label>
-              <select
-                value={formData.affiliator_id}
-                onChange={(event) => setFormData((prev) => ({ ...prev, affiliator_id: event.target.value }))}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
-                disabled={isSubmitting}
-              >
-                <option value="">-- Without Affiliator --</option>
-                {affiliators.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.nama} ({item.platform ?? "-"})
-                  </option>
-                ))}
-              </select>
-            </div>
+                {/* Bank Cash (selalu tampil) */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Bank Cash</label>
+                  <select
+                    value={formData.coa_cash_id ?? ""}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, coa_cash_id: event.target.value || null }))}
+                    className="w-full rounded-lg border border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    disabled={isSubmitting || cashBankOptions.length === 0}
+                  >
+                    <option value="" disabled>
+                      {cashBankOptions.length === 0 ? "Bank cash tidak tersedia" : "-- Pilih Bank Cash --"}
+                    </option>
+                    {cashBankOptions.map((coa) => (
+                      <option key={coa.id} value={coa.id}>
+                        {coa.kode_akun} - {coa.nama_akun}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input
-                required
-                type="number"
-                min={1}
-                value={formData.quantity}
-                onChange={(event) => handleQuantityChange(event.target.value)}
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700"
-                placeholder="Quantity"
-                disabled={isSubmitting}
-              />
-              <input
-                type="number"
-                min={0}
-                value={formData.total_price}
-                readOnly
-                className="w-full bg-slate-100 border border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-700 cursor-not-allowed"
-                placeholder="Total Price"
-                disabled
-              />
+                {/* Hybrid Payment (TOP > 0) — Cash + Kredit */}
+                {isCreditPayment && (
+                  <>
+                    <div className="sm:col-span-2 border-t border-dashed border-slate-200 my-1" />
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Jumlah Cash (Bayar)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={formData.jumlah_cash}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          const totalBayar = Number(formData.total_bayar || 0);
+                          const parsed = value === "" ? "" : String(Math.min(Number(value || 0), totalBayar));
+                          setFormData((prev) => ({ ...prev, jumlah_cash: parsed }));
+                        }}
+                        className="w-full bg-white border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none"
+                        placeholder="0"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Jumlah Piutang (Kredit)</label>
+                      <input
+                        type="text"
+                        value={formatRupiah(Number(formData.jumlah_piutang))}
+                        readOnly
+                        className="w-full bg-slate-150 border text-slate-600 border-slate-200 rounded-lg py-2 px-3 text-sm cursor-not-allowed font-bold"
+                        disabled
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Bank Kredit</label>
+                      <select
+                        value={formData.coa_credit_id ?? ""}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, coa_credit_id: event.target.value || null }))}
+                        className="w-full rounded-lg border border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed"
+                        disabled={isSubmitting || creditBankOptions.length === 0}
+                      >
+                        <option value="" disabled>
+                          {creditBankOptions.length === 0 ? "Bank kredit tidak tersedia" : "-- Pilih Bank Kredit --"}
+                        </option>
+                        {creditBankOptions.map((coa) => (
+                          <option key={coa.id} value={coa.id}>
+                            {coa.kode_akun} - {coa.nama_akun}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -767,7 +1304,7 @@ export default function SalesOrderPage() {
         <Modal
           isOpen={isDetailModalOpen}
           onClose={closeDetailModal}
-          maxWidth="max-w-md"
+          maxWidth="max-w-xl"
           title={
             <div>
               <h3 className="text-lg font-bold text-slate-900">Detail Sales Order</h3>
@@ -775,7 +1312,7 @@ export default function SalesOrderPage() {
             </div>
           }
         >
-          <div className="space-y-4">
+          <div className="space-y-4 font-sans">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Order Code</label>
               <p className="mt-1 text-sm text-slate-800 font-medium font-mono">{getOrderDisplayCode(detailData)}</p>
@@ -797,37 +1334,97 @@ export default function SalesOrderPage() {
               <p className="mt-1 text-sm text-slate-800 font-medium">{detailData.lokasi || "-"}</p>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Product Variant</label>
-              <p className="mt-1 text-sm text-slate-800 font-medium">
-                {detailData.varian_id ? variantMap.get(detailData.varian_id)?.nama_varian ?? "-" : "-"}
-              </p>
+            {/* PRODUCT ITEMS DETAIL TABLE */}
+            <div className="border-t border-slate-100 pt-3">
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Item Detail / Varian</label>
+              <div className="bg-slate-50 rounded-xl border border-slate-150 overflow-hidden shadow-sm">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider">
+                      <th className="px-3 py-2">Varian</th>
+                      <th className="px-3 py-2 text-center">Qty</th>
+                      <th className="px-3 py-2 text-right">Harga</th>
+                      <th className="px-3 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/60 text-slate-700 font-medium">
+                    {((detailData as any).items && Array.isArray((detailData as any).items) && (detailData as any).items.length > 0) ? (
+                      (detailData as any).items.map((it: any, idx: number) => {
+                        const v = variantMap.get(it.id_varian);
+                        return (
+                          <tr key={idx} className="hover:bg-slate-100/50">
+                            <td className="px-3 py-2">{v?.nama_varian ?? "Produk"}</td>
+                            <td className="px-3 py-2 text-center font-bold text-slate-800">{it.qty}</td>
+                            <td className="px-3 py-2 text-right">{formatRupiah(it.harga)}</td>
+                            <td className="px-3 py-2 text-right font-bold text-slate-900">{formatRupiah(it.harga_total)}</td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td className="px-3 py-2">{variantMap.get(detailData.varian_id ?? "")?.nama_varian ?? "-"}</td>
+                        <td className="px-3 py-2 text-center font-bold text-slate-800">{detailData.quantity}</td>
+                        <td className="px-3 py-2 text-right">
+                          {formatRupiah(Number(detailData.total_price || 0) / Math.max(1, Number(detailData.quantity || 1)))}
+                        </td>
+                        <td className="px-3 py-2 text-right font-bold text-slate-900">{formatRupiah(Number(detailData.total_price || 0))}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">COA</label>
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">COA Cash</label>
               <p className="mt-1 text-sm text-slate-800 font-medium">
-                {detailData.m_coa 
-                  ? `${detailData.m_coa.kode_akun} - ${detailData.m_coa.nama_akun}` 
-                  : (detailData.coa_id && coaMap.get(detailData.coa_id) 
-                      ? `${coaMap.get(detailData.coa_id)?.kode_akun} - ${coaMap.get(detailData.coa_id)?.nama_akun}` 
-                      : "-")}
-              </p>
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Affiliator</label>
-              <p className="mt-1 text-sm text-slate-800 font-medium">
-                {detailData.affiliator_id && affiliatorMap.get(detailData.affiliator_id)
-                  ? `${affiliatorMap.get(detailData.affiliator_id)?.nama} (${affiliatorMap.get(detailData.affiliator_id)?.platform ?? "-"})`
+                {(detailData as any).coa_cash_id && coaMap.get((detailData as any).coa_cash_id)
+                  ? `${coaMap.get((detailData as any).coa_cash_id)?.kode_akun} - ${coaMap.get((detailData as any).coa_cash_id)?.nama_akun}`
                   : "-"}
               </p>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Quantity</label>
-              <p className="mt-1 text-sm text-slate-800 font-bold">{detailData.quantity}</p>
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">COA Credit</label>
+              <p className="mt-1 text-sm text-slate-800 font-medium">
+                {(detailData as any).coa_credit_id && coaMap.get((detailData as any).coa_credit_id)
+                  ? `${coaMap.get((detailData as any).coa_credit_id)?.kode_akun} - ${coaMap.get((detailData as any).coa_credit_id)?.nama_akun}`
+                  : "-"}
+              </p>
             </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Total Price</label>
-              <p className="mt-1 text-sm text-slate-900 font-bold">{formatRupiah(detailData.total_price)}</p>
+            <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Terms of Payment</label>
+                <p className="mt-1 text-sm text-slate-800 font-medium">{detailData.terms_of_payment ?? 0} Hari</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Diskon</label>
+                <p className="mt-1 text-sm text-red-650 font-bold">{formatRupiah(detailData.diskon ?? 0)}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Jumlah Cash</label>
+                <p className="mt-1 text-sm text-slate-800 font-bold text-green-600">{formatRupiah(detailData.jumlah_cash ?? (detailData.total_price || 0))}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Jumlah Piutang</label>
+                <p className="mt-1 text-sm text-amber-600 font-bold">{formatRupiah(detailData.jumlah_piutang ?? 0)}</p>
+              </div>
+              <div className="col-span-2 border-t border-slate-100 pt-2">
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Total Bayar</label>
+                <p className="mt-1 text-base text-slate-900 font-bold text-green-600">
+                  {formatRupiah(detailData.total_bayar ?? (detailData.total_price || 0))}
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Quantity</label>
+                <p className="mt-1 text-sm text-slate-800 font-bold">{detailData.total_item || detailData.quantity || 0}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Total Price</label>
+                <p className="mt-1 text-sm text-slate-900 font-bold">{formatRupiah(detailData.total_price)}</p>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Order Date</label>

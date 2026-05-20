@@ -29,4 +29,5 @@ export { useKpiWeekly, useInsertKpiWeekly, useUpdateKpiWeekly, useDeleteKpiWeekl
 
 // ── Sales ──
 export { useAffiliator, useInsertAffiliator, useUpdateAffiliator, useDeleteAffiliator, useContentPlanner, useInsertContentPlanner, useUpdateContentPlanner, useDeleteContentPlanner, useLivePerformance, useInsertLivePerformance, useUpdateLivePerformance, useDeleteLivePerformance } from "./use-sales";
+export { useMembership, useInsertMembership, useUpdateMembership, useDeleteMembership } from "./use-membership";
 
