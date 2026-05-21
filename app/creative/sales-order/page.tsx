@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Edit, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Edit, Plus, ShoppingBag, Trash2, Download, Upload, FileSpreadsheet, X, CheckCircle, AlertCircle } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -164,6 +164,15 @@ export default function SalesOrderPage() {
   const [detailData, setDetailData] = useState<TSalesOrderWithCoa | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Import Excel states
+  const [isImporting, setIsImporting] = useState(false);
+  const [isImportResultOpen, setIsImportResultOpen] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    summary: { total: number; success: number; error: number };
+    details: { row: number; status: string; message: string; order_number?: string }[];
+  } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const variantMap = useMemo(
     () => new Map<string, MVarian>(variants.map((item) => [item.id, item])),
@@ -615,6 +624,99 @@ export default function SalesOrderPage() {
     }
   };
 
+  // ── Import Excel handlers ────────────────────────────────────────────────
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await apiFetch("/api/sales/orders/template", {
+        method: "GET",
+      });
+      if (!response.ok) {
+        alert("Gagal mengunduh template.");
+        return;
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "template_sales_order.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
+      alert("Gagal mengunduh template.");
+    }
+  };
+
+  const handleImportExcel = async (file: File) => {
+    if (isImporting) return;
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext !== "xlsx" && ext !== "xls") {
+      alert("File harus berformat .xlsx atau .xls");
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+
+      const response = await apiFetch("/api/sales/orders/import", {
+        method: "POST",
+        body: fd,
+      });
+
+      const raw = await response.text();
+      let payload: any;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        alert("Respons server tidak valid.");
+        return;
+      }
+
+      if (!response.ok || !payload.success) {
+        alert(payload?.error?.message || "Gagal mengimpor file.");
+        return;
+      }
+
+      setImportResult(payload.data);
+      setIsImportResultOpen(true);
+      await fetchOrdersAndDependencies();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal mengimpor file.");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      void handleImportExcel(file);
+      event.target.value = ""; // Reset input
+    }
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragOver(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      void handleImportExcel(file);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
@@ -914,6 +1016,77 @@ export default function SalesOrderPage() {
             </button>
           </div>
         </form>
+      </section>
+
+      {/* ── Import Excel Section ───────────────────────────────────────── */}
+      <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-100">
+              <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Import Sales Order dari Excel</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Upload file Excel (.xlsx) untuk menambah sales order secara bulk</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-4 rounded-xl text-xs transition-all border border-slate-200 hover:border-slate-300 shadow-sm"
+            >
+              <Download className="w-4 h-4" />
+              Download Template
+            </button>
+            <label
+              htmlFor="import-excel-input"
+              className={`flex items-center gap-2 font-semibold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer shadow-sm ${
+                isImporting
+                  ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                  : "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200"
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              {isImporting ? "Mengimpor..." : "Import Excel"}
+              <input
+                id="import-excel-input"
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleFileInputChange}
+                disabled={isImporting}
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Drag & Drop Zone */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          className={`mt-4 border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+            isDragOver
+              ? "border-emerald-400 bg-emerald-50/60"
+              : "border-slate-200 bg-slate-50/40 hover:border-slate-300"
+          }`}
+        >
+          {isImporting ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-slate-500 font-medium">Memproses file Excel...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <FileSpreadsheet className={`w-8 h-8 ${ isDragOver ? "text-emerald-500" : "text-slate-300" }`} />
+              <p className="text-sm text-slate-500">
+                <span className="font-semibold text-slate-600">Drag & drop</span> file Excel di sini, atau klik tombol Import Excel di atas
+              </p>
+              <p className="text-xs text-slate-400">Format: .xlsx atau .xls</p>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1437,6 +1610,94 @@ export default function SalesOrderPage() {
                 type="button"
                 onClick={closeDetailModal}
                 className="inline-flex items-center justify-center rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Import Result Modal ─────────────────────────────────────────── */}
+      {isImportResultOpen && importResult && (
+        <Modal
+          isOpen={isImportResultOpen}
+          onClose={() => { setIsImportResultOpen(false); setImportResult(null); }}
+          maxWidth="max-w-2xl"
+          title={
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
+                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Hasil Import Excel</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Ringkasan proses import sales order dari file Excel</p>
+              </div>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
+                <p className="text-2xl font-bold text-slate-800">{importResult.summary.total}</p>
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-1">Total Baris</p>
+              </div>
+              <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
+                <p className="text-2xl font-bold text-emerald-600">{importResult.summary.success}</p>
+                <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider mt-1">Berhasil</p>
+              </div>
+              <div className="bg-red-50 rounded-xl p-3 text-center border border-red-100">
+                <p className="text-2xl font-bold text-red-600">{importResult.summary.error}</p>
+                <p className="text-[10px] font-semibold text-red-600 uppercase tracking-wider mt-1">Gagal</p>
+              </div>
+            </div>
+
+            {/* Detail List */}
+            <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-150 bg-slate-50 shadow-inner">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0">
+                  <tr className="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider">
+                    <th className="px-3 py-2">Baris</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Keterangan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200/60">
+                  {importResult.details.map((detail, idx) => (
+                    <tr key={idx} className={`transition-colors ${
+                      detail.status === "success" ? "bg-white" : "bg-red-50/50"
+                    }`}>
+                      <td className="px-3 py-2 font-bold text-slate-700">#{detail.row}</td>
+                      <td className="px-3 py-2">
+                        {detail.status === "success" ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Berhasil
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-red-600 font-semibold">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            Gagal
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-slate-600">
+                        {detail.status === "success" && detail.order_number
+                          ? <span className="font-mono text-emerald-700 font-semibold">{detail.order_number}</span>
+                          : detail.message}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => { setIsImportResultOpen(false); setImportResult(null); }}
+                className="inline-flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors"
               >
                 Tutup
               </button>

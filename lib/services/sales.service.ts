@@ -260,6 +260,17 @@ export async function createSalesOrder(client: DbClient, input: Record<string, a
         .maybeSingle();
       if (existing) {
         idPelanggan = existing.id;
+
+        // Update customer details if new values are provided
+        const custUpdate: Record<string, string> = {};
+        if (input.nama_pelanggan) custUpdate.nama = input.nama_pelanggan;
+        if (input.lokasi) custUpdate.lokasi = input.lokasi;
+        if (Object.keys(custUpdate).length > 0) {
+          await (db(client) as any)
+            .from("t_membership")
+            .update(custUpdate)
+            .eq("id", idPelanggan);
+        }
       }
     }
 
