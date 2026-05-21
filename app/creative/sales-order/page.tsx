@@ -149,6 +149,20 @@ function findCoaByNameContains(coaList: MCOA[], keyword: string): MCOA | undefin
   return coaList.find((coa) => normalizeCoaName(coa.nama_akun).includes(target));
 }
 
+function getOrderQuantity(order: Pick<TSalesOrder, "quantity" | "total_item"> & { items?: Array<{ qty?: number | string }> } | null | undefined): number {
+  if (!order) return 0;
+
+  if (Array.isArray(order.items) && order.items.length > 0) {
+    const itemQty = order.items.reduce((total, item) => total + Number(item.qty ?? 0), 0);
+    if (itemQty > 0) return itemQty;
+  }
+
+  const totalItem = Number(order.total_item ?? 0);
+  if (totalItem > 0) return totalItem;
+
+  return Number(order.quantity ?? 0);
+}
+
 export default function SalesOrderPage() {
   const [orders, setOrders] = useState<TSalesOrderWithCoa[]>([]);
   const [variants, setVariants] = useState<MVarian[]>([]);
@@ -1147,7 +1161,7 @@ export default function SalesOrderPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-700 text-center font-bold">
-                        {item.total_item || item.quantity || 0}
+                        {getOrderQuantity(item)}
                       </td>
                       <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">{formatRupiah(item.total_price)}</td>
                       <td className="px-6 py-4 text-sm text-slate-500 text-right">{formatDate(item.created_at)}</td>
@@ -1536,9 +1550,9 @@ export default function SalesOrderPage() {
                     ) : (
                       <tr>
                         <td className="px-3 py-2">{variantMap.get(detailData.varian_id ?? "")?.nama_varian ?? "-"}</td>
-                        <td className="px-3 py-2 text-center font-bold text-slate-800">{detailData.quantity}</td>
+                        <td className="px-3 py-2 text-center font-bold text-slate-800">{getOrderQuantity(detailData)}</td>
                         <td className="px-3 py-2 text-right">
-                          {formatRupiah(Number(detailData.total_price || 0) / Math.max(1, Number(detailData.quantity || 1)))}
+                          {formatRupiah(Number(detailData.total_price || 0) / Math.max(1, getOrderQuantity(detailData)))}
                         </td>
                         <td className="px-3 py-2 text-right font-bold text-slate-900">{formatRupiah(Number(detailData.total_price || 0))}</td>
                       </tr>
@@ -1592,7 +1606,7 @@ export default function SalesOrderPage() {
             <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Quantity</label>
-                <p className="mt-1 text-sm text-slate-800 font-bold">{detailData.total_item || detailData.quantity || 0}</p>
+                <p className="mt-1 text-sm text-slate-800 font-bold">{getOrderQuantity(detailData)}</p>
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Total Price</label>
