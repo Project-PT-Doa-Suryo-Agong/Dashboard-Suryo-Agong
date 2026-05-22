@@ -29,7 +29,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const v = requireString(input, "kas");
     if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
     if (v.data !== "ya" && v.data !== "tidak") return fail(ErrorCode.VALIDATION_ERROR, "kas harus 'ya' atau 'tidak'.", 400);
-    payload.kas = v.data;
+    payload.kas = v.data === "ya" ? "kas tunai" : "tidak";
   }
   if ("tipe" in input) {
     const v = requireString(input, "tipe");
@@ -42,6 +42,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { data, error } = await updateUtangPiutang(supabaseAdmin as any, id, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update utang/piutang.", 500, error.message);
   if (!data) return fail(ErrorCode.NOT_FOUND, "Data utang/piutang tidak ditemukan.", 404);
+  
+  if (data) {
+    data.kas = (data.kas as unknown as string) === "kas tunai" ? ("ya" as any) : data.kas;
+  }
   return ok({ utang_piutang: data });
 }
 

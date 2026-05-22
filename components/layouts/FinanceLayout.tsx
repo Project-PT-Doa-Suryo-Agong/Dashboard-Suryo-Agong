@@ -13,7 +13,8 @@ const navItems = [
   { label: 'Chart of Accounts', href: '/finance/coa', icon: 'BookOpen' },
   { label: 'Journal', href: '/finance/journal', icon: 'BookMarked' },
   { label: 'Invoice', href: '/finance/invoice', icon: 'FileText' },
-  { label: 'Utang Piutang', href: '/finance/utang-piutang', icon: 'HandCoins' },
+  { label: 'Utang', href: '/finance/utang', icon: 'TrendingDown' },
+  { label: 'Piutang', href: '/finance/piutang', icon: 'TrendingUp' },
   { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
 ];
 

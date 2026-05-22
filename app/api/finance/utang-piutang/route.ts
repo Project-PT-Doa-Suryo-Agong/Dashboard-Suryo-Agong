@@ -17,7 +17,14 @@ export async function GET(request: Request) {
 
   const { data, error, meta } = await listUtangPiutang(auth.ctx.supabase, page, limit, tipe ?? undefined);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data utang/piutang.", 500, error.message);
-  return ok({ utang_piutang: data, meta });
+
+  // Map 'kas tunai' in database to 'ya' for API response
+  const mappedData = data.map((item) => ({
+    ...item,
+    kas: (item.kas as unknown as string) === "kas tunai" ? "ya" : item.kas,
+  }));
+
+  return ok({ utang_piutang: mappedData, meta });
 }
 
 export async function POST(request: Request) {
@@ -55,18 +62,24 @@ export async function POST(request: Request) {
   if (!tipe.ok) return fail(ErrorCode.VALIDATION_ERROR, tipe.message, 400);
   if (tipe.data && tipe.data !== "utang" && tipe.data !== "piutang") return fail(ErrorCode.VALIDATION_ERROR, "tipe harus 'utang' atau 'piutang'.", 400);
 
+  const dbKas = kas.data === "ya" ? "kas tunai" : "tidak";
+
   const payload = {
     klien: klien.data as string,
     deskripsi: deskripsi.data,
     nominal: nominal.data as number,
     tanggal_awal: tanggal_awal.data,
     jatuh_tempo: jatuh_tempo.data,
-    kas: (kas.data as FinanceTipeKas) ?? "tidak",
+    kas: dbKas,
     tipe: (tipe.data as FinanceUtangPiutangTipe) ?? "utang",
     coa: coa.data,
   };
 
   const { data, error } = await createUtangPiutang(supabaseAdmin as any, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal membuat data utang/piutang.", 500, error.message);
+  
+  if (data) {
+    data.kas = (data.kas as unknown as string) === "kas tunai" ? ("ya" as any) : data.kas;
+  }
   return ok({ utang_piutang: data }, "Data utang/piutang berhasil dibuat.", 201);
 }
