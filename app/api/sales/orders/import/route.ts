@@ -170,12 +170,27 @@ export async function POST(request: Request) {
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const yy = String(now.getFullYear()).slice(-2);
 
-  const { count: existingCount } = await supabaseAdmin
+  // Fetch the latest order number matching this month's prefix to calculate starting sequence
+  const prefix = `ORD-${mm}${yy}-`;
+  const { data: maxOrderData } = await supabaseAdmin
     .schema("sales" as any)
     .from("t_sales_order")
-    .select("id", { count: "exact", head: true });
+    .select("order_number")
+    .like("order_number", `${prefix}%`)
+    .order("order_number", { ascending: false })
+    .limit(1);
 
-  let orderSeq = (existingCount ?? 0) + 1;
+  let maxSeq = 0;
+  if (maxOrderData && maxOrderData.length > 0 && maxOrderData[0].order_number) {
+    const parts = maxOrderData[0].order_number.split('-');
+    const seqStr = parts[parts.length - 1];
+    const parsedSeq = parseInt(seqStr, 10);
+    if (!isNaN(parsedSeq)) {
+      maxSeq = parsedSeq;
+    }
+  }
+
+  let orderSeq = maxSeq + 1;
 
   // ── Fetch COA for auto-assignment ─────────────────────────────────────
   const { data: coaList } = await supabaseAdmin
