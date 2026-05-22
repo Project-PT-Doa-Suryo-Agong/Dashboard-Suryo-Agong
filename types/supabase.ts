@@ -925,6 +925,8 @@ export interface Database {
           order_code: string | null;
           order_number: string | null;
           coa_id: string | null;
+          coa_cash_id: string | null;
+          coa_credit_id: string | null;
           varian_id: string | null;
           affiliator_id: string | null;
           quantity: number;
@@ -933,32 +935,82 @@ export interface Database {
           nomor_telepon: string | null;
           lokasi: string | null;
           created_at: string | null;
+          updated_at: string | null;
+          terms_of_payment: number;
+          jumlah_piutang: number;
+          jumlah_cash: number;
+          diskon: number;
+          id_pelanggan: string | null;
+          total_item: number;
+          total_bayar: number;
         };
         Insert: {
           id?: string;
           order_code?: string | null;
           order_number?: string | null;
           coa_id?: string | null;
-          varian_id?: string | null;
-          affiliator_id?: string | null;
-          quantity: number;
-          total_price: number;
-          nama_pelanggan?: string | null;
-          nomor_telepon?: string | null;
-          lokasi?: string | null;
-          created_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          order_code?: string | null;
-          order_number?: string | null;
-          coa_id?: string | null;
+          coa_cash_id?: string | null;
+          coa_credit_id?: string | null;
           varian_id?: string | null;
           affiliator_id?: string | null;
           quantity?: number;
           total_price?: number;
           nama_pelanggan?: string | null;
           nomor_telepon?: string | null;
+          lokasi?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          terms_of_payment?: number;
+          jumlah_piutang?: number;
+          jumlah_cash?: number;
+          diskon?: number;
+          id_pelanggan?: string | null;
+          total_item?: number;
+          total_bayar?: number;
+        };
+        Update: {
+          id?: string;
+          order_code?: string | null;
+          order_number?: string | null;
+          coa_id?: string | null;
+          coa_cash_id?: string | null;
+          coa_credit_id?: string | null;
+          varian_id?: string | null;
+          affiliator_id?: string | null;
+          quantity?: number;
+          total_price?: number;
+          nama_pelanggan?: string | null;
+          nomor_telepon?: string | null;
+          lokasi?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          terms_of_payment?: number;
+          jumlah_piutang?: number;
+          jumlah_cash?: number;
+          diskon?: number;
+          id_pelanggan?: string | null;
+          total_item?: number;
+          total_bayar?: number;
+        };
+        Relationships: [];
+      };
+      t_membership: {
+        Row: {
+          id: string;
+          nama: string | null;
+          telepon: string | null;
+          lokasi: string | null;
+        };
+        Insert: {
+          id?: string;
+          nama?: string | null;
+          telepon?: string | null;
+          lokasi?: string | null;
+        };
+        Update: {
+          id?: string;
+          nama?: string | null;
+          telepon?: string | null;
           lokasi?: string | null;
         };
         Relationships: [];
@@ -1119,6 +1171,8 @@ export type TContentPlannerInsert = Tables<"sales", "t_content_planner">["Insert
 export type TLivePerformanceInsert = Tables<"sales", "t_live_performance">["Insert"];
 export type TContentStatisticInsert = Tables<"sales", "t_content_statistic">["Insert"];
 export type TSalesOrderInsert = Tables<"sales", "t_sales_order">["Insert"];
+export type TMembership      = Tables<"sales", "t_membership">["Row"];
+export type TMembershipInsert = Tables<"sales", "t_membership">["Insert"];
 
 // management
 export type TBudgetRequest = Tables<"management", "t_budget_request">["Row"];

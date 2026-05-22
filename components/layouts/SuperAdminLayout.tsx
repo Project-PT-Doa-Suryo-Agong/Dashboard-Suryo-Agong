@@ -17,6 +17,7 @@ const navItems = [
       { label: 'Vendor', href: '/super-admin/master-data/vendor', icon: 'Truck' },
       { label: 'Produk Induk', href: '/super-admin/master-data/produk', icon: 'Package' },
       { label: 'Varian Produk', href: '/super-admin/master-data/varian', icon: 'Tags' },
+      { label: 'Membership', href: '/creative/membership', icon: 'Crown' },
     ],
   },
   {
@@ -40,7 +41,8 @@ const navItems = [
       { label: 'Chart of Accounts', href: '/finance/coa', icon: 'BookOpen' },
       { label: 'Journal', href: '/finance/journal', icon: 'BookMarked' },
       { label: 'Invoice', href: '/finance/invoice', icon: 'FileText' },
-      { label: 'Utang Piutang', href: '/finance/utang-piutang', icon: 'HandCoins' },
+      { label: 'Utang', href: '/finance/utang', icon: 'TrendingDown' },
+      { label: 'Piutang', href: '/finance/piutang', icon: 'TrendingUp' },
     ]
   },
   {

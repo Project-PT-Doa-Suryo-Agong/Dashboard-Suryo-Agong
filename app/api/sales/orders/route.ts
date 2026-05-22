@@ -2,7 +2,6 @@ import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listSalesOrder, createSalesOrder } from "@/lib/services/sales.service";
 import { requireNumber, requireUUID, requireString } from "@/lib/validation/body-validator";
-import type { TSalesOrderInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -40,13 +39,6 @@ function buildOrderCode(dateCode: string, sequence: number): string {
   return `${ORDER_CODE_PREFIX}-${dateCode}-${String(sequence).padStart(6, "0")}`;
 }
 
-function parseOrderCodeSequence(orderCode: string, dateCode: string): number | null {
-  const match = orderCode.match(new RegExp(`^${ORDER_CODE_PREFIX}-${dateCode}-(\\d{6})$`));
-  if (!match) return null;
-  const value = Number(match[1]);
-  return Number.isFinite(value) ? value : null;
-}
-
 function isPermissionOrRlsError(message: string): boolean {
   const normalized = message.toLowerCase();
   return (
@@ -81,31 +73,6 @@ function ensureReadableOrderCodes<T extends SalesOrderLike>(orders: T[]): T[] {
   }));
 }
 
-async function generateNextOrderCode(supabase: any): Promise<string | null> {
-  const dateCode = getDateCodeInJakarta();
-  const pattern = `${ORDER_CODE_PREFIX}-${dateCode}-%`;
-
-  const { data, error } = await (supabase as any)
-    .schema("sales")
-    .from("t_sales_order")
-    .select("order_code")
-    .ilike("order_code", pattern)
-    .order("order_code", { ascending: false })
-    .limit(1);
-
-  if (error) {
-    const message = (error.message ?? "").toLowerCase();
-    if (message.includes("column") && message.includes("order_code")) {
-      return null;
-    }
-    throw new Error(`Gagal membuat kode order: ${error.message}`);
-  }
-
-  const latestCode = data?.[0]?.order_code;
-  const nextSequence = latestCode ? (parseOrderCodeSequence(String(latestCode), dateCode) ?? 0) + 1 : 1;
-  return buildOrderCode(dateCode, nextSequence);
-}
-
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
@@ -127,11 +94,11 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400); }
 
   const input = body as Record<string, unknown>;
-  const varianId = requireUUID(input, "varian_id");
+  const items = Array.isArray(input.items) ? input.items : null;
+
+  const varianId = requireUUID(input, "varian_id", { optional: items !== null });
   if (!varianId.ok) return fail(ErrorCode.VALIDATION_ERROR, varianId.message, 400);
-  const affiliatorId = requireUUID(input, "affiliator_id", { optional: true });
-  if (!affiliatorId.ok) return fail(ErrorCode.VALIDATION_ERROR, affiliatorId.message, 400);
-  const quantity = requireNumber(input, "quantity", { min: 1 });
+  const quantity = requireNumber(input, "quantity", { min: 1, optional: items !== null });
   if (!quantity.ok) return fail(ErrorCode.VALIDATION_ERROR, quantity.message, 400);
 
   const orderNumber = requireString(input, "order_number", { optional: true });
@@ -139,17 +106,37 @@ export async function POST(request: Request) {
 
   // Perhitungan total price otomatis di backend (Harga Varian x QTY)
   let calculatedTotalPrice = 0;
-  if (varianId.data) {
+  let calculatedTotalItem = 0;
+  let resolvedVarianId = varianId.data;
+
+  if (items && items.length > 0) {
+    for (const it of items) {
+      const itVarianId = it.varian_id || it.id_varian;
+      const itQty = Number(it.quantity || it.qty || 1);
+      if (itVarianId) {
+        const { data: varian } = await auth.ctx.supabase.schema("core").from("m_varian").select("harga").eq("id", itVarianId).single();
+        if (varian?.harga) {
+          calculatedTotalPrice += varian.harga * itQty;
+          calculatedTotalItem += itQty;
+        }
+      }
+    }
+    if (!resolvedVarianId && items.length > 0) {
+      resolvedVarianId = items[0].varian_id || items[0].id_varian;
+    }
+  } else if (varianId.data) {
     const { data: varian } = await auth.ctx.supabase.schema("core").from("m_varian").select("harga").eq("id", varianId.data).single();
     if (varian?.harga) {
       calculatedTotalPrice = varian.harga * quantity.data!;
+      calculatedTotalItem = quantity.data!;
     }
   }
 
-  const generatedOrderCode = await generateNextOrderCode(auth.ctx.supabase);
+  const coaCashId = requireUUID(input, "coa_cash_id", { optional: true });
+  if (!coaCashId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaCashId.message, 400);
 
-  const coaId = requireUUID(input, "coa_id", { optional: true });
-  if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+  const coaCreditId = requireUUID(input, "coa_credit_id", { optional: true });
+  if (!coaCreditId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaCreditId.message, 400);
 
   const namaPelanggan = requireString(input, "nama_pelanggan", { optional: true });
   if (!namaPelanggan.ok) return fail(ErrorCode.VALIDATION_ERROR, namaPelanggan.message, 400);
@@ -160,19 +147,49 @@ export async function POST(request: Request) {
   const lokasi = requireString(input, "lokasi", { optional: true });
   if (!lokasi.ok) return fail(ErrorCode.VALIDATION_ERROR, lokasi.message, 400);
 
+  // New fields
+  const termsOfPayment = requireNumber(input, "terms_of_payment", { optional: true });
+  if (!termsOfPayment.ok) return fail(ErrorCode.VALIDATION_ERROR, termsOfPayment.message, 400);
 
-  const payload: TSalesOrderInsert = {
-    ...(generatedOrderCode ? { order_code: generatedOrderCode } : {}),
+  const diskon = requireNumber(input, "diskon", { optional: true });
+  if (!diskon.ok) return fail(ErrorCode.VALIDATION_ERROR, diskon.message, 400);
+
+  const discountAmount = diskon.data ?? 0;
+  const calculatedTotalBayar = Math.max(0, calculatedTotalPrice - discountAmount);
+
+  const totalBayar = requireNumber(input, "total_bayar", { optional: true });
+  if (!totalBayar.ok) return fail(ErrorCode.VALIDATION_ERROR, totalBayar.message, 400);
+
+  const finalTotalBayar = (totalBayar.data !== undefined && totalBayar.data !== null) ? totalBayar.data : calculatedTotalBayar;
+
+  const jumlahCash = requireNumber(input, "jumlah_cash", { optional: true });
+  if (!jumlahCash.ok) return fail(ErrorCode.VALIDATION_ERROR, jumlahCash.message, 400);
+
+  const finalJumlahCash = (jumlahCash.data !== undefined && jumlahCash.data !== null) ? jumlahCash.data : finalTotalBayar;
+
+  const jumlahPiutang = requireNumber(input, "jumlah_piutang", { optional: true });
+  if (!jumlahPiutang.ok) return fail(ErrorCode.VALIDATION_ERROR, jumlahPiutang.message, 400);
+
+  const finalJumlahPiutang = (jumlahPiutang.data !== undefined && jumlahPiutang.data !== null) ? jumlahPiutang.data : Math.max(0, finalTotalBayar - finalJumlahCash);
+
+  const payload: any = {
     ...(orderNumber.data ? { order_number: orderNumber.data } : {}),
-    varian_id: varianId.data,
-    affiliator_id: affiliatorId.data,
-    quantity: quantity.data!,
+    varian_id: resolvedVarianId,
+    quantity: calculatedTotalItem,
     total_price: calculatedTotalPrice,
-    coa_id: coaId.data,
+    coa_cash_id: coaCashId.data,
+    coa_credit_id: coaCreditId.data,
     nama_pelanggan: namaPelanggan.data,
     nomor_telepon: nomorTelepon.data,
     lokasi: lokasi.data,
+    terms_of_payment: termsOfPayment.data ?? 0,
+    diskon: discountAmount,
+    total_bayar: finalTotalBayar,
+    jumlah_cash: finalJumlahCash,
+    jumlah_piutang: finalJumlahPiutang,
+    total_item: calculatedTotalItem,
     created_at: new Date().toISOString(),
+    items: items
   };
 
   let { data, error } = await createSalesOrder(auth.ctx.supabase, payload);

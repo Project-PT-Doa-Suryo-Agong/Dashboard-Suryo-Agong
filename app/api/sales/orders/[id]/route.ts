@@ -45,10 +45,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const varianId = requireUUID(input, "varian_id", { optional: true });
     if (!varianId.ok) return fail(ErrorCode.VALIDATION_ERROR, varianId.message, 400);
   }
-  if ("affiliator_id" in input) {
-    const affiliatorId = requireUUID(input, "affiliator_id", { optional: true });
-    if (!affiliatorId.ok) return fail(ErrorCode.VALIDATION_ERROR, affiliatorId.message, 400);
-  }
   if ("quantity" in input) {
     const quantity = requireNumber(input, "quantity", { min: 1 });
     if (!quantity.ok) return fail(ErrorCode.VALIDATION_ERROR, quantity.message, 400);
@@ -57,9 +53,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const totalPrice = requireNumber(input, "total_price", { min: 0 });
     if (!totalPrice.ok) return fail(ErrorCode.VALIDATION_ERROR, totalPrice.message, 400);
   }
-  if ("coa_id" in input) {
-    const coaId = requireUUID(input, "coa_id", { optional: true });
-    if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+  if ("coa_cash_id" in input) {
+    const coaCashId = requireUUID(input, "coa_cash_id", { optional: true });
+    if (!coaCashId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaCashId.message, 400);
+  }
+  if ("coa_credit_id" in input) {
+    const coaCreditId = requireUUID(input, "coa_credit_id", { optional: true });
+    if (!coaCreditId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaCreditId.message, 400);
   }
   if ("nama_pelanggan" in input && input.nama_pelanggan !== null) {
     if (typeof input.nama_pelanggan !== "string") {
@@ -75,6 +75,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (typeof input.lokasi !== "string") {
       return fail(ErrorCode.VALIDATION_ERROR, "lokasi harus string.", 400);
     }
+  }
+  if ("terms_of_payment" in input) {
+    const terms = requireNumber(input, "terms_of_payment", { min: 0 });
+    if (!terms.ok) return fail(ErrorCode.VALIDATION_ERROR, terms.message, 400);
+  }
+  if ("diskon" in input) {
+    const diskon = requireNumber(input, "diskon", { min: 0 });
+    if (!diskon.ok) return fail(ErrorCode.VALIDATION_ERROR, diskon.message, 400);
+  }
+  if ("jumlah_cash" in input) {
+    const cash = requireNumber(input, "jumlah_cash", { min: 0 });
+    if (!cash.ok) return fail(ErrorCode.VALIDATION_ERROR, cash.message, 400);
+  }
+  if ("jumlah_piutang" in input) {
+    const piutang = requireNumber(input, "jumlah_piutang", { min: 0 });
+    if (!piutang.ok) return fail(ErrorCode.VALIDATION_ERROR, piutang.message, 400);
+  }
+  if ("total_bayar" in input) {
+    const total = requireNumber(input, "total_bayar", { min: 0 });
+    if (!total.ok) return fail(ErrorCode.VALIDATION_ERROR, total.message, 400);
+  }
+  if ("total_item" in input) {
+    const totalItem = requireNumber(input, "total_item", { min: 0 });
+    if (!totalItem.ok) return fail(ErrorCode.VALIDATION_ERROR, totalItem.message, 400);
   }
 
   const { data, error } = await updateSalesOrder(auth.ctx.supabase, id, input);
