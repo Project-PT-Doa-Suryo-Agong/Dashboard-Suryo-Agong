@@ -51,6 +51,11 @@ type MembershipListPayload = {
 type FormItem = {
   varian_id: string;
   quantity: string;
+  is_new?: boolean;
+  nama_produk?: string;
+  nama_varian?: string;
+  harga?: string;
+  kategori?: string;
 };
 
 type FormState = {
@@ -194,9 +199,16 @@ export default function SalesOrderPage() {
   );
 
   const resolveCalculatedTotal = useCallback(
-    (variantId: string, quantity: string) => {
+    (variantId: string, quantity: string, customPrice?: string) => {
       const qty = Number(quantity);
-      if (!variantId || Number.isNaN(qty) || qty <= 0) return "";
+      if (Number.isNaN(qty) || qty <= 0) return "";
+
+      if (variantId === "new") {
+        const prc = Number(customPrice || 0);
+        return String(prc * qty);
+      }
+
+      if (!variantId) return "";
 
       const variant = variantMap.get(variantId);
       if (!variant || variant.harga == null) return "";
@@ -227,6 +239,18 @@ export default function SalesOrderPage() {
         ...nextItems[index],
         [field]: value
       };
+      
+      // If variant_id is changed to something other than 'new', clear custom fields
+      if (field === "varian_id" && value !== "new") {
+        nextItems[index].is_new = false;
+        nextItems[index].nama_produk = "";
+        nextItems[index].nama_varian = "";
+        nextItems[index].harga = "";
+        nextItems[index].kategori = "";
+      } else if (field === "varian_id" && value === "new") {
+        nextItems[index].is_new = true;
+      }
+
       return {
         ...prev,
         items: nextItems
@@ -258,7 +282,7 @@ export default function SalesOrderPage() {
 
       if (prev.items && prev.items.length > 0) {
         prev.items.forEach((item) => {
-          const itemPrice = Number(resolveCalculatedTotal(item.varian_id, item.quantity) || 0);
+          const itemPrice = Number(resolveCalculatedTotal(item.varian_id, item.quantity, item.harga) || 0);
           totalProductPrice += itemPrice;
           totalProductQty += Number(item.quantity || 0);
         });
@@ -544,8 +568,13 @@ export default function SalesOrderPage() {
           total_bayar: Number(formData.total_bayar || parsedTotalPrice),
           total_item: Number(formData.total_item || parsedQuantity),
           items: formData.items.map(it => ({
-            varian_id: it.varian_id,
-            quantity: Number(it.quantity)
+            varian_id: it.varian_id === "new" ? undefined : it.varian_id,
+            quantity: Number(it.quantity),
+            harga: it.varian_id === "new" ? Number(it.harga || 0) : undefined,
+            is_new: it.varian_id === "new" ? true : undefined,
+            nama_produk: it.varian_id === "new" ? it.nama_produk : undefined,
+            nama_varian: it.varian_id === "new" ? it.nama_varian : undefined,
+            kategori: it.varian_id === "new" ? it.kategori : undefined,
           }))
         }),
       });
@@ -593,8 +622,13 @@ export default function SalesOrderPage() {
           total_bayar: Number(formData.total_bayar || parsedTotalPrice),
           total_item: Number(formData.total_item || parsedQuantity),
           items: formData.items.map(it => ({
-            varian_id: it.varian_id,
-            quantity: Number(it.quantity)
+            varian_id: it.varian_id === "new" ? undefined : it.varian_id,
+            quantity: Number(it.quantity),
+            harga: it.varian_id === "new" ? Number(it.harga || 0) : undefined,
+            is_new: it.varian_id === "new" ? true : undefined,
+            nama_produk: it.varian_id === "new" ? it.nama_produk : undefined,
+            nama_varian: it.varian_id === "new" ? it.nama_varian : undefined,
+            kategori: it.varian_id === "new" ? it.kategori : undefined,
           }))
         }),
       });
@@ -836,59 +870,131 @@ export default function SalesOrderPage() {
             
             <div className="space-y-3">
               {formData.items.map((it, idx) => (
-                <div key={idx} className="flex flex-col md:flex-row items-end gap-4 bg-white border border-slate-200 p-3 rounded-xl shadow-sm">
-                  <div className="flex-1 w-full space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pilih Varian Produk</label>
-                    <select
-                      required
-                      value={it.varian_id}
-                      onChange={(event) => handleItemChange(idx, "varian_id", event.target.value)}
-                      className="w-full bg-slate-50 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                      disabled={isSubmitting}
-                    >
-                      <option value="" disabled>-- Pilih Produk Varian --</option>
-                      {variants.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {getVarianLabel(v)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="w-full md:w-32 space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Qty</label>
-                    <input
-                      required
-                      type="number"
-                      min={1}
-                      value={it.quantity}
-                      onChange={(event) => handleItemChange(idx, "quantity", event.target.value)}
-                      className="w-full bg-slate-50 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                      placeholder="1"
-                      disabled={isSubmitting}
-                    />
+                <div key={idx} className="flex flex-col bg-white border border-slate-200 p-3 rounded-xl shadow-sm gap-3">
+                  <div className="flex flex-col md:flex-row items-end gap-4 w-full">
+                    <div className="flex-1 w-full space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pilih Varian Produk</label>
+                      <select
+                        required
+                        value={it.varian_id}
+                        onChange={(event) => handleItemChange(idx, "varian_id", event.target.value)}
+                        className="w-full bg-slate-50 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                        disabled={isSubmitting}
+                      >
+                        <option value="" disabled>-- Pilih Produk Varian --</option>
+                        {variants.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {getVarianLabel(v)}
+                          </option>
+                        ))}
+                        <option value="new" className="text-blue-600 font-bold">+ Registrasi Varian & Produk Baru</option>
+                      </select>
+                    </div>
+                    
+                    <div className="w-full md:w-32 space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Qty</label>
+                      <input
+                        required
+                        type="number"
+                        min={1}
+                        value={it.quantity}
+                        onChange={(event) => handleItemChange(idx, "quantity", event.target.value)}
+                        className="w-full bg-slate-50 border text-slate-700 border-slate-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                        placeholder="1"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+
+                    <div className="w-full md:w-44 space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Subtotal</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={formatRupiah(Number(resolveCalculatedTotal(it.varian_id, it.quantity, it.harga) || 0))}
+                        className="w-full bg-slate-100 border text-slate-500 border-slate-200 rounded-lg py-2 px-3 text-sm font-semibold cursor-not-allowed"
+                        disabled
+                      />
+                    </div>
+
+                    {formData.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItemRow(idx)}
+                        disabled={isSubmitting}
+                        className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold p-2 rounded-lg text-sm transition-all flex items-center justify-center border border-red-200 h-9 w-9"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
 
-                  <div className="w-full md:w-44 space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Subtotal</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={formatRupiah(Number(resolveCalculatedTotal(it.varian_id, it.quantity) || 0))}
-                      className="w-full bg-slate-100 border text-slate-500 border-slate-200 rounded-lg py-2 px-3 text-sm font-semibold cursor-not-allowed"
-                      disabled
-                    />
-                  </div>
+                  {/* Additional fields for New Product & Variant */}
+                  {it.varian_id === "new" && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-blue-50/40 p-3 rounded-lg border border-blue-100 mt-1 animate-fadeIn">
+                      <div className="md:col-span-2 space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Nama Produk Induk Baru</label>
+                        <input
+                          required
+                          type="text"
+                          value={it.nama_produk || ""}
+                          onChange={(event) => handleItemChange(idx, "nama_produk", event.target.value)}
+                          className="w-full bg-white border text-slate-700 border-blue-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          placeholder="Contoh: Kemeja Flanel Premium"
+                          disabled={isSubmitting}
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Nama Varian Baru</label>
+                        <input
+                          required
+                          type="text"
+                          value={it.nama_varian || ""}
+                          onChange={(event) => handleItemChange(idx, "nama_varian", event.target.value)}
+                          className="w-full bg-white border text-slate-700 border-blue-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          placeholder="Contoh: Merah - L"
+                          disabled={isSubmitting}
+                        />
+                      </div>
 
-                  {formData.items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItemRow(idx)}
-                      disabled={isSubmitting}
-                      className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold p-2 rounded-lg text-sm transition-all flex items-center justify-center border border-red-200 h-9 w-9"
-                    >
-                      🗑️
-                    </button>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Harga Satuan (Rp)</label>
+                        <input
+                          required
+                          type="number"
+                          min={0}
+                          value={it.harga || ""}
+                          onChange={(event) => handleItemChange(idx, "harga", event.target.value)}
+                          className="w-full bg-white border text-slate-700 border-blue-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          placeholder="0"
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
+                      <div className="md:col-span-2 space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Kategori Baru <span className="text-red-400">*</span></label>
+                        <select
+                          required
+                          value={it.kategori || ""}
+                          onChange={(event) => handleItemChange(idx, "kategori", event.target.value)}
+                          className="w-full bg-white border text-slate-700 border-blue-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+                          disabled={isSubmitting}
+                        >
+                          <option value="" disabled>-- Pilih Kategori --</option>
+                          <option value="Pakaian">Pakaian</option>
+                          <option value="Aksesoris">Aksesoris</option>
+                          <option value="Sepatu">Sepatu</option>
+                          <option value="Tas">Tas</option>
+                          <option value="Elektronik">Elektronik</option>
+                          <option value="Lainnya">Lainnya</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-2 flex items-center pt-5 text-blue-700 text-xs font-semibold gap-1.5">
+                        <span className="inline-block bg-blue-150 p-1 rounded-full text-blue-600"></span>
+                        <span>Produk & varian baru ini akan otomatis diregistrasikan ke database master.</span>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}

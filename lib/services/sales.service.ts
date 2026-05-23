@@ -246,7 +246,174 @@ export async function getSalesOrderById(client: DbClient, id: string) {
   return { data: (enriched as TSalesOrder) || null, error };
 }
 
+async function generateUniqueSku(client: DbClient, productName: string, variantName: string): Promise<string> {
+  const pInitials = productName.replace(/[^a-zA-Z0-9]/g, "").slice(0, 3).toUpperCase() || "PRD";
+  const vInitials = variantName.replace(/[^a-zA-Z0-9]/g, "").slice(0, 3).toUpperCase() || "VAR";
+  const prefix = `SKU-${pInitials}-${vInitials}`;
+
+  let isUnique = false;
+  let finalSku = "";
+  let attempts = 0;
+
+  while (!isUnique && attempts < 100) {
+    const suffix = attempts === 0 
+      ? Math.floor(1000 + Math.random() * 9000).toString()
+      : `${Math.floor(1000 + Math.random() * 9000)}-${attempts}`;
+    finalSku = `${prefix}-${suffix}`;
+
+    // Check if this SKU exists in core.m_varian
+    const { data } = await (client as any)
+      .schema("core")
+      .from("m_varian")
+      .select("id")
+      .eq("sku", finalSku)
+      .maybeSingle();
+
+    if (!data) {
+      isUnique = true;
+    }
+    attempts++;
+  }
+
+  if (!isUnique) {
+    finalSku = `${prefix}-${Date.now()}`;
+  }
+
+  return finalSku;
+}
+
+async function resolveOrCreateVariant(
+  client: DbClient,
+  item: { varian_id?: string; nama_produk?: string; nama_varian?: string; harga?: number; kategori?: string }
+): Promise<string> {
+  const { varian_id, nama_produk, nama_varian, harga, kategori } = item;
+
+  // 1. If it's a valid UUID, check if it exists in core.m_varian
+  if (varian_id && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(varian_id)) {
+    const { data } = await (client as any).schema("core").from("m_varian").select("id").eq("id", varian_id).maybeSingle();
+    if (data) return data.id;
+  }
+
+  // 2. If it has a variant name or product name
+  if (nama_varian || nama_produk) {
+    const resolvedProdName = (nama_produk || nama_varian || "Produk Baru").trim();
+    const resolvedVarName = (nama_varian || nama_produk || "Varian Baru").trim();
+    const resolvedHarga = Number(harga || 0);
+
+    // Check if product exists (case-insensitive)
+    let productId: string | null = null;
+    const { data: existingProd } = await (client as any)
+      .schema("core")
+      .from("m_produk")
+      .select("id")
+      .ilike("nama_produk", resolvedProdName)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingProd) {
+      productId = existingProd.id;
+    } else {
+      // Create new product with category
+      const { data: newProd, error: prodErr } = await (client as any)
+        .schema("core")
+        .from("m_produk")
+        .insert({
+          nama_produk: resolvedProdName,
+          kategori: kategori || "Lainnya",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select("id")
+        .single();
+      
+      if (prodErr) throw new Error(`Gagal membuat produk induk baru: ${prodErr.message}`);
+      if (!newProd) throw new Error(`Gagal membuat produk induk baru.`);
+      productId = newProd.id;
+    }
+
+    // Check if variant exists under this product
+    const { data: existingVar } = await (client as any)
+      .schema("core")
+      .from("m_varian")
+      .select("id")
+      .eq("product_id", productId)
+      .ilike("nama_varian", resolvedVarName)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingVar) {
+      return existingVar.id;
+    } else {
+      // Generate a unique, auto-generated SKU
+      const resolvedSku = await generateUniqueSku(client, resolvedProdName, resolvedVarName);
+
+      // Create new variant
+      const { data: newVar, error: varErr } = await (client as any)
+        .schema("core")
+        .from("m_varian")
+        .insert({
+          product_id: productId,
+          nama_varian: resolvedVarName,
+          harga: resolvedHarga,
+          sku: resolvedSku,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select("id")
+        .single();
+
+      if (varErr) throw new Error(`Gagal membuat varian baru: ${varErr.message}`);
+      if (!newVar) throw new Error(`Gagal membuat varian baru.`);
+      return newVar.id;
+    }
+  }
+
+  throw new Error("Varian produk tidak dapat diidentifikasi.");
+}
+
 export async function createSalesOrder(client: DbClient, input: Record<string, any>) {
+  // 0. Auto-resolve or create variants if new
+  if (input.items && Array.isArray(input.items) && input.items.length > 0) {
+    for (let i = 0; i < input.items.length; i++) {
+      const it = input.items[i];
+      const itemVarianId = it.id_varian || it.varian_id;
+      const isNew = it.is_new || !itemVarianId || (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(itemVarianId));
+      if (isNew && (it.nama_varian || it.nama_produk)) {
+        try {
+          const finalId = await resolveOrCreateVariant(client, {
+            varian_id: itemVarianId,
+            nama_produk: it.nama_produk,
+            nama_varian: it.nama_varian,
+            harga: Number(it.harga || 0),
+            kategori: it.kategori
+          });
+          it.varian_id = finalId;
+          it.id_varian = finalId;
+        } catch (err) {
+          console.error("Gagal resolveOrCreateVariant:", err);
+        }
+      }
+    }
+  }
+
+  if (input.varian_id) {
+    const isNew = input.is_new || (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(input.varian_id));
+    if (isNew && (input.nama_varian || input.nama_produk)) {
+      try {
+        const finalId = await resolveOrCreateVariant(client, {
+          varian_id: input.varian_id,
+          nama_produk: input.nama_produk,
+          nama_varian: input.nama_varian,
+          harga: Number(input.harga || 0),
+          kategori: input.kategori
+        });
+        input.varian_id = finalId;
+      } catch (err) {
+        console.error("Gagal resolveOrCreateVariant untuk single:", err);
+      }
+    }
+  }
+
   // 1. Resolve id_pelanggan
   let idPelanggan = input.id_pelanggan || null;
   if (!idPelanggan && (input.nama_pelanggan || input.nomor_telepon)) {

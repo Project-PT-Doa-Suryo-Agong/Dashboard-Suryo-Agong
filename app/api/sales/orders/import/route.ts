@@ -25,6 +25,8 @@ type ImportRow = {
   nama_varian?: string;
   sku?: string;
   quantity?: number | string;
+  harga?: number | string;
+  kategori?: string;
   nama_pelanggan?: string;
   nomor_telepon?: string;
   lokasi?: string;
@@ -40,11 +42,42 @@ type GroupedOrder = {
   lokasi: string | null;
   diskon: number;
   terms_of_payment: number;
-  items: { varian_id: string; quantity: number; harga: number; rowNumber: number }[];
+  items: {
+    varian_id: string;
+    quantity: number;
+    harga: number;
+    rowNumber: number;
+    is_new?: boolean;
+    nama_produk?: string;
+    nama_varian?: string;
+    sku?: string | null;
+    kategori?: string | null;
+  }[];
 };
 
 function normalizeHeader(raw: string): string {
   return raw.trim().toLowerCase().replace(/[\s\-]+/g, "_");
+}
+
+function parseProductAndVariantName(namaVarianRaw: string): { productName: string; variantName: string } {
+  const raw = (namaVarianRaw || "").trim();
+  if (!raw) {
+    return { productName: "Produk Baru", variantName: "Standar" };
+  }
+
+  const separators = [" - ", " / ", " | ", "-", "/", "|"];
+  for (const sep of separators) {
+    if (raw.includes(sep)) {
+      const parts = raw.split(sep);
+      const productName = parts[0].trim();
+      const variantName = parts.slice(1).join(sep).trim();
+      if (productName && variantName) {
+        return { productName, variantName };
+      }
+    }
+  }
+
+  return { productName: raw, variantName: "Original" };
 }
 
 export async function POST(request: Request) {
@@ -133,16 +166,43 @@ export async function POST(request: Request) {
     const nameRaw = String(row.nama_varian ?? "").trim().toLowerCase();
     const variant = (skuRaw ? variantBySku.get(skuRaw) : null) ?? (nameRaw ? variantByName.get(nameRaw) : null);
 
+    const qty = Math.max(1, Math.round(Number(row.quantity) || 1));
+
     if (!variant) {
-      rowErrors.push({
-        row: rowNumber,
-        status: "error",
-        message: `Varian tidak ditemukan. SKU: "${row.sku ?? ""}", Nama: "${row.nama_varian ?? ""}"`,
-      });
+      const { productName, variantName } = parseProductAndVariantName(row.nama_varian || "Produk Baru");
+      const priceRaw = Number(row.harga) || 0;
+      const categoryRaw = String(row.kategori ?? "").trim() || "Lainnya";
+      const newItem = {
+        varian_id: "",
+        quantity: qty,
+        harga: priceRaw,
+        rowNumber,
+        is_new: true,
+        nama_produk: productName,
+        nama_varian: variantName,
+        sku: row.sku || null,
+        kategori: categoryRaw,
+      };
+
+      if (!orderGroups.has(groupKey)) {
+        orderGroups.set(groupKey, {
+          firstRowNumber: rowNumber,
+          rowNumbers: [rowNumber],
+          nama_pelanggan: String(row.nama_pelanggan ?? "").trim() || null,
+          nomor_telepon: String(row.nomor_telepon ?? "").trim() || null,
+          lokasi: String(row.lokasi ?? "").trim() || null,
+          diskon: Math.max(0, Number(row.diskon) || 0),
+          terms_of_payment: Math.max(0, Math.round(Number(row.terms_of_payment) || 0)),
+          items: [newItem],
+        });
+      } else {
+        const group = orderGroups.get(groupKey)!;
+        group.rowNumbers.push(rowNumber);
+        group.items.push(newItem);
+      }
       continue;
     }
 
-    const qty = Math.max(1, Math.round(Number(row.quantity) || 1));
     const harga = Number(variant.harga ?? 0);
 
     if (!orderGroups.has(groupKey)) {
@@ -243,7 +303,7 @@ export async function POST(request: Request) {
     // Build payload — mirrors POST /api/sales/orders exactly
     const payload: Record<string, any> = {
       order_number: orderNumber,
-      varian_id: items[0].varian_id,
+      varian_id: items[0].varian_id || undefined,
       quantity: calculatedTotalItem,
       total_price: calculatedTotalPrice,
       coa_cash_id: defaultCashCoaId,
@@ -259,9 +319,14 @@ export async function POST(request: Request) {
       total_item: calculatedTotalPrice,  // monetary value, NOT count
       created_at: new Date().toISOString(),
       items: items.map((it) => ({
-        varian_id: it.varian_id,
+        varian_id: it.varian_id || undefined,
         quantity: it.quantity,
         harga: it.harga,
+        is_new: it.is_new,
+        nama_produk: it.nama_produk,
+        nama_varian: it.nama_varian,
+        sku: it.sku,
+        kategori: it.kategori || undefined,
       })),
     };
 

@@ -137,7 +137,7 @@ export function UserManualDetail({ data }: { data: ManualPageData }) {
           {/* Tips */}
           {data.tips && data.tips.length > 0 && (
             <div className="um-info-box tip">
-              <div className="um-info-box-title">💡 Tips & Best Practices</div>
+              <div className="um-info-box-title">Tips & Best Practices</div>
               {data.tips.map((tip, tIdx) => (
                 <p key={tIdx} style={{ marginTop: tIdx > 0 ? "0.5rem" : 0 }}>
                   • {tip}
