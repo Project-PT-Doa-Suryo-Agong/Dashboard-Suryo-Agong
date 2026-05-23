@@ -18,6 +18,7 @@ const navItems = [
       { label: 'Produk Induk', href: '/super-admin/master-data/produk', icon: 'Package' },
       { label: 'Varian Produk', href: '/super-admin/master-data/varian', icon: 'Tags' },
       { label: 'Membership', href: '/creative/membership', icon: 'Crown' },
+      { label: 'Buku Tamu', href: '/super-admin/master-data/buku-tamu', icon: 'ClipboardList' },
     ],
   },
   {

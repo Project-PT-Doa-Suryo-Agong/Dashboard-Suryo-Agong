@@ -16,6 +16,7 @@ const navItems = [
       { label: "Vendor", href: "/admin/master-data/vendor", icon: "Truck" },
       { label: "Produk Induk", href: "/admin/master-data/produk", icon: "Package" },
       { label: "Varian Produk", href: "/admin/master-data/varian", icon: "Tags" },
+      { label: "Buku Tamu", href: "/admin/master-data/buku-tamu", icon: "ClipboardList" },
     ],
   },
   {

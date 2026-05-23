@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Truck, Package, Tags, ArrowRight, ChevronRight, Database } from 'lucide-react';
+import { Truck, Package, Tags, ClipboardList, ArrowRight, ChevronRight, Database } from 'lucide-react';
 import { apiFetch } from '@/lib/utils/api-fetch';
 import type { ApiError, ApiSuccess } from '@/types/api';
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 const MASTER_DATA_CARDS = [
   {
@@ -33,6 +34,15 @@ const MASTER_DATA_CARDS = [
     key: 'varian',
     color: 'text-[#BC934B]',
     bg: 'bg-yellow-50',
+  },
+  {
+    label: 'Buku Tamu',
+    href: '/super-admin/master-data/buku-tamu',
+    icon: ClipboardList,
+    description: 'Daftar tamu yang hadir serta data kunjungan mereka.',
+    key: 'buku_tamu',
+    color: 'text-purple-500',
+    bg: 'bg-purple-50',
   },
 ] as const;
 
@@ -74,14 +84,15 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
 export default function MasterDataPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [counts, setCounts] = useState<MasterDataCounts>({ vendor: 0, produk: 0, varian: 0 });
+  const [counts, setCounts] = useState<MasterDataCounts>({ vendor: 0, produk: 0, varian: 0, buku_tamu: 0 });
 
   useEffect(() => {
     const loadCounts = async () => {
       setIsLoading(true);
       setErrorMessage(null);
       try {
-        const [vendorsResponse, productsResponse, variantsResponse] = await Promise.all([
+        const supabase = createSupabaseBrowserClient();
+        const [vendorsResponse, productsResponse, variantsResponse, bukuTamuRes] = await Promise.all([
           apiFetch('/api/core/vendors?page=1&limit=1', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
@@ -97,6 +108,7 @@ export default function MasterDataPage() {
             headers: { 'Content-Type': 'application/json' },
             cache: 'no-store',
           }),
+          supabase.from("buku_tamu").select("*", { count: "exact", head: true }),
         ]);
 
         const vendorsPayload = await parseJsonResponse<VendorsListPayload>(vendorsResponse);
@@ -107,6 +119,7 @@ export default function MasterDataPage() {
           vendor: vendorsPayload.data.meta.total ?? 0,
           produk: productsPayload.data.meta.total ?? 0,
           varian: variantsPayload.data.varian?.length ?? 0,
+          buku_tamu: bukuTamuRes.count ?? 0,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Gagal memuat jumlah master data.';

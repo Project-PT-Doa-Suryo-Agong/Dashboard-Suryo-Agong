@@ -31,3 +31,5 @@ export { useKpiWeekly, useInsertKpiWeekly, useUpdateKpiWeekly, useDeleteKpiWeekl
 export { useAffiliator, useInsertAffiliator, useUpdateAffiliator, useDeleteAffiliator, useContentPlanner, useInsertContentPlanner, useUpdateContentPlanner, useDeleteContentPlanner, useLivePerformance, useInsertLivePerformance, useUpdateLivePerformance, useDeleteLivePerformance } from "./use-sales";
 export { useMembership, useInsertMembership, useUpdateMembership, useDeleteMembership } from "./use-membership";
 
+// ── Buku Tamu ──
+export { useBukuTamu, useInsertBukuTamu, useUpdateBukuTamu, useDeleteBukuTamu } from "./use-buku-tamu";
