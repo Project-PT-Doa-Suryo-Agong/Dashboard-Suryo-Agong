@@ -76,12 +76,20 @@ export default function LandingPage() {
               className="h-8 w-auto md:h-9 lg:h-10"
             />
           </div>
-          <a
-            href="/auth/login"
-            className="flex h-10 w-full items-center justify-center rounded-lg bg-[#BC934B] px-4 text-xs font-bold text-white shadow-md transition-all hover:bg-opacity-90 sm:w-auto md:px-6 md:text-sm lg:text-base"
-          >
-            Sign In
-          </a>
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/buku-tamu"
+              className="flex h-10 items-center justify-center rounded-lg border border-white/20 bg-white/5 px-4 text-xs font-bold text-white transition hover:bg-white/15 md:px-5 md:text-sm"
+            >
+              Buku Tamu
+            </Link>
+            <a
+              href="/auth/login"
+              className="flex h-10 w-full items-center justify-center rounded-lg bg-[#BC934B] px-4 text-xs font-bold text-white shadow-md transition-all hover:bg-opacity-90 sm:w-auto md:px-6 md:text-sm lg:text-base"
+            >
+              Sign In
+            </a>
+          </div>
         </div>
       </nav>
 
@@ -100,6 +108,12 @@ export default function LandingPage() {
             >
               Access System
             </a>
+            <Link
+              href="/buku-tamu"
+              className="flex h-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 px-5 text-sm font-bold text-white shadow-lg backdrop-blur-sm transition-transform hover:bg-white/20 hover:-translate-y-0.5 md:h-12 md:px-6 md:text-base lg:h-14 lg:px-8 lg:text-lg"
+            >
+              Isi Buku Tamu
+            </Link>
           </div>
         </section>
 

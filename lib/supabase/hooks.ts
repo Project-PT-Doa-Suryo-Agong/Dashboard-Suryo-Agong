@@ -5,7 +5,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SchemaName = "core" | "hr" | "finance" | "production" | "logistics" | "sales" | "management";
+type SchemaName = "core" | "hr" | "finance" | "production" | "logistics" | "sales" | "management" | "public";
 
 type QueryMeta = {
   page: number;

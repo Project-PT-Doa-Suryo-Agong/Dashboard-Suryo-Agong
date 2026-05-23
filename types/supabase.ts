@@ -1091,6 +1091,55 @@ export interface Database {
     };
     CompositeTypes: { [_ in never]: never };
   };
+
+  // ── Schema: public ──────────────────────────────────────────────────────────
+  public: {
+    Tables: {
+      buku_tamu: {
+        Row: {
+          id: string;
+          created_at: string | null;
+          nama_kamu: string;
+          nomor_telepon: string;
+          alamat: string | null;
+          keperluan: string;
+          asal_instansi: string | null;
+          tau_utero_darimana: string | null;
+          kritik_saran: string | null;
+          status_hello: string;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string | null;
+          nama_kamu: string;
+          nomor_telepon: string;
+          alamat?: string | null;
+          keperluan: string;
+          asal_instansi?: string | null;
+          tau_utero_darimana?: string | null;
+          kritik_saran?: string | null;
+          status_hello: string;
+        };
+        Update: {
+          id?: string;
+          created_at?: string | null;
+          nama_kamu?: string;
+          nomor_telepon?: string;
+          alamat?: string | null;
+          keperluan?: string;
+          asal_instansi?: string | null;
+          tau_utero_darimana?: string | null;
+          kritik_saran?: string | null;
+          status_hello?: string;
+        };
+        Relationships: [];
+      };
+    };
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+    Enums: { [_ in never]: never };
+    CompositeTypes: { [_ in never]: never };
+  };
 }
 
 // ─── Convenience Row Types ────────────────────────────────────────────────────
@@ -1179,6 +1228,10 @@ export type TBudgetRequest = Tables<"management", "t_budget_request">["Row"];
 export type TKPIWeekly     = Tables<"management", "t_kpi_weekly">["Row"];
 export type TBudgetRequestInsert = Tables<"management", "t_budget_request">["Insert"];
 export type TKPIWeeklyInsert = Tables<"management", "t_kpi_weekly">["Insert"];
+
+// public
+export type TBukuTamu       = Tables<"public", "buku_tamu">["Row"];
+export type TBukuTamuInsert = Tables<"public", "buku_tamu">["Insert"];
 export type TPKWT = {
   id: string;
   template_type: "pkwt" | "pkwtp";
