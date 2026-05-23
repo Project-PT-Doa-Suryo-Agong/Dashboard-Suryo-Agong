@@ -96,7 +96,8 @@ export async function POST(request: Request) {
   const input = body as Record<string, unknown>;
   const items = Array.isArray(input.items) ? input.items : null;
 
-  const varianId = requireUUID(input, "varian_id", { optional: items !== null });
+  const isSingleNew = Boolean(input.is_new || input.nama_varian || input.nama_produk);
+  const varianId = requireUUID(input, "varian_id", { optional: items !== null || isSingleNew });
   if (!varianId.ok) return fail(ErrorCode.VALIDATION_ERROR, varianId.message, 400);
   const quantity = requireNumber(input, "quantity", { min: 1, optional: items !== null });
   if (!quantity.ok) return fail(ErrorCode.VALIDATION_ERROR, quantity.message, 400);
@@ -113,23 +114,33 @@ export async function POST(request: Request) {
     for (const it of items) {
       const itVarianId = it.varian_id || it.id_varian;
       const itQty = Number(it.quantity || it.qty || 1);
-      if (itVarianId) {
+      const isItNew = it.is_new || !itVarianId || (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(itVarianId));
+      
+      if (!isItNew && itVarianId) {
         const { data: varian } = await auth.ctx.supabase.schema("core").from("m_varian").select("harga").eq("id", itVarianId).single();
         if (varian?.harga) {
           calculatedTotalPrice += varian.harga * itQty;
           calculatedTotalItem += itQty;
         }
+      } else {
+        const customHarga = Number(it.harga || 0);
+        calculatedTotalPrice += customHarga * itQty;
+        calculatedTotalItem += itQty;
       }
     }
     if (!resolvedVarianId && items.length > 0) {
       resolvedVarianId = items[0].varian_id || items[0].id_varian;
     }
-  } else if (varianId.data) {
+  } else if (varianId.data && !isSingleNew) {
     const { data: varian } = await auth.ctx.supabase.schema("core").from("m_varian").select("harga").eq("id", varianId.data).single();
     if (varian?.harga) {
       calculatedTotalPrice = varian.harga * quantity.data!;
       calculatedTotalItem = quantity.data!;
     }
+  } else if (isSingleNew) {
+    const customHarga = Number(input.harga || 0);
+    calculatedTotalPrice = customHarga * quantity.data!;
+    calculatedTotalItem = quantity.data!;
   }
 
   const coaCashId = requireUUID(input, "coa_cash_id", { optional: true });

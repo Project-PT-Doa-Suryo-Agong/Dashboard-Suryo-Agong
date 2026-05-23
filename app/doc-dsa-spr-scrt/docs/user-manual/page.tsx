@@ -119,7 +119,7 @@ export default function UserManualPage() {
 
         {/* Info Box */}
         <div className="um-info-box tip" style={{ maxWidth: "52rem", margin: "0 auto 2rem" }}>
-          <div className="um-info-box-title">💡 Panduan Penggunaan</div>
+          <div className="um-info-box-title">Panduan Penggunaan</div>
           <p>
             Klik pada kartu role di bawah untuk membuka panduan lengkap sesuai
             dengan jabatan Anda. Setiap panduan berisi cara login, navigasi

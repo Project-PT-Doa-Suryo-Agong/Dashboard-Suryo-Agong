@@ -86,9 +86,10 @@ export default function FinanceInvoicePage() {
   }, []);
 
   const filteredItems = useMemo(() => {
+    const salesInvoices = items.filter(item => (item.id_invoice || "").startsWith("INVC-") || !(item.id_invoice || "").startsWith("PEMB-"));
     const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) return items;
-    return items.filter((item) => {
+    if (!keyword) return salesInvoices;
+    return salesInvoices.filter((item) => {
       const idInvoice = item.id_invoice ?? "";
       const pelanggan = item.pelanggan ?? "";
       const catatan = item.catatan ?? "";
@@ -195,11 +196,11 @@ export default function FinanceInvoicePage() {
     <div className="p-4 md:p-6 lg:p-8 space-y-4 max-w-7xl mx-auto w-full">
       <section className="flex flex-col sm:flex-row justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Invoices</h1>
+          <h1 className="text-2xl font-bold text-slate-100">Invoice Penjualan</h1>
           <p className="text-slate-300">Kelola tagihan pelanggan.</p>
         </div>
         <button onClick={openAddModal} className="flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-white font-semibold hover:bg-green-600">
-          <PlusCircle className="h-5 w-5" /> Buat Invoice
+          <PlusCircle className="h-5 w-5" /> Buat Invoice Penjualan
         </button>
       </section>
 
@@ -248,7 +249,7 @@ export default function FinanceInvoicePage() {
         </div>
       </section>
 
-      <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={editData ? "Edit Invoice" : "Buat Invoice"} maxWidth="max-w-2xl">
+      <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={editData ? "Edit Invoice Penjualan" : "Buat Invoice Penjualan"} maxWidth="max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -353,7 +354,7 @@ export default function FinanceInvoicePage() {
         </form>
       </Modal>
 
-      <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Detail Invoice" maxWidth="max-w-2xl">
+      <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Detail Invoice Penjualan" maxWidth="max-w-2xl">
         {detailData && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-xl border border-slate-100">
@@ -390,7 +391,7 @@ export default function FinanceInvoicePage() {
         )}
       </Modal>
 
-      <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleConfirmDelete} title="Hapus Invoice" description="Yakin hapus invoice ini?" variant="danger" />
+      <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleConfirmDelete} title="Hapus Invoice Penjualan" description="Yakin hapus invoice ini?" variant="danger" />
     </div>
   );
 }

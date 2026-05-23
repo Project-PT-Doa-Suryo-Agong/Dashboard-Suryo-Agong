@@ -31,6 +31,8 @@ export async function GET() {
     "nama_varian",
     "sku",
     "quantity",
+    "harga",
+    "kategori",
     "nama_pelanggan",
     "nomor_telepon",
     "lokasi",
@@ -48,6 +50,8 @@ export async function GET() {
       nama_varian: v1?.nama_varian ?? "Contoh Produk A",
       sku: v1?.sku ?? "SKU-001",
       quantity: 5,
+      harga: v1?.harga ?? 100000,
+      kategori: "Pakaian",
       nama_pelanggan: "Budi Santoso",
       nomor_telepon: "08123456789",
       lokasi: "Jakarta",
@@ -59,6 +63,8 @@ export async function GET() {
       nama_varian: v2?.nama_varian ?? "Contoh Produk B",
       sku: v2?.sku ?? "SKU-002",
       quantity: 3,
+      harga: v2?.harga ?? 150000,
+      kategori: "Pakaian",
       nama_pelanggan: "",
       nomor_telepon: "",
       lokasi: "",
@@ -70,6 +76,8 @@ export async function GET() {
       nama_varian: v1?.nama_varian ?? "Contoh Produk A",
       sku: v1?.sku ?? "SKU-001",
       quantity: 2,
+      harga: v1?.harga ?? 100000,
+      kategori: "Pakaian",
       nama_pelanggan: "Siti Aminah",
       nomor_telepon: "08234567890",
       lokasi: "Surabaya",
@@ -86,6 +94,8 @@ export async function GET() {
     { wch: 30 },  // nama_varian
     { wch: 18 },  // sku
     { wch: 10 },  // quantity
+    { wch: 12 },  // harga
+    { wch: 15 },  // kategori
     { wch: 25 },  // nama_pelanggan
     { wch: 18 },  // nomor_telepon
     { wch: 20 },  // lokasi
@@ -116,8 +126,10 @@ export async function GET() {
   const guideData = [
     { Kolom: "no_order", Deskripsi: "Nomor grup order. Baris dengan no_order sama = 1 order (multi-varian). Kosongkan jika 1 baris = 1 order.", Wajib: "Tidak (opsional)", Contoh: "1" },
     { Kolom: "nama_varian", Deskripsi: "Nama varian produk (sesuai Daftar Varian)", Wajib: "Ya (atau isi SKU)", Contoh: v1?.nama_varian ?? "Contoh Produk" },
-    { Kolom: "sku", Deskripsi: "SKU produk (sesuai Daftar Varian)", Wajib: "Ya (atau isi nama_varian)", Contoh: v1?.sku ?? "SKU-001" },
+    { Kolom: "sku", Deskripsi: "SKU produk (sesuai Daftar Varian)", Wajib: "Opsional (diisi jika produk sudah ada; auto-generated jika mendaftarkan produk baru)", Contoh: v1?.sku ?? "SKU-001" },
     { Kolom: "quantity", Deskripsi: "Jumlah barang yang dipesan", Wajib: "Ya", Contoh: "5" },
+    { Kolom: "harga", Deskripsi: "Harga satuan produk. Wajib jika mendaftarkan produk baru via import.", Wajib: "Wajib untuk produk baru", Contoh: "100000" },
+    { Kolom: "kategori", Deskripsi: "Kategori produk (Pakaian, Aksesoris, Sepatu, Tas, Elektronik, Lainnya). Wajib jika mendaftarkan produk baru.", Wajib: "Wajib untuk produk baru", Contoh: "Pakaian" },
     { Kolom: "nama_pelanggan", Deskripsi: "Nama pelanggan (diambil dari baris pertama tiap grup)", Wajib: "Tidak", Contoh: "Budi Santoso" },
     { Kolom: "nomor_telepon", Deskripsi: "Nomor telepon pelanggan (diambil dari baris pertama tiap grup)", Wajib: "Tidak", Contoh: "08123456789" },
     { Kolom: "lokasi", Deskripsi: "Lokasi pengiriman (diambil dari baris pertama tiap grup)", Wajib: "Tidak", Contoh: "Jakarta" },

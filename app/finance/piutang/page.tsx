@@ -41,6 +41,45 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+function getOverdueStatus(tanggalJatuhTempo: string, lunas: string): { 
+  label: string; 
+  className: string; 
+} {
+  if (lunas === "ya") {
+    return { 
+      label: "Lunas", 
+      className: "bg-emerald-100 text-emerald-700 font-semibold border border-emerald-200" 
+    };
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const dueDate = new Date(tanggalJatuhTempo);
+  dueDate.setHours(0, 0, 0, 0);
+  
+  const diffTime = today.getTime() - dueDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays > 0) {
+    return { 
+      label: `Terlambat ${diffDays} Hari`, 
+      className: "bg-rose-100 text-rose-700 font-bold border border-rose-200 animate-pulse" 
+    };
+  } else if (diffDays === 0) {
+    return { 
+      label: "Hari Ini", 
+      className: "bg-amber-100 text-amber-700 font-semibold border border-amber-200" 
+    };
+  } else {
+    const daysLeft = Math.abs(diffDays);
+    return { 
+      label: `${daysLeft} Hari Lagi`, 
+      className: "bg-slate-100 text-slate-600 font-medium border border-slate-200" 
+    };
+  }
+}
+
 export default function FinancePiutangPage() {
   const [items, setItems] = useState<TUtangPiutangWithCoa[]>([]);
   const [coas, setCoas] = useState<MCoa[]>([]);
@@ -129,7 +168,7 @@ export default function FinancePiutangPage() {
       nominal: String(item.nominal),
       tanggal_awal: item.tanggal_awal,
       jatuh_tempo: item.jatuh_tempo,
-      kas: item.kas,
+      kas: item.kas || "tidak",
       tipe: "piutang", // Hardcoded to 'piutang'
       coa: item.coa?.id ?? "",
     });
@@ -245,6 +284,9 @@ export default function FinancePiutangPage() {
                   Lunas (Kas)
                 </th>
                 <th className="px-4 py-3 font-semibold text-slate-600">
+                  Overdue
+                </th>
+                <th className="px-4 py-3 font-semibold text-slate-600">
                   COA/Akun
                 </th>
                 <th className="px-4 py-3 font-semibold text-slate-600 text-right">
@@ -255,13 +297,13 @@ export default function FinancePiutangPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-6 text-slate-500">
+                  <td colSpan={9} className="text-center py-6 text-slate-500">
                     Memuat...
                   </td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-6 text-slate-500">
+                  <td colSpan={9} className="text-center py-6 text-slate-500">
                     Belum ada catatan piutang
                   </td>
                 </tr>
@@ -296,6 +338,16 @@ export default function FinancePiutangPage() {
                       >
                         {item.kas === "ya" ? "YA" : "TIDAK"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const status = getOverdueStatus(item.jatuh_tempo, item.kas);
+                        return (
+                          <span className={`px-2.5 py-1 text-xs rounded-lg ${status.className}`}>
+                            {status.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       {item.coa ? (
