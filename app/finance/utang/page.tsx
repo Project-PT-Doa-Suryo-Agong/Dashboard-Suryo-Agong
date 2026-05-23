@@ -168,7 +168,7 @@ export default function FinanceUtangPage() {
       nominal: String(item.nominal),
       tanggal_awal: item.tanggal_awal,
       jatuh_tempo: item.jatuh_tempo,
-      kas: item.kas,
+      kas: item.kas || "tidak",
       tipe: "utang", // Hardcoded to 'utang'
       coa: item.coa?.id ?? "",
     });
