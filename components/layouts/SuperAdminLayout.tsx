@@ -45,6 +45,7 @@ const navItems = [
       { label: 'Invoice Pembelian', href: '/finance/invoice/pembelian', icon: 'Receipt' },
       { label: 'Utang', href: '/finance/utang', icon: 'TrendingDown' },
       { label: 'Piutang', href: '/finance/piutang', icon: 'TrendingUp' },
+      { label: 'Kasbon', href: '/finance/kasbon', icon: 'HandCoins' },
     ]
   },
   {

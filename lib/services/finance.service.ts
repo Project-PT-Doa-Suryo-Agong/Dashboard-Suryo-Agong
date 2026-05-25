@@ -252,7 +252,7 @@ export async function deleteInvoiceItem(client: DbClient, id_invoice: string, id
 
 // t_utang_piutang
 
-export async function listUtangPiutang(client: DbClient, page = 1, limit = 100, tipe?: "utang" | "piutang") {
+export async function listUtangPiutang(client: DbClient, page = 1, limit = 100, tipe?: "utang" | "piutang" | "kasbon") {
   const from = (page - 1) * limit;
   let query = db(client)
     .from("t_utang_piutang")

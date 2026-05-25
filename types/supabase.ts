@@ -37,7 +37,7 @@ export type FinanceReimburseStatus = "pending" | "approved" | "rejected";
 export type FinanceCoaCategory = "Aset" | "Liabilitas" | "Ekuitas" | "Pendapatan" | "Beban" | "Beban Lain-lain";
 export type FinanceInvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
 export type FinanceTipeKas = "ya" | "tidak";
-export type FinanceUtangPiutangTipe = "utang" | "piutang";
+export type FinanceUtangPiutangTipe = "utang" | "piutang" | "kasbon";
 
 export type ProductionStatus = "draft" | "ongoing" | "done";
 export type ProductionQcResult = "pass" | "reject";
