@@ -17,6 +17,7 @@ const navItems = [
   { label: 'Utang', href: '/finance/utang', icon: 'TrendingDown' },
   { label: 'Piutang', href: '/finance/piutang', icon: 'TrendingUp' },
   { label: 'Kasbon', href: '/finance/kasbon', icon: 'HandCoins' },
+  { label: 'Pengelolaan Aset', href: '/finance/asset', icon: 'Boxes' },
   { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
 ];
 
