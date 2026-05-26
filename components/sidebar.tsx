@@ -55,6 +55,7 @@ import {
   MessageCircle,
   FileUser,
   Crown,
+  Boxes,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -106,6 +107,7 @@ const ICONS: Record<string, LucideIcon> = {
   MessageCircle,
   FileUser,
   Crown,
+  Boxes,
 };
 
 export interface NavItem {

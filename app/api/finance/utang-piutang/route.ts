@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const page = Math.max(Number(url.searchParams.get("page")) || 1, 1);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 100, 1), 500);
-  const tipe = url.searchParams.get("tipe") as "utang" | "piutang" | null;
+  const tipe = url.searchParams.get("tipe") as "utang" | "piutang" | "kasbon" | null;
 
   const { data, error, meta } = await listUtangPiutang(auth.ctx.supabase, page, limit, tipe ?? undefined);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data utang/piutang.", 500, error.message);
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
   const tipe = requireString(input, "tipe", { optional: true });
   if (!tipe.ok) return fail(ErrorCode.VALIDATION_ERROR, tipe.message, 400);
-  if (tipe.data && tipe.data !== "utang" && tipe.data !== "piutang") return fail(ErrorCode.VALIDATION_ERROR, "tipe harus 'utang' atau 'piutang'.", 400);
+  if (tipe.data && tipe.data !== "utang" && tipe.data !== "piutang" && tipe.data !== "kasbon") return fail(ErrorCode.VALIDATION_ERROR, "tipe harus 'utang', 'piutang', atau 'kasbon'.", 400);
 
   const dbKas = kas.data === "ya" ? "kas tunai" : "tidak";
 

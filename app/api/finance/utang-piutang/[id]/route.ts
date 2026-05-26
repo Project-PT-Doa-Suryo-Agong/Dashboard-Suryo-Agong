@@ -34,7 +34,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if ("tipe" in input) {
     const v = requireString(input, "tipe");
     if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
-    if (v.data !== "utang" && v.data !== "piutang") return fail(ErrorCode.VALIDATION_ERROR, "tipe harus 'utang' atau 'piutang'.", 400);
+    if (v.data !== "utang" && v.data !== "piutang" && v.data !== "kasbon") return fail(ErrorCode.VALIDATION_ERROR, "tipe harus 'utang', 'piutang', atau 'kasbon'.", 400);
     payload.tipe = v.data;
   }
   if ("coa" in input) { const v = requireUUID(input, "coa", { optional: true }); if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400); payload.coa = v.data; }

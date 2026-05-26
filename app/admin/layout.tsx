@@ -42,6 +42,7 @@ const navItems = [
       { label: "Invoice", href: "/finance/invoice", icon: "FileText" },
       { label: "Utang", href: "/finance/utang", icon: "TrendingDown" },
       { label: "Piutang", href: "/finance/piutang", icon: "TrendingUp" },
+      { label: "Kasbon", href: "/finance/kasbon", icon: "HandCoins" },
     ]
   },
   {
