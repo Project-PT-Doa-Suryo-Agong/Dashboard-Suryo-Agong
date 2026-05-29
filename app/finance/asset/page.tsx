@@ -206,9 +206,9 @@ export default function AssetManagementPage() {
       nilai_residu: "0",
       masa_manfaat_bulan: "48",
       metode_penyusutan: "straight_line",
-      coa_asset_id: coaOptions.find((c: MCOA) => c.kode_akun?.startsWith("1-"))?.id || "",
-      coa_depr_accumulation_id: coaOptions.find((c: MCOA) => c.kode_akun?.startsWith("1-") && c.nama_akun?.toLowerCase().includes("akum"))?.id || "",
-      coa_depr_expense_id: coaOptions.find((c: MCOA) => c.kode_akun?.startsWith("5-") || c.kode_akun?.startsWith("6-"))?.id || "",
+      coa_asset_id: coaOptions.find((c: MCOA) => c.kode_akun?.startsWith("1101.01.01.02") && c.kode_akun !== "1101.01.01.02")?.id || "",
+      coa_depr_accumulation_id: coaOptions.find((c: MCOA) => c.kode_akun === "1203" || (c.kode_akun?.startsWith("1") && c.nama_akun?.toLowerCase().includes("akum")))?.id || "",
+      coa_depr_expense_id: coaOptions.find((c: MCOA) => c.kode_akun === "6004" || c.kode_akun?.startsWith("5") || c.kode_akun?.startsWith("6"))?.id || "",
       keterangan: "",
       status: "active",
     });
@@ -860,11 +860,13 @@ export default function AssetManagementPage() {
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-[#BC934B]"
                 >
                   <option value="">Pilih COA...</option>
-                  {coaOptions.map((coa: MCOA) => (
-                    <option key={coa.id} value={coa.id}>
-                      {coa.kode_akun} - {coa.nama_akun}
-                    </option>
-                  ))}
+                  {coaOptions
+                    .filter((coa: MCOA) => coa.kode_akun?.startsWith("1101.01.01.02") && coa.kode_akun !== "1101.01.01.02")
+                    .map((coa: MCOA) => (
+                      <option key={coa.id} value={coa.id}>
+                        {coa.kode_akun} - {coa.nama_akun}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -878,11 +880,13 @@ export default function AssetManagementPage() {
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-[#BC934B]"
                 >
                   <option value="">Pilih COA...</option>
-                  {coaOptions.map((coa: MCOA) => (
-                    <option key={coa.id} value={coa.id}>
-                      {coa.kode_akun} - {coa.nama_akun}
-                    </option>
-                  ))}
+                  {coaOptions
+                    .filter((coa: MCOA) => coa.kode_akun?.startsWith("1203"))
+                    .map((coa: MCOA) => (
+                      <option key={coa.id} value={coa.id}>
+                        {coa.kode_akun} - {coa.nama_akun}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -896,11 +900,13 @@ export default function AssetManagementPage() {
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-[#BC934B]"
                 >
                   <option value="">Pilih COA...</option>
-                  {coaOptions.map((coa: MCOA) => (
-                    <option key={coa.id} value={coa.id}>
-                      {coa.kode_akun} - {coa.nama_akun}
-                    </option>
-                  ))}
+                  {coaOptions
+                    .filter((coa: MCOA) => coa.kode_akun?.startsWith("6004"))
+                    .map((coa: MCOA) => (
+                      <option key={coa.id} value={coa.id}>
+                        {coa.kode_akun} - {coa.nama_akun}
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>
