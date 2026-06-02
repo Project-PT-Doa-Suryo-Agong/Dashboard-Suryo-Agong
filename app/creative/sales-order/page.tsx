@@ -4,6 +4,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Edit, Plus, ShoppingBag, Trash2, Download, Upload, FileSpreadsheet, X, CheckCircle, AlertCircle } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MCOA, MVarian, TSalesOrder, TMembership } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
@@ -532,6 +534,182 @@ export default function SalesOrderPage() {
   const closeDetailModal = () => {
     setDetailData(null);
     setIsDetailModalOpen(false);
+  };
+
+  const handleGeneratePDF = (order: TSalesOrder) => {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    
+    // Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(30, 41, 59); // slate-800
+    doc.text("PT. DOA SURYO AGONG", 14, 20);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text("Jl. Nglinggo, Gobang, Nglinggo, Kec. Gondang, Kab. Nganjuk, Jatim 64451", 14, 25);
+    doc.text("Telp: 0851-4123-9009 | Email: info@suryoagong.co.id", 14, 29);
+    
+    // Title banner
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    doc.text("SALES ORDER INVOICE", 130, 20);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`No. Order: ${getOrderDisplayCode(order)}`, 130, 25);
+    doc.text(`Tanggal  : ${formatDate(order.created_at)}`, 130, 29);
+    
+    // Line separator
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.setLineWidth(0.5);
+    doc.line(14, 35, 196, 35);
+    
+    // Customer Info (left side: x = 14, max width = 90)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.text("INFORMASI PELANGGAN", 14, 42);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(30, 41, 59);
+    
+    doc.text("Nama Pelanggan  :", 14, 48);
+    const nameLines = doc.splitTextToSize(order.nama_pelanggan || "-", 55);
+    doc.text(nameLines, 45, 48);
+    
+    const nameOffset = (nameLines.length - 1) * 4;
+    const phoneY = 53 + nameOffset;
+    doc.text("Nomor Telepon   :", 14, phoneY);
+    doc.text(order.nomor_telepon || "-", 45, phoneY);
+    
+    const locationY = 58 + nameOffset;
+    doc.text("Lokasi / Alamat :", 14, locationY);
+    const locationLines = doc.splitTextToSize(order.lokasi || "-", 55);
+    doc.text(locationLines, 45, locationY);
+    
+    // Other Details (right side: x = 112, max width = 80)
+    doc.setFont("helvetica", "bold");
+    doc.text("METODE PEMBAYARAN", 112, 42);
+    
+    doc.setFont("helvetica", "normal");
+    const cashCoa = (order as any).coa_cash_id && coaMap.get((order as any).coa_cash_id);
+    const creditCoa = (order as any).coa_credit_id && coaMap.get((order as any).coa_credit_id);
+    const coaCashName = cashCoa ? `${cashCoa.kode_akun} - ${cashCoa.nama_akun}` : "-";
+    const coaCreditName = creditCoa ? `${creditCoa.kode_akun} - ${creditCoa.nama_akun}` : "-";
+    
+    doc.text("Terms of Payment :", 112, 48);
+    doc.text(`${order.terms_of_payment ?? 0} Hari`, 144, 48);
+    
+    doc.text("Bank Cash        :", 112, 53);
+    const coaCashLines = doc.splitTextToSize(coaCashName, 48);
+    doc.text(coaCashLines, 144, 53);
+    
+    const cashOffset = (coaCashLines.length - 1) * 4;
+    const creditY = 58 + cashOffset;
+    doc.text("Bank Kredit      :", 112, creditY);
+    const coaCreditLines = doc.splitTextToSize(coaCreditName, 48);
+    doc.text(coaCreditLines, 144, creditY);
+
+    // Calculate maximum Y to draw the line separator cleanly
+    const maxLeftY = locationY + (locationLines.length - 1) * 4;
+    const maxRightY = creditY + (coaCreditLines.length - 1) * 4;
+    const separatorY = Math.max(maxLeftY, maxRightY) + 6;
+    
+    doc.line(14, separatorY, 196, separatorY);
+    
+    // Update startY of the table to separatorY + 5
+    const tableStartY = separatorY + 5;
+    
+    // Items Table
+    const items = (order as any).items || [];
+    const tableRows: any[] = [];
+    
+    if (items.length > 0) {
+      items.forEach((it: any) => {
+        const v = variantMap.get(it.id_varian);
+        const name = v?.nama_varian ?? "Produk Varian";
+        tableRows.push([
+          name,
+          `${it.qty}`,
+          formatRupiah(it.harga),
+          formatRupiah(it.harga_total)
+        ]);
+      });
+    } else {
+      const v = variantMap.get(order.varian_id ?? "");
+      const name = v?.nama_varian ?? "Produk Varian";
+      const qty = getOrderQuantity(order);
+      const unitPrice = Number(order.total_price || 0) / Math.max(1, qty);
+      tableRows.push([
+        name,
+        `${qty}`,
+        formatRupiah(unitPrice),
+        formatRupiah(Number(order.total_price || 0))
+      ]);
+    }
+    
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [["Nama Item / Varian", "Qty", "Harga Satuan", "Total Harga"]],
+      body: tableRows,
+      styles: { fontSize: 9, cellPadding: 3, font: "helvetica" },
+      headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: "bold" },
+      columnStyles: {
+        1: { halign: "center" },
+        2: { halign: "right" },
+        3: { halign: "right" }
+      }
+    });
+    
+    // Financial Summary
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    
+    doc.text("Total Harga Barang :", 120, finalY);
+    doc.text("Diskon             :", 120, finalY + 5);
+    doc.text("Jumlah Cash        :", 120, finalY + 10);
+    doc.text("Jumlah Piutang     :", 120, finalY + 15);
+    
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 41, 59);
+    doc.text("Total Bayar        :", 120, finalY + 22);
+    
+    // Right aligned values
+    doc.setFont("helvetica", "normal");
+    doc.text(formatRupiah(Number(order.total_price || 0)), 196, finalY, { align: "right" });
+    doc.text(formatRupiah(order.diskon ?? 0), 196, finalY + 5, { align: "right" });
+    doc.text(formatRupiah(order.jumlah_cash ?? (order.total_price || 0)), 196, finalY + 10, { align: "right" });
+    doc.text(formatRupiah(order.jumlah_piutang ?? 0), 196, finalY + 15, { align: "right" });
+    
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(22, 101, 52); // green-800
+    doc.text(formatRupiah(order.total_bayar ?? (order.total_price || 0)), 196, finalY + 22, { align: "right" });
+    
+    // Footer / Signatures
+    const footerY = finalY + 40;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184); // slate-400
+    doc.text("Syarat & Ketentuan:", 14, footerY);
+    doc.text("1. Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan.", 14, footerY + 4);
+    doc.text("2. Pembayaran piutang jatuh tempo sesuai Terms of Payment (TOP).", 14, footerY + 8);
+    
+    // Signatures
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text("Dibuat Oleh,", 140, footerY);
+    doc.line(140, footerY + 18, 180, footerY + 18);
+    doc.text("Bagian Penjualan", 140, footerY + 22);
+    
+    doc.save(`Sales_Order_${getOrderDisplayCode(order)}.pdf`);
   };
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
@@ -1725,7 +1903,15 @@ export default function SalesOrderPage() {
                 {formatDate(detailData.created_at)}
               </p>
             </div>
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end gap-2 pt-4">
+              <button
+                type="button"
+                onClick={() => handleGeneratePDF(detailData)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              >
+                <Download className="w-4 h-4" />
+                Generate PDF
+              </button>
               <button
                 type="button"
                 onClick={closeDetailModal}
