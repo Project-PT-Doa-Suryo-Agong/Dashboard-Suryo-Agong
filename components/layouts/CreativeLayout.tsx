@@ -13,6 +13,7 @@ const navItems = [
   { label: 'Sales Order', href: '/creative/sales-order', icon: 'ScrollText' },
   { label: 'Log Chat Sales', href: '/creative/log-chat-sales', icon: 'MessageCircle' },
   { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
+  { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
 ];
 
 export default function CreativeClientLayout({

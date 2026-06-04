@@ -19,6 +19,7 @@ const navItems = [
   { label: 'Kasbon', href: '/finance/kasbon', icon: 'HandCoins' },
   { label: 'Pengelolaan Aset', href: '/finance/asset', icon: 'Boxes' },
   { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
+  { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
 ];
 
 export default function FinanceClientLayout({

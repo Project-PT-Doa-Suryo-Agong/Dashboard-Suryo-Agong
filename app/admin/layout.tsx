@@ -103,7 +103,8 @@ const navItems = [
       { label: "Vendors", href: "/office/vendors", icon: "Handshake" },
     ]
   },
-  { label: "Penilaian Karyawan", href: "/penilaian-karyawan", icon: "FileUser" }
+  { label: "Penilaian Karyawan", href: "/penilaian-karyawan", icon: "FileUser" },
+  { label: "Buku Tamu", href: "/buku-tamu", icon: "ClipboardList" }
 ];
 
 export default function AdminLayout({
