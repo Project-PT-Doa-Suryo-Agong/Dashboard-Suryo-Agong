@@ -9,6 +9,7 @@ const navItems = [
   { label: 'Dashboard Overview', href: '/management', icon: 'LayoutDashboard' },
   { label: 'Budget', href: '/management/budget', icon: 'Banknote' },
   { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
+  { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
 ];
 
 export default function ManagementClientLayout({

@@ -674,7 +674,7 @@ export default function SalesOrderPage() {
     
     doc.text("Total Harga Barang :", 120, finalY);
     doc.text("Diskon             :", 120, finalY + 5);
-    doc.text("Jumlah Cash        :", 120, finalY + 10);
+    doc.text(Number(order.terms_of_payment ?? 0) > 0 ? "Jumlah DP          :" : "Jumlah Cash        :", 120, finalY + 10);
     doc.text("Jumlah Piutang     :", 120, finalY + 15);
     
     doc.setFont("helvetica", "bold");
@@ -1254,7 +1254,7 @@ export default function SalesOrderPage() {
                 <>
                   <div className="lg:col-span-4 border-t border-dashed border-slate-200 my-1" />
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Jumlah Cash (Bayar)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Jumlah DP (Bayar)</label>
                     <input
                       type="number"
                       min={0}
@@ -1691,7 +1691,7 @@ export default function SalesOrderPage() {
                   <>
                     <div className="sm:col-span-2 border-t border-dashed border-slate-200 my-1" />
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Jumlah Cash (Bayar)</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Jumlah DP (Bayar)</label>
                       <input
                         type="number"
                         min={0}
@@ -1872,7 +1872,9 @@ export default function SalesOrderPage() {
                 <p className="mt-1 text-sm text-red-650 font-bold">{formatRupiah(detailData.diskon ?? 0)}</p>
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Jumlah Cash</label>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">
+                  {Number(detailData.terms_of_payment ?? 0) > 0 ? "Jumlah DP" : "Jumlah Cash"}
+                </label>
                 <p className="mt-1 text-sm text-slate-800 font-bold text-green-600">{formatRupiah(detailData.jumlah_cash ?? (detailData.total_price || 0))}</p>
               </div>
               <div>
