@@ -39,6 +39,8 @@ export default function FinanceInvoicePage() {
     pelanggan: "",
     tanggal: new Date().toISOString().split("T")[0], jatuh_tempo: "",
     total_amount: "0", catatan: "",
+    bayar_cash: "0",
+    bayar_piutang: "0",
     items: [] as { id_sales_order: string; deskripsi: string }[]
   });
 
@@ -106,6 +108,8 @@ export default function FinanceInvoicePage() {
       pelanggan: "",
       tanggal: new Date().toISOString().split("T")[0], jatuh_tempo: "",
       total_amount: "0", catatan: "",
+      bayar_cash: "0",
+      bayar_piutang: "0",
       items: []
     });
     setEditData(null);
@@ -124,6 +128,8 @@ export default function FinanceInvoicePage() {
       tanggal: item.tanggal, jatuh_tempo: item.jatuh_tempo ?? "",
       total_amount: String(item.total_amount),
       catatan: item.catatan ?? "",
+      bayar_cash: String(item.bayar_cash ?? 0),
+      bayar_piutang: String(item.bayar_piutang ?? 0),
       items: []
     });
     setIsFormModalOpen(true);
@@ -153,6 +159,8 @@ export default function FinanceInvoicePage() {
       const payload = {
         ...formData,
         total_amount: Number(formData.total_amount),
+        bayar_cash: Number(formData.bayar_cash),
+        bayar_piutang: Number(formData.bayar_piutang),
         jatuh_tempo: formData.jatuh_tempo || null,
         ...(editData ? {} : { id_invoice: invoiceId || undefined })
       };
@@ -220,21 +228,25 @@ export default function FinanceInvoicePage() {
                 <th className="px-4 py-3 font-semibold text-slate-600">ID</th>
                 <th className="px-4 py-3 font-semibold text-slate-600">Tanggal</th>
                 <th className="px-4 py-3 font-semibold text-slate-600">Klien</th>
-                <th className="px-4 py-3 font-semibold text-slate-600 text-right">Total</th>
+                <th className="px-4 py-3 font-semibold text-slate-600 text-right">Total Invoice</th>
+                <th className="px-4 py-3 font-semibold text-slate-600 text-right">Bayar Cash (DP)</th>
+                <th className="px-4 py-3 font-semibold text-slate-600 text-right">Bayar Piutang</th>
                 <th className="px-4 py-3 font-semibold text-slate-600 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <tr><td colSpan={5} className="text-center py-6 text-slate-500">Memuat...</td></tr>
+                <tr><td colSpan={7} className="text-center py-6 text-slate-500">Memuat...</td></tr>
               ) : filteredItems.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-6 text-slate-500">Belum ada invoice</td></tr>
+                <tr><td colSpan={7} className="text-center py-6 text-slate-500">Belum ada invoice</td></tr>
               ) : filteredItems.map(item => (
                 <tr key={item.id_invoice} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-mono text-xs text-slate-500" title={item.id_invoice}>{item.id_invoice}</td>
                   <td className="px-4 py-3 text-slate-600">{formatDate(item.tanggal)}</td>
                   <td className="px-4 py-3 text-slate-800">{item.pelanggan}</td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatRupiah(item.total_amount)}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{formatRupiah(item.bayar_cash ?? 0)}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{formatRupiah(item.bayar_piutang ?? 0)}</td>
                   <td className="px-4 py-3 text-right">
                     <RowActions>
                       <DetailButton onClick={() => openDetailModal(item)} />
@@ -279,6 +291,14 @@ export default function FinanceInvoicePage() {
             <div className="space-y-2 md:col-span-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Catatan</label>
               <input value={formData.catatan} onChange={e => setFormData(f => ({...f, catatan: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bayar Cash (DP)</label>
+              <input type="number" required value={formData.bayar_cash} onChange={e => setFormData(f => ({...f, bayar_cash: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bayar Piutang</label>
+              <input type="number" required value={formData.bayar_piutang} onChange={e => setFormData(f => ({...f, bayar_piutang: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
             </div>
           </div>
           
@@ -363,7 +383,9 @@ export default function FinanceInvoicePage() {
               <div><p className="text-slate-500 text-xs font-semibold uppercase">Tanggal</p><p className="mt-1 text-slate-800">{formatDate(detailData.invoice.tanggal)}</p></div>
               <div><p className="text-slate-500 text-xs font-semibold uppercase">Jatuh Tempo</p><p className="mt-1 text-slate-800">{detailData.invoice.jatuh_tempo ? formatDate(detailData.invoice.jatuh_tempo) : "-"}</p></div>
               <div><p className="text-slate-500 text-xs font-semibold uppercase">Total Nominal</p><p className="mt-1 text-slate-800 font-bold text-[#BC934B]">{formatRupiah(detailData.invoice.total_amount)}</p></div>
-              <div><p className="text-slate-500 text-xs font-semibold uppercase">Catatan</p><p className="mt-1 text-slate-800">{detailData.invoice.catatan || "-"}</p></div>
+              <div><p className="text-slate-500 text-xs font-semibold uppercase">DP / Bayar Cash</p><p className="mt-1 text-slate-800 font-semibold">{formatRupiah(detailData.invoice.bayar_cash ?? 0)}</p></div>
+              <div><p className="text-slate-500 text-xs font-semibold uppercase">Bayar Piutang</p><p className="mt-1 text-slate-800 font-semibold">{formatRupiah(detailData.invoice.bayar_piutang ?? 0)}</p></div>
+              <div className="col-span-2"><p className="text-slate-500 text-xs font-semibold uppercase">Catatan</p><p className="mt-1 text-slate-800">{detailData.invoice.catatan || "-"}</p></div>
             </div>
 
             <div>
