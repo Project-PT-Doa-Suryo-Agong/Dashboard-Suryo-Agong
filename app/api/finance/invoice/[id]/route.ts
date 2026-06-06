@@ -39,6 +39,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
     payload.total_amount = v.data;
   }
+  if ("bayar_cash" in input) {
+    const v = requireNumber(input, "bayar_cash", { min: 0, optional: true });
+    if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
+    payload.bayar_cash = v.data;
+  }
+  if ("bayar_piutang" in input) {
+    const v = requireNumber(input, "bayar_piutang", { min: 0, optional: true });
+    if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
+    payload.bayar_piutang = v.data;
+  }
+  if ("total_pelunasan_piutang" in input) {
+    const v = requireNumber(input, "total_pelunasan_piutang", { min: 0, optional: true });
+    if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
+    payload.total_pelunasan_piutang = v.data;
+  }
   if ("catatan" in input) {
     const v = requireString(input, "catatan", { maxLen: 500, optional: true });
     if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);

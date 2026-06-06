@@ -531,6 +531,9 @@ export interface Database {
           pelanggan: string;
           catatan: string | null;
           total_amount: number;
+          bayar_cash: number | null;
+          bayar_piutang: number | null;
+          total_pelunasan_piutang: number | null;
         };
         Insert: {
           id_invoice: string;
@@ -539,6 +542,9 @@ export interface Database {
           pelanggan: string;
           catatan?: string | null;
           total_amount?: number;
+          bayar_cash?: number | null;
+          bayar_piutang?: number | null;
+          total_pelunasan_piutang?: number | null;
         };
         Update: {
           id_invoice?: string;
@@ -547,6 +553,9 @@ export interface Database {
           pelanggan?: string;
           catatan?: string | null;
           total_amount?: number;
+          bayar_cash?: number | null;
+          bayar_piutang?: number | null;
+          total_pelunasan_piutang?: number | null;
         };
         Relationships: [];
       };
