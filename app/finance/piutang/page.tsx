@@ -9,7 +9,9 @@ import {
   RowActions,
   EditButton,
   DeleteButton,
+  DownloadButton,
 } from "@/components/ui/RowActions";
+import { jsPDF } from "jspdf";
 import { SearchBar } from "@/components/ui/search-bar";
 import type {
   FinanceTipeKas,
@@ -228,6 +230,114 @@ export default function FinancePiutangPage() {
     }
   };
 
+  const handleDownloadPdf = (item: TUtangPiutangWithCoa) => {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+    // Header banner
+    doc.setFillColor(30, 58, 138); // Deep Navy Blue
+    doc.rect(0, 0, 210, 35, "F");
+
+    // Company Header
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("PT DOA SURYO AGONG", 20, 16);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.text("Jl. Nglinggo, Gobang, Nglinggo, Kec. Gondang, Kabupaten Nganjuk, Jawa Timur 64451", 20, 24);
+
+    // Title: BUKTI PELUNASAN PIUTANG
+    doc.setTextColor(30, 58, 138);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("BUKTI PELUNASAN PIUTANG", 105, 55, { align: "center" });
+
+    // Separator line
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.setLineWidth(0.5);
+    doc.line(20, 62, 190, 62);
+
+    // Metadata
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`No. Referensi: REC-${item.id?.substring(0, 8).toUpperCase() || "N/A"}`, 20, 70);
+    doc.text(`Tanggal Cetak: ${formatDate(new Date().toISOString())}`, 190, 70, { align: "right" });
+
+    // Table / Box for details
+    doc.setFillColor(248, 250, 252); // slate-50
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.rect(20, 76, 170, 70, "FD");
+
+    // Content inside details box
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+
+    const labels = [
+      "Nama Pihak / Klien",
+      "Keterangan / Deskripsi",
+      "Tanggal Awal Piutang",
+      "Tanggal Jatuh Tempo",
+      "COA / Akun Kas",
+      "Status Pembayaran",
+    ];
+
+    const values = [
+      item.klien,
+      item.deskripsi || "-",
+      formatDate(item.tanggal_awal),
+      formatDate(item.jatuh_tempo),
+      item.coa ? `${item.coa.kode_akun} - ${item.coa.nama_akun}` : "-",
+      "LUNAS",
+    ];
+
+    let currentY = 84;
+    labels.forEach((label, idx) => {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(71, 85, 105); // slate-600
+      doc.text(label, 25, currentY);
+      doc.text(":", 70, currentY);
+
+      doc.setFont("helvetica", "normal");
+      if (label === "Status Pembayaran") {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(16, 185, 129); // emerald-500
+      } else {
+        doc.setTextColor(15, 23, 42); // slate-900
+      }
+      doc.text(values[idx], 75, currentY);
+      currentY += 10;
+    });
+
+    // Amount box
+    doc.setFillColor(236, 253, 245); // emerald-50
+    doc.setDrawColor(16, 185, 129); // emerald-500
+    doc.rect(20, 154, 170, 20, "FD");
+
+    doc.setTextColor(16, 185, 129); // emerald-600
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("TOTAL DILUNASI", 25, 166);
+
+    doc.setFontSize(14);
+    doc.setTextColor(16, 185, 129);
+    doc.text(formatRupiah(item.nominal), 185, 166, { align: "right" });
+
+    // Closing Statement
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.text(
+      "Dokumen ini merupakan bukti pembayaran resmi yang sah yang diterbitkan oleh sistem keuangan perusahaan.",
+      105,
+      190,
+      { align: "center" }
+    );
+
+    doc.save(`Kuitansi_Pelunasan_${item.klien.replace(/\s+/g, "_")}_${item.id?.substring(0, 8)}.pdf`);
+  };
+
   const filteredCoas = useMemo(() => {
     const parent = coas.find((c) => c.kode_akun === "1102");
     return coas.filter((c) => 
@@ -358,6 +468,9 @@ export default function FinancePiutangPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <RowActions>
+                        {item.kas === "ya" && (
+                          <DownloadButton onClick={() => handleDownloadPdf(item)} />
+                        )}
                         <EditButton onClick={() => openEditModal(item)} />
                         <DeleteButton onClick={() => setDeleteId(item.id)} />
                       </RowActions>
