@@ -820,14 +820,18 @@ export default function AssetManagementPage() {
 
             {/* Masa Manfaat (Bulan) */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Masa Manfaat (Bulan) *</label>
-              <input
-                type="number"
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Masa Manfaat *</label>
+              <select
                 value={formData.masa_manfaat_bulan}
                 onChange={e => setFormData({ ...formData, masa_manfaat_bulan: e.target.value })}
                 required
                 className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
-              />
+              >
+                <option value="48">4 Tahun (48 Bulan) - Golongan 1</option>
+                <option value="96">8 Tahun (96 Bulan) - Golongan 2</option>
+                <option value="192">16 Tahun (192 Bulan) - Golongan 3</option>
+                <option value="480">40 Tahun (480 Bulan) - Golongan 4</option>
+              </select>
             </div>
 
             {/* Status */}
