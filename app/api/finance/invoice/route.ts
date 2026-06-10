@@ -39,8 +39,20 @@ export async function POST(request: Request) {
   const total_amount = requireNumber(input, "total_amount", { min: 0, optional: true });
   if (!total_amount.ok) return fail(ErrorCode.VALIDATION_ERROR, total_amount.message, 400);
 
+  const bayar_cash = requireNumber(input, "bayar_cash", { min: 0, optional: true });
+  if (!bayar_cash.ok) return fail(ErrorCode.VALIDATION_ERROR, bayar_cash.message, 400);
+
+  const bayar_piutang = requireNumber(input, "bayar_piutang", { min: 0, optional: true });
+  if (!bayar_piutang.ok) return fail(ErrorCode.VALIDATION_ERROR, bayar_piutang.message, 400);
+
+  const total_pelunasan_piutang = requireNumber(input, "total_pelunasan_piutang", { min: 0, optional: true });
+  if (!total_pelunasan_piutang.ok) return fail(ErrorCode.VALIDATION_ERROR, total_pelunasan_piutang.message, 400);
+
   const catatan = requireString(input, "catatan", { maxLen: 500, optional: true });
   if (!catatan.ok) return fail(ErrorCode.VALIDATION_ERROR, catatan.message, 400);
+
+  const nomor_faktur_pajak = requireString(input, "nomor_faktur_pajak", { maxLen: 100, optional: true });
+  if (!nomor_faktur_pajak.ok) return fail(ErrorCode.VALIDATION_ERROR, nomor_faktur_pajak.message, 400);
 
   const idInvoice = requireString(input, "id_invoice", { optional: true });
   if (!idInvoice.ok) return fail(ErrorCode.VALIDATION_ERROR, idInvoice.message, 400);
@@ -81,6 +93,10 @@ export async function POST(request: Request) {
     jatuh_tempo: jatuh_tempo.data as string,
     total_amount: (total_amount.data as number) ?? 0,
     catatan: catatan.data,
+    bayar_cash: bayar_cash.data !== undefined ? (bayar_cash.data as number) : null,
+    bayar_piutang: bayar_piutang.data !== undefined ? (bayar_piutang.data as number) : null,
+    total_pelunasan_piutang: total_pelunasan_piutang.data !== undefined ? (total_pelunasan_piutang.data as number) : null,
+    nomor_faktur_pajak: nomor_faktur_pajak.data || null,
   };
 
   const { data, error } = await createInvoice(supabaseAdmin as any, payload);

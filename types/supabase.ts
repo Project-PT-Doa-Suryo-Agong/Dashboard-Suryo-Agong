@@ -13,6 +13,7 @@ type Tables<S extends keyof Database, T extends keyof Database[S]["Tables"]> =
 
 export type CoreUserRole =
   | "Super Admin"
+  | "Admin"
   | "Management & Strategy"
   | "Finance & Administration"
   | "HR & Operation Manager"
@@ -36,7 +37,7 @@ export type FinanceReimburseStatus = "pending" | "approved" | "rejected";
 export type FinanceCoaCategory = "Aset" | "Liabilitas" | "Ekuitas" | "Pendapatan" | "Beban" | "Beban Lain-lain";
 export type FinanceInvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
 export type FinanceTipeKas = "ya" | "tidak";
-export type FinanceUtangPiutangTipe = "utang" | "piutang";
+export type FinanceUtangPiutangTipe = "utang" | "piutang" | "kasbon";
 
 export type ProductionStatus = "draft" | "ongoing" | "done";
 export type ProductionQcResult = "pass" | "reject";
@@ -530,6 +531,10 @@ export interface Database {
           pelanggan: string;
           catatan: string | null;
           total_amount: number;
+          bayar_cash: number | null;
+          bayar_piutang: number | null;
+          total_pelunasan_piutang: number | null;
+          nomor_faktur_pajak: string | null;
         };
         Insert: {
           id_invoice: string;
@@ -538,6 +543,10 @@ export interface Database {
           pelanggan: string;
           catatan?: string | null;
           total_amount?: number;
+          bayar_cash?: number | null;
+          bayar_piutang?: number | null;
+          total_pelunasan_piutang?: number | null;
+          nomor_faktur_pajak?: string | null;
         };
         Update: {
           id_invoice?: string;
@@ -546,6 +555,10 @@ export interface Database {
           pelanggan?: string;
           catatan?: string | null;
           total_amount?: number;
+          bayar_cash?: number | null;
+          bayar_piutang?: number | null;
+          total_pelunasan_piutang?: number | null;
+          nomor_faktur_pajak?: string | null;
         };
         Relationships: [];
       };
@@ -615,6 +628,138 @@ export interface Database {
             columns: ["coa"];
             isOneToOne: false;
             referencedRelation: "m_coa";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      t_asset: {
+        Row: {
+          id: string;
+          kode_aset: string | null;
+          nama_aset: string | null;
+          tanggal_perolehan: string | null;
+          nilai_perolehan: number | null;
+          nilai_residu: number | null;
+          masa_manfaat_bulan: number | null;
+          metode_penyusutan: "straight_line" | "double_declining" | "none" | null;
+          coa_asset_id: string | null;
+          coa_depr_accumulation_id: string | null;
+          coa_depr_expense_id: string | null;
+          journal_id: string | null;
+          status: string | null;
+          keterangan: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          kode_aset?: string | null;
+          nama_aset?: string | null;
+          tanggal_perolehan?: string | null;
+          nilai_perolehan?: number | null;
+          nilai_residu?: number | null;
+          masa_manfaat_bulan?: number | null;
+          metode_penyusutan?: "straight_line" | "double_declining" | "none" | null;
+          coa_asset_id?: string | null;
+          coa_depr_accumulation_id?: string | null;
+          coa_depr_expense_id?: string | null;
+          journal_id?: string | null;
+          status?: string | null;
+          keterangan?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          kode_aset?: string | null;
+          nama_aset?: string | null;
+          tanggal_perolehan?: string | null;
+          nilai_perolehan?: number | null;
+          nilai_residu?: number | null;
+          masa_manfaat_bulan?: number | null;
+          metode_penyusutan?: "straight_line" | "double_declining" | "none" | null;
+          coa_asset_id?: string | null;
+          coa_depr_accumulation_id?: string | null;
+          coa_depr_expense_id?: string | null;
+          journal_id?: string | null;
+          status?: string | null;
+          keterangan?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "t_asset_coa_asset_id_fkey";
+            columns: ["coa_asset_id"];
+            isOneToOne: false;
+            referencedRelation: "m_coa";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "t_asset_coa_depr_accumulation_id_fkey";
+            columns: ["coa_depr_accumulation_id"];
+            isOneToOne: false;
+            referencedRelation: "m_coa";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "t_asset_coa_depr_expense_id_fkey";
+            columns: ["coa_depr_expense_id"];
+            isOneToOne: false;
+            referencedRelation: "m_coa";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "t_asset_journal_id_fkey";
+            columns: ["journal_id"];
+            isOneToOne: false;
+            referencedRelation: "t_journal";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      t_asset_depreciation_schedule: {
+        Row: {
+          id: string;
+          asset_id: string | null;
+          periode: string | null;
+          jumlah_penyusutan: number | null;
+          journal_id: string | null;
+          is_posted: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          asset_id?: string | null;
+          periode?: string | null;
+          jumlah_penyusutan?: number | null;
+          journal_id?: string | null;
+          is_posted?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          asset_id?: string | null;
+          periode?: string | null;
+          jumlah_penyusutan?: number | null;
+          journal_id?: string | null;
+          is_posted?: boolean | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "t_asset_depreciation_schedule_asset_id_fkey";
+            columns: ["asset_id"];
+            isOneToOne: false;
+            referencedRelation: "t_asset";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "t_asset_depreciation_schedule_journal_id_fkey";
+            columns: ["journal_id"];
+            isOneToOne: false;
+            referencedRelation: "t_journal";
             referencedColumns: ["id"];
           }
         ];
@@ -924,32 +1069,93 @@ export interface Database {
           order_code: string | null;
           order_number: string | null;
           coa_id: string | null;
+          coa_cash_id: string | null;
+          coa_credit_id: string | null;
           varian_id: string | null;
           affiliator_id: string | null;
           quantity: number;
           total_price: number;
+          nama_pelanggan: string | null;
+          nomor_telepon: string | null;
+          lokasi: string | null;
           created_at: string | null;
+          updated_at: string | null;
+          terms_of_payment: number;
+          jumlah_piutang: number;
+          jumlah_cash: number;
+          diskon: number;
+          id_pelanggan: string | null;
+          total_item: number;
+          total_bayar: number;
         };
         Insert: {
           id?: string;
           order_code?: string | null;
           order_number?: string | null;
           coa_id?: string | null;
+          coa_cash_id?: string | null;
+          coa_credit_id?: string | null;
           varian_id?: string | null;
           affiliator_id?: string | null;
-          quantity: number;
-          total_price: number;
+          quantity?: number;
+          total_price?: number;
+          nama_pelanggan?: string | null;
+          nomor_telepon?: string | null;
+          lokasi?: string | null;
           created_at?: string | null;
+          updated_at?: string | null;
+          terms_of_payment?: number;
+          jumlah_piutang?: number;
+          jumlah_cash?: number;
+          diskon?: number;
+          id_pelanggan?: string | null;
+          total_item?: number;
+          total_bayar?: number;
         };
         Update: {
           id?: string;
           order_code?: string | null;
           order_number?: string | null;
           coa_id?: string | null;
+          coa_cash_id?: string | null;
+          coa_credit_id?: string | null;
           varian_id?: string | null;
           affiliator_id?: string | null;
           quantity?: number;
           total_price?: number;
+          nama_pelanggan?: string | null;
+          nomor_telepon?: string | null;
+          lokasi?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          terms_of_payment?: number;
+          jumlah_piutang?: number;
+          jumlah_cash?: number;
+          diskon?: number;
+          id_pelanggan?: string | null;
+          total_item?: number;
+          total_bayar?: number;
+        };
+        Relationships: [];
+      };
+      t_membership: {
+        Row: {
+          id: string;
+          nama: string | null;
+          telepon: string | null;
+          lokasi: string | null;
+        };
+        Insert: {
+          id?: string;
+          nama?: string | null;
+          telepon?: string | null;
+          lokasi?: string | null;
+        };
+        Update: {
+          id?: string;
+          nama?: string | null;
+          telepon?: string | null;
+          lokasi?: string | null;
         };
         Relationships: [];
       };
@@ -1029,6 +1235,55 @@ export interface Database {
     };
     CompositeTypes: { [_ in never]: never };
   };
+
+  // ── Schema: public ──────────────────────────────────────────────────────────
+  public: {
+    Tables: {
+      buku_tamu: {
+        Row: {
+          id: string;
+          created_at: string | null;
+          nama_kamu: string;
+          nomor_telepon: string;
+          alamat: string | null;
+          keperluan: string;
+          asal_instansi: string | null;
+          tau_utero_darimana: string | null;
+          kritik_saran: string | null;
+          status_hello: string;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string | null;
+          nama_kamu: string;
+          nomor_telepon: string;
+          alamat?: string | null;
+          keperluan: string;
+          asal_instansi?: string | null;
+          tau_utero_darimana?: string | null;
+          kritik_saran?: string | null;
+          status_hello: string;
+        };
+        Update: {
+          id?: string;
+          created_at?: string | null;
+          nama_kamu?: string;
+          nomor_telepon?: string;
+          alamat?: string | null;
+          keperluan?: string;
+          asal_instansi?: string | null;
+          tau_utero_darimana?: string | null;
+          kritik_saran?: string | null;
+          status_hello?: string;
+        };
+        Relationships: [];
+      };
+    };
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+    Enums: { [_ in never]: never };
+    CompositeTypes: { [_ in never]: never };
+  };
 }
 
 // ─── Convenience Row Types ────────────────────────────────────────────────────
@@ -1079,6 +1334,10 @@ export type TInvoiceItem          = Tables<"finance", "t_invoice_item">["Row"];
 export type TInvoiceItemInsert    = Tables<"finance", "t_invoice_item">["Insert"];
 export type TUtangPiutang         = Tables<"finance", "t_utang_piutang">["Row"];
 export type TUtangPiutangInsert   = Tables<"finance", "t_utang_piutang">["Insert"];
+export type TAsset                 = Tables<"finance", "t_asset">["Row"];
+export type TAssetInsert           = Tables<"finance", "t_asset">["Insert"];
+export type TAssetDepreciationSchedule = Tables<"finance", "t_asset_depreciation_schedule">["Row"];
+export type TAssetDepreciationScheduleInsert = Tables<"finance", "t_asset_depreciation_schedule">["Insert"];
 
 // production
 export type TProduksiOrder = Tables<"production", "t_produksi_order">["Row"];
@@ -1109,12 +1368,18 @@ export type TContentPlannerInsert = Tables<"sales", "t_content_planner">["Insert
 export type TLivePerformanceInsert = Tables<"sales", "t_live_performance">["Insert"];
 export type TContentStatisticInsert = Tables<"sales", "t_content_statistic">["Insert"];
 export type TSalesOrderInsert = Tables<"sales", "t_sales_order">["Insert"];
+export type TMembership      = Tables<"sales", "t_membership">["Row"];
+export type TMembershipInsert = Tables<"sales", "t_membership">["Insert"];
 
 // management
 export type TBudgetRequest = Tables<"management", "t_budget_request">["Row"];
 export type TKPIWeekly     = Tables<"management", "t_kpi_weekly">["Row"];
 export type TBudgetRequestInsert = Tables<"management", "t_budget_request">["Insert"];
 export type TKPIWeeklyInsert = Tables<"management", "t_kpi_weekly">["Insert"];
+
+// public
+export type TBukuTamu       = Tables<"public", "buku_tamu">["Row"];
+export type TBukuTamuInsert = Tables<"public", "buku_tamu">["Insert"];
 export type TPKWT = {
   id: string;
   template_type: "pkwt" | "pkwtp";

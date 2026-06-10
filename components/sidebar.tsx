@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   CalendarDays,
   TrendingUp,
+  TrendingDown,
   Handshake,
   Palette,
   Plus,
@@ -52,6 +53,9 @@ import {
   BookOpen,
   HandCoins,
   MessageCircle,
+  FileUser,
+  Crown,
+  Boxes,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -59,6 +63,7 @@ const ICONS: Record<string, LucideIcon> = {
   LayoutDashboard,
   CalendarDays,
   TrendingUp,
+  TrendingDown,
   Handshake,
   Palette,
   Plus,
@@ -100,6 +105,9 @@ const ICONS: Record<string, LucideIcon> = {
   BookOpen,
   HandCoins,
   MessageCircle,
+  FileUser,
+  Crown,
+  Boxes,
 };
 
 export interface NavItem {
@@ -176,8 +184,6 @@ export default function Sidebar(props: SidebarProps) {
     expireCookie("role");
     expireCookie("role", "localhost");
     expireCookie("role", ".localhost");
-    expireCookie("role", "lvh.me");
-    expireCookie("role", ".lvh.me");
   };
 
   const clearSupabaseAuthCookie = () => {
@@ -188,8 +194,6 @@ export default function Sidebar(props: SidebarProps) {
     expireCookie(cookieName);
     expireCookie(cookieName, "localhost");
     expireCookie(cookieName, ".localhost");
-    expireCookie(cookieName, "lvh.me");
-    expireCookie(cookieName, ".lvh.me");
   };
 
   const clearClientSessionFallback = () => {
@@ -231,12 +235,12 @@ export default function Sidebar(props: SidebarProps) {
       await Promise.race([logoutPromise, timeoutPromise]);
 
       clearClientSessionFallback();
-      router.push("/login");
+      window.location.href = "/auth/login";
     } catch {
       clearClientSessionFallback();
       const supabase = createSupabaseBrowserClient();
       void supabase.auth.signOut().catch(() => undefined);
-      router.push("/login");
+      window.location.href = "/auth/login";
     } finally {
       setIsLoggingOut(false);
     }

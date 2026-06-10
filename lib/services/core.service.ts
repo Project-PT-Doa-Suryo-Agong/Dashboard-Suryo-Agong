@@ -28,7 +28,7 @@ export async function createProduk(client: DbClient, input: Record<string, unkno
 export async function updateProduk(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("m_produk")
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...input, updated_at: new Date().toISOString() } as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -48,14 +48,14 @@ export async function listVarian(client: DbClient, produkId?: string) {
 }
 
 export async function createVarian(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("m_varian").insert(input).select("*").single();
+  const { data, error } = await db(client).from("m_varian").insert(input as never).select("*").single();
   return { data: data as MVarian | null, error };
 }
 
 export async function updateVarian(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("m_varian")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();
@@ -78,14 +78,14 @@ export async function listVendor(client: DbClient, page = 1, limit = 50) {
 }
 
 export async function createVendor(client: DbClient, input: Record<string, unknown>) {
-  const { data, error } = await db(client).from("m_vendor").insert(input).select("*").single();
+  const { data, error } = await db(client).from("m_vendor").insert(input as never).select("*").single();
   return { data: data as MVendor | null, error };
 }
 
 export async function updateVendor(client: DbClient, id: string, input: Record<string, unknown>) {
   const { data, error } = await db(client)
     .from("m_vendor")
-    .update(input)
+    .update(input as never)
     .eq("id", id)
     .select("*")
     .maybeSingle();

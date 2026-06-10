@@ -17,6 +17,8 @@ const navItems = [
       { label: 'Vendor', href: '/super-admin/master-data/vendor', icon: 'Truck' },
       { label: 'Produk Induk', href: '/super-admin/master-data/produk', icon: 'Package' },
       { label: 'Varian Produk', href: '/super-admin/master-data/varian', icon: 'Tags' },
+      { label: 'Membership', href: '/creative/membership', icon: 'Crown' },
+      { label: 'Buku Tamu', href: '/super-admin/master-data/buku-tamu', icon: 'ClipboardList' },
     ],
   },
   {
@@ -26,7 +28,6 @@ const navItems = [
     children: [
       { label: 'Overview', href: '/management', icon: 'LayoutDashboard' },
       { label: 'Budget', href: '/management/budget', icon: 'Banknote' },
-      { label: 'KPI', href: '/management/kpi', icon: 'TrendingUp' },
     ]
   },
   {
@@ -40,8 +41,12 @@ const navItems = [
       { label: 'Reimburse', href: '/finance/reimburse', icon: 'ReceiptText' },
       { label: 'Chart of Accounts', href: '/finance/coa', icon: 'BookOpen' },
       { label: 'Journal', href: '/finance/journal', icon: 'BookMarked' },
-      { label: 'Invoice', href: '/finance/invoice', icon: 'FileText' },
-      { label: 'Utang Piutang', href: '/finance/utang-piutang', icon: 'HandCoins' },
+      { label: 'Invoice Penjualan', href: '/finance/invoice', icon: 'FileText' },
+      { label: 'Invoice Pembelian', href: '/finance/invoice/pembelian', icon: 'Receipt' },
+      { label: 'Utang', href: '/finance/utang', icon: 'TrendingDown' },
+      { label: 'Piutang', href: '/finance/piutang', icon: 'TrendingUp' },
+      { label: 'Kasbon', href: '/finance/kasbon', icon: 'HandCoins' },
+      { label: 'Pengelolaan Aset', href: '/finance/asset', icon: 'Boxes' },
     ]
   },
   {
@@ -89,6 +94,7 @@ const navItems = [
       { label: 'Content Planner', href: '/creative/content', icon: 'CalendarDays' },
       { label: 'Content Stats', href: '/creative/content-stats', icon: 'TrendingUp' },
       { label: 'Sales Order', href: '/creative/sales-order', icon: 'ScrollText' },
+      { label: 'Log Chat Sales', href: '/creative/log-chat-sales', icon: 'MessageCircle' },
     ]
   },
   {
@@ -100,7 +106,9 @@ const navItems = [
       { label: 'Product', href: '/office/products', icon: 'Package' },
       { label: 'Vendors', href: '/office/vendors', icon: 'Handshake' },
     ]
-  }
+  },
+  { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
+  { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
 ];
 
 export default function SuperAdminLayout({

@@ -19,7 +19,11 @@ export { useWarnings, useInsertWarning, useUpdateWarning, useDeleteWarning } fro
 export { useSops, useInsertSop, useUpdateSop, useDeleteSop } from "./use-sop";
 
 // ── Finance ──
-export { useCashflow, useInsertCashflow, useUpdateCashflow, useDeleteCashflow } from "./use-finance";
+export { 
+  useCashflow, useInsertCashflow, useUpdateCashflow, useDeleteCashflow,
+  useAsset, useInsertAsset, useUpdateAsset, useDeleteAsset,
+  useAssetDepreciationSchedule, useInsertAssetDepreciationSchedule, useUpdateAssetDepreciationSchedule, useDeleteAssetDepreciationSchedule
+} from "./use-finance";
 
 // ── Logistics ──
 export { useManifest, useInsertManifest, useUpdateManifest, useDeleteManifest, usePacking, useInsertPacking, useUpdatePacking, useDeletePacking, useReturnOrder, useInsertReturnOrder, useUpdateReturnOrder, useDeleteReturnOrder } from "./use-logistics";
@@ -29,4 +33,7 @@ export { useKpiWeekly, useInsertKpiWeekly, useUpdateKpiWeekly, useDeleteKpiWeekl
 
 // ── Sales ──
 export { useAffiliator, useInsertAffiliator, useUpdateAffiliator, useDeleteAffiliator, useContentPlanner, useInsertContentPlanner, useUpdateContentPlanner, useDeleteContentPlanner, useLivePerformance, useInsertLivePerformance, useUpdateLivePerformance, useDeleteLivePerformance } from "./use-sales";
+export { useMembership, useInsertMembership, useUpdateMembership, useDeleteMembership } from "./use-membership";
 
+// ── Buku Tamu ──
+export { useBukuTamu, useInsertBukuTamu, useUpdateBukuTamu, useDeleteBukuTamu } from "./use-buku-tamu";

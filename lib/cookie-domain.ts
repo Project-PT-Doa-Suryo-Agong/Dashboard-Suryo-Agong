@@ -1,25 +1,38 @@
 /**
- * Resolves the cookie domain for subdomain-based multi-tenant auth.
+ * Resolves the cookie domain for auth cookies.
  *
- * In local dev  → ".localhost"   (shared across *.localhost)
- * In production → ".example.com" (shared across *.example.com)
+ * With path-based routing (no subdomains), we generally don't need to
+ * set a cookie domain — the browser defaults to the current host.
  *
- * Browsers require a leading dot for subdomain cookie sharing.
+ * Returns undefined when no cross-domain sharing is needed.
  */
-export function getCookieDomain(): string | undefined {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+function parseHostname(value: string) {
+  try {
+    const url = new URL(value.includes("://") ? value : `http://${value}`);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
 
-  if (siteUrl) {
-    try {
-      const url = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`);
-      const hostname = url.hostname.replace(/^www\./, "");
-      // Return ".domain.com" for subdomain sharing
-      return `.${hostname}`;
-    } catch {
-      // Malformed URL, fall through to localhost default
-    }
+export function getCookieDomain(fallbackHost?: string): string | undefined {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const hostname = siteUrl
+    ? parseHostname(siteUrl)
+    : fallbackHost
+      ? parseHostname(fallbackHost)
+      : null;
+
+  if (!hostname) return undefined;
+
+  // In local dev, no domain needed (browser defaults to current host)
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) return undefined;
+
+  // For production with a custom domain, set domain for cookie sharing
+  // e.g., "dashboard.example.com" → ".dashboard.example.com"
+  if (hostname !== "localhost" && !hostname.includes("localhost")) {
+    return `.${hostname}`;
   }
 
-  // Local dev: ".localhost" allows cookie sharing across *.localhost
-  return ".localhost";
+  return undefined;
 }

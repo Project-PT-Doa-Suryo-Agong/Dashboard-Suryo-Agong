@@ -1,0 +1,848 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "",
+    "title": "standard public schema",
+    "version": "14.4"
+  },
+  "host": "mhfdzprxauqfczmtyizg.supabase.co:443",
+  "basePath": "/",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json",
+    "application/vnd.pgrst.object+json;nulls=stripped",
+    "application/vnd.pgrst.object+json",
+    "text/csv"
+  ],
+  "produces": [
+    "application/json",
+    "application/vnd.pgrst.object+json;nulls=stripped",
+    "application/vnd.pgrst.object+json",
+    "text/csv"
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "produces": [
+          "application/openapi+json",
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "OpenAPI description (this document)",
+        "tags": [
+          "Introspection"
+        ]
+      }
+    },
+    "/rpc/count_reimbursements_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_reimbursements_this_month"
+        ]
+      }
+    },
+    "/rpc/count_qc_outbound_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_qc_outbound_this_month"
+        ]
+      }
+    },
+    "/rpc/count_packing_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_packing_this_month"
+        ]
+      }
+    },
+    "/rpc/count_journals_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_journals_this_month"
+        ]
+      }
+    },
+    "/rpc/count_budget_requests_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_budget_requests_this_month"
+        ]
+      }
+    },
+    "/rpc/get_return_status_enum_values": {
+      "get": {
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) get_return_status_enum_values"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) get_return_status_enum_values"
+        ]
+      }
+    },
+    "/rpc/count_kpi_weekly_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_kpi_weekly_this_month"
+        ]
+      }
+    },
+    "/rpc/count_orders_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_orders_this_month"
+        ]
+      }
+    },
+    "/rpc/count_cashflow_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_cashflow_this_month"
+        ]
+      }
+    },
+    "/rpc/count_live_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_live_this_month"
+        ]
+      }
+    },
+    "/rpc/count_manifest_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_manifest_this_month"
+        ]
+      }
+    },
+    "/rpc/count_returns_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_returns_this_month"
+        ]
+      }
+    },
+    "/rpc/count_produksi_orders_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_produksi_orders_this_month"
+        ]
+      }
+    },
+    "/rpc/count_content_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_content_this_month"
+        ]
+      }
+    },
+    "/rpc/count_invoices_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_invoices_this_month"
+        ]
+      }
+    },
+    "/rpc/count_qc_inbound_this_month": {
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "start_of_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                },
+                "start_of_next_month": {
+                  "format": "timestamp with time zone",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_of_month",
+                "start_of_next_month"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) count_qc_inbound_this_month"
+        ]
+      }
+    }
+  },
+  "parameters": {
+    "preferParams": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "in": "header",
+      "type": "string"
+    },
+    "preferReturn": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "enum": [
+        "return=representation",
+        "return=minimal",
+        "return=none"
+      ],
+      "in": "header",
+      "type": "string"
+    },
+    "preferCount": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "enum": [
+        "count=none"
+      ],
+      "in": "header",
+      "type": "string"
+    },
+    "preferPost": {
+      "name": "Prefer",
+      "description": "Preference",
+      "required": false,
+      "enum": [
+        "return=representation",
+        "return=minimal",
+        "return=none",
+        "resolution=ignore-duplicates",
+        "resolution=merge-duplicates"
+      ],
+      "in": "header",
+      "type": "string"
+    },
+    "select": {
+      "name": "select",
+      "description": "Filtering Columns",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "on_conflict": {
+      "name": "on_conflict",
+      "description": "On Conflict",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "order": {
+      "name": "order",
+      "description": "Ordering",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "range": {
+      "name": "Range",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "in": "header",
+      "type": "string"
+    },
+    "rangeUnit": {
+      "name": "Range-Unit",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "default": "items",
+      "in": "header",
+      "type": "string"
+    },
+    "offset": {
+      "name": "offset",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "limit": {
+      "name": "limit",
+      "description": "Limiting and Pagination",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    }
+  },
+  "externalDocs": {
+    "description": "PostgREST Documentation",
+    "url": "https://postgrest.org/en/v14/references/api.html"
+  }
+}

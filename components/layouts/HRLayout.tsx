@@ -12,6 +12,8 @@ const navItems = [
   { label: 'PKWT/PKWTP', href: '/hr/pkwt', icon: 'ScrollText' },
   { label: 'SOP', href: '/hr/sop', icon: 'FileText' }, 
   { label: 'Peringatan', href: '/hr/warnings', icon: 'ShieldAlert' },
+  { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
+  { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
 ];
 
 export default function HRClientLayout({

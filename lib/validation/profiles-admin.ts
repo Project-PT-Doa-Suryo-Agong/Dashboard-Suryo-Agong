@@ -5,6 +5,7 @@ import type {
 import type { CoreUserRole } from "@/types/supabase";
 
 type SystemRoleKey =
+  | "Admin"
   | "management"
   | "finance"
   | "hr"
@@ -15,6 +16,7 @@ type SystemRoleKey =
   | "Super Admin";
 
 export const USER_ROLES: SystemRoleKey[] = [
+  "Admin",
   'management',
   'finance',
   'hr',
@@ -26,6 +28,7 @@ export const USER_ROLES: SystemRoleKey[] = [
 ];
 
 export const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
+  Admin: "Admin",
   management: "Management & Strategy",
   finance: "Finance & Administration",
   hr: "HR & Operation Manager",
@@ -38,6 +41,7 @@ export const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
 
 export const VALID_CORE_ROLES: CoreUserRole[] = [
   "Super Admin",
+  "Admin",
   "Management & Strategy",
   "Finance & Administration",
   "HR & Operation Manager",

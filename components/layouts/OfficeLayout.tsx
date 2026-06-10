@@ -9,6 +9,8 @@ const navItems = [
   { label: 'Dashboard Overview', href: '/office', icon: 'LayoutDashboard' },
   { label: 'Product', href: '/office/products', icon: 'Package' },
   { label: 'Vendors', href: '/office/vendors', icon: 'Handshake' },
+  { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
+  { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
 ];
 
 export default function OfficeClientLayout({

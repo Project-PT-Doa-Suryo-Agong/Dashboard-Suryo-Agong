@@ -10,6 +10,8 @@ const navItems = [
   { label: 'Manifest', href: '/logistik/manifest', icon: 'Truck' },
   { label: 'Packing', href: '/logistik/packing', icon: 'Package' },
   { label: 'Returns', href: '/logistik/returns', icon: 'Undo2' },
+  { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
+  { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
 ];
 
 export default function LogistikClientLayout({
