@@ -59,6 +59,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
     payload.catatan = v.data;
   }
+  if ("nomor_faktur_pajak" in input) {
+    const v = requireString(input, "nomor_faktur_pajak", { maxLen: 100, optional: true });
+    if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400);
+    payload.nomor_faktur_pajak = v.data || null;
+  }
 
   const { data, error } = await updateInvoice(supabaseAdmin as any, id, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update invoice.", 500, error.message);
