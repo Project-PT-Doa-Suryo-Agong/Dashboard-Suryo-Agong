@@ -32,6 +32,267 @@ function getErrorMessage(payload: ApiEnvelope<unknown>, fallback: string) {
   return payload?.error?.message || payload?.message || fallback;
 }
 
+function ContractDocument({ content }: { content: string | null }) {
+  if (!content) return null;
+
+  try {
+    const rawLines = content.split("\n");
+    const pihak1Details: { key: string; val: string }[] = [];
+    const pihak2Details: { key: string; val: string }[] = [];
+    const signatures: { role: string; name: string }[] = [];
+    const bodyElements: React.ReactNode[] = [];
+    
+    let dateText = "";
+    let titleText = "";
+    let docNumberText = "";
+    let openingText = "";
+    let closingText = "";
+    
+    let i = 0;
+    while (i < rawLines.length) {
+      const line = rawLines[i].trim();
+      if (!line) {
+        i++;
+        continue;
+      }
+      
+      // Date line: e.g. "Nganjuk, 11 Juni 2026"
+      if (i === 0 && line.includes(",")) {
+        const parts = line.split(",");
+        const datePart = parts.slice(1).join(",").trim();
+        dateText = `Nganjuk, ${datePart}`;
+        i++;
+        continue;
+      }
+      
+      // Title line
+      if (line.includes("SURAT PERJANJIAN") || line.includes("PERJANJIAN KERJA")) {
+        titleText = line;
+        i++;
+        continue;
+      }
+      
+      // Number line
+      if (line.startsWith("Nomor:")) {
+        docNumberText = line;
+        i++;
+        continue;
+      }
+      
+      // Opening
+      if (line.startsWith("Pada hari ini") || line.startsWith("Bahwa pada hari ini")) {
+        openingText = line;
+        i++;
+        continue;
+      }
+      
+      // Parties details
+      if (line === "PIHAK PERTAMA") {
+        i++;
+        while (i < rawLines.length) {
+          const subLine = rawLines[i].trim();
+          if (!subLine || subLine === "PIHAK KEDUA" || subLine.startsWith("Pasal") || subLine.startsWith("Demikian")) {
+            break;
+          }
+          if (subLine.includes(":")) {
+            const parts = subLine.split(":");
+            const k = parts[0].trim();
+            const v = parts.slice(1).join(":").trim();
+            pihak1Details.push({ key: k, val: v });
+          }
+          i++;
+        }
+        continue;
+      }
+      
+      if (line === "PIHAK KEDUA") {
+        i++;
+        while (i < rawLines.length) {
+          const subLine = rawLines[i].trim();
+          if (!subLine || subLine.startsWith("Pasal") || subLine.startsWith("Demikian") || subLine.startsWith("PIHAK PERTAMA")) {
+            break;
+          }
+          if (subLine.includes(":")) {
+            const parts = subLine.split(":");
+            const k = parts[0].trim();
+            const v = parts.slice(1).join(":").trim();
+            pihak2Details.push({ key: k, val: v });
+          }
+          i++;
+        }
+        continue;
+      }
+      
+      // Pasals
+      if (line.startsWith("Pasal ")) {
+        const pasalHeader = line;
+        i++;
+        let pasalBody = "";
+        while (i < rawLines.length) {
+          const subLine = rawLines[i].trim();
+          if (!subLine) {
+            i++;
+            continue;
+          }
+          if (subLine.startsWith("Pasal ") || subLine.startsWith("Demikian") || subLine.startsWith("PIHAK PERTAMA") || subLine.startsWith("PIHAK KEDUA")) {
+            break;
+          }
+          pasalBody += (pasalBody ? " " : "") + subLine;
+          i++;
+        }
+        bodyElements.push(
+          <div key={`pasal-${pasalHeader}`} className="my-4">
+            <div className="text-center font-bold text-slate-900 mb-1">{pasalHeader}</div>
+            <p className="text-justify leading-relaxed text-slate-800 text-sm indent-8">{pasalBody}</p>
+          </div>
+        );
+        continue;
+      }
+      
+      // Closing
+      if (line.startsWith("Demikian perjanjian")) {
+        closingText = line;
+        i++;
+        continue;
+      }
+      
+      // Signatures
+      if (line === "PIHAK PERTAMA," || line === "PIHAK PERTAMA") {
+        i++;
+        let name = "";
+        if (i < rawLines.length) {
+          name = rawLines[i].trim();
+          i++;
+        }
+        signatures.push({ role: "PIHAK PERTAMA", name });
+        continue;
+      }
+      
+      if (line === "PIHAK KEDUA," || line === "PIHAK KEDUA") {
+        i++;
+        let name = "";
+        if (i < rawLines.length) {
+          name = rawLines[i].trim();
+          i++;
+        }
+        signatures.push({ role: "PIHAK KEDUA", name });
+        continue;
+      }
+      
+      // Fallback normal line
+      if (line) {
+        bodyElements.push(
+          <p key={`line-${i}`} className="text-justify leading-relaxed text-slate-800 text-sm my-2">{line}</p>
+        );
+      }
+      i++;
+    }
+
+    return (
+      <div className="bg-white text-slate-900 p-8 md:p-12 shadow-inner border border-slate-200 rounded-sm max-w-[21cm] mx-auto min-h-[29.7cm] flex flex-col justify-between font-serif text-sm lining-nums">
+        <div>
+          {/* Kop Surat (Letterhead) */}
+          <div className="border-b-4 border-slate-950 pb-4 mb-6 text-center">
+            <h1 className="text-xl font-bold tracking-wide uppercase text-slate-950 font-serif">PT DOA SURYO AGONG</h1>
+            <p className="text-xs text-slate-700 mt-1 font-sans">
+              Jl. Nglinggo, Gobang, Nglinggo, Kec. Gondang, Kabupaten Nganjuk, Jawa Timur 64451
+            </p>
+          </div>
+          
+          {/* Date */}
+          {dateText && (
+            <div className="text-right text-sm text-slate-800 mb-6">
+              {dateText}
+            </div>
+          )}
+          
+          {/* Title & Doc Number */}
+          {(titleText || docNumberText) && (
+            <div className="text-center mb-6">
+              {titleText && <h2 className="text-md font-bold uppercase underline text-slate-950">{titleText}</h2>}
+              {docNumberText && <p className="text-sm text-slate-850 font-semibold mt-1">{docNumberText}</p>}
+            </div>
+          )}
+          
+          {/* Opening Statement */}
+          {openingText && (
+            <p className="text-justify leading-relaxed text-slate-800 mb-4">
+              {openingText}
+            </p>
+          )}
+          
+          {/* Pihak Pertama */}
+          {pihak1Details.length > 0 && (
+            <div className="mb-4">
+              <h3 className="font-bold text-slate-900 mb-2">PIHAK PERTAMA</h3>
+              <table className="w-full text-sm">
+                <tbody>
+                  {pihak1Details.map((detail, idx) => (
+                    <tr key={idx} className="align-top">
+                      <td className="w-36 py-0.5 pr-2 text-slate-700">{detail.key}</td>
+                      <td className="w-4 py-0.5 text-center text-slate-700">:</td>
+                      <td className="py-0.5 pl-2 text-slate-900 font-medium">{detail.val}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {/* Pihak Kedua */}
+          {pihak2Details.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-bold text-slate-900 mb-2">PIHAK KEDUA</h3>
+              <table className="w-full text-sm">
+                <tbody>
+                  {pihak2Details.map((detail, idx) => (
+                    <tr key={idx} className="align-top">
+                      <td className="w-36 py-0.5 pr-2 text-slate-700">{detail.key}</td>
+                      <td className="w-4 py-0.5 text-center text-slate-700">:</td>
+                      <td className="py-0.5 pl-2 text-slate-900 font-medium">{detail.val}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {/* Pasals and other blocks */}
+          <div className="space-y-4">
+            {bodyElements}
+          </div>
+          
+          {/* Closing Statement */}
+          {closingText && (
+            <p className="text-justify leading-relaxed text-slate-800 mt-6 mb-8">
+              {closingText}
+            </p>
+          )}
+        </div>
+        
+        {/* Signatures */}
+        {signatures.length > 0 && (
+          <div className="mt-12 grid grid-cols-2 gap-4 text-center text-sm">
+            {signatures.map((sig, idx) => (
+              <div key={idx} className="flex flex-col justify-between h-28">
+                <div className="font-bold uppercase text-slate-900">{sig.role},</div>
+                <div className="font-bold text-slate-900">{sig.name}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  } catch (err) {
+    console.error("Failed to parse contract styled view, falling back", err);
+    return (
+      <pre className="whitespace-pre-wrap text-sm text-slate-800 bg-white p-3 rounded-md border border-slate-100 font-serif">
+        {content}
+      </pre>
+    );
+  }
+}
+
 export default function PKWTPage() {
   const [tab, setTab] = useState<"generate" | "history">("generate");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -196,24 +457,321 @@ export default function PKWTPage() {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const marginX = 40;
-    const marginY = 44;
-    const lineHeight = 18;
+    const marginX = 54; // standard 0.75 in margin
     const maxTextWidth = pageWidth - (marginX * 2);
+    let cursorY = 54;
 
-    doc.setFont("courier", "normal");
-    doc.setFontSize(11);
-
-    const lines = doc.splitTextToSize(previewContent, maxTextWidth) as string[];
-    let cursorY = marginY;
-
-    for (const line of lines) {
-      if (cursorY > pageHeight - marginY) {
-        doc.addPage();
-        cursorY = marginY;
+    const rawLines = previewContent.split("\n");
+    const pihak1Details: { key: string; val: string }[] = [];
+    const pihak2Details: { key: string; val: string }[] = [];
+    const signatures: { role: string; name: string }[] = [];
+    
+    let dateText = "";
+    let titleText = "";
+    let docNumberText = "";
+    let openingText = "";
+    let closingText = "";
+    
+    // Parse the lines
+    let i = 0;
+    while (i < rawLines.length) {
+      const line = rawLines[i].trim();
+      if (!line) {
+        i++;
+        continue;
       }
-      doc.text(line, marginX, cursorY);
-      cursorY += lineHeight;
+      
+      // Date line: e.g. "Nganjuk, 11 Juni 2026"
+      if (i === 0 && line.includes(",")) {
+        const parts = line.split(",");
+        const datePart = parts.slice(1).join(",").trim();
+        dateText = `Nganjuk, ${datePart}`;
+        i++;
+        continue;
+      }
+      
+      // Title line
+      if (line.includes("SURAT PERJANJIAN") || line.includes("PERJANJIAN KERJA")) {
+        titleText = line;
+        i++;
+        continue;
+      }
+      
+      // Number line
+      if (line.startsWith("Nomor:")) {
+        docNumberText = line;
+        i++;
+        continue;
+      }
+      
+      // Opening
+      if (line.startsWith("Pada hari ini") || line.startsWith("Bahwa pada hari ini")) {
+        openingText = line;
+        i++;
+        continue;
+      }
+      
+      // Parties details
+      if (line === "PIHAK PERTAMA") {
+        i++;
+        while (i < rawLines.length) {
+          const subLine = rawLines[i].trim();
+          if (!subLine || subLine === "PIHAK KEDUA" || subLine.startsWith("Pasal") || subLine.startsWith("Demikian")) {
+            break;
+          }
+          if (subLine.includes(":")) {
+            const parts = subLine.split(":");
+            const k = parts[0].trim();
+            const v = parts.slice(1).join(":").trim();
+            pihak1Details.push({ key: k, val: v });
+          }
+          i++;
+        }
+        continue;
+      }
+      
+      if (line === "PIHAK KEDUA") {
+        i++;
+        while (i < rawLines.length) {
+          const subLine = rawLines[i].trim();
+          if (!subLine || subLine.startsWith("Pasal") || subLine.startsWith("Demikian") || subLine.startsWith("PIHAK PERTAMA")) {
+            break;
+          }
+          if (subLine.includes(":")) {
+            const parts = subLine.split(":");
+            const k = parts[0].trim();
+            const v = parts.slice(1).join(":").trim();
+            pihak2Details.push({ key: k, val: v });
+          }
+          i++;
+        }
+        continue;
+      }
+      
+      // Signatures
+      if (line === "PIHAK PERTAMA," || line === "PIHAK PERTAMA") {
+        i++;
+        let name = "";
+        if (i < rawLines.length) {
+          name = rawLines[i].trim();
+          i++;
+        }
+        signatures.push({ role: "PIHAK PERTAMA", name });
+        continue;
+      }
+      
+      if (line === "PIHAK KEDUA," || line === "PIHAK KEDUA") {
+        i++;
+        let name = "";
+        if (i < rawLines.length) {
+          name = rawLines[i].trim();
+          i++;
+        }
+        signatures.push({ role: "PIHAK KEDUA", name });
+        continue;
+      }
+      
+      i++;
+    }
+
+    // Helper to check page break
+    const checkPageBreak = (neededHeight: number) => {
+      if (cursorY + neededHeight > pageHeight - 54) {
+        doc.addPage();
+        cursorY = 54;
+      }
+    };
+
+    // Draw Letterhead (Kop Surat)
+    doc.setFont("times", "bold");
+    doc.setFontSize(16);
+    doc.text("PT DOA SURYO AGONG", pageWidth / 2, cursorY, { align: "center" });
+    cursorY += 16;
+    
+    doc.setFont("times", "normal");
+    doc.setFontSize(10);
+    doc.text("Jl. Nglinggo, Gobang, Nglinggo, Kec. Gondang, Kabupaten Nganjuk, Jawa Timur 64451", pageWidth / 2, cursorY, { align: "center" });
+    cursorY += 12;
+    
+    // Draw Single Thick Separator Line
+    doc.setLineWidth(3);
+    doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+    cursorY += 24;
+
+    // Draw Date
+    if (dateText) {
+      doc.setFont("times", "normal");
+      doc.setFontSize(11);
+      doc.text(dateText, pageWidth - marginX, cursorY, { align: "right" });
+      cursorY += 24;
+    }
+
+    // Draw Title & Number
+    if (titleText) {
+      doc.setFont("times", "bold");
+      doc.setFontSize(12);
+      doc.text(titleText, pageWidth / 2, cursorY, { align: "center" });
+      const titleWidth = doc.getTextWidth(titleText);
+      doc.setLineWidth(1);
+      doc.line((pageWidth - titleWidth) / 2, cursorY + 2, (pageWidth + titleWidth) / 2, cursorY + 2);
+      cursorY += 16;
+    }
+    if (docNumberText) {
+      doc.setFont("times", "normal");
+      doc.setFontSize(11);
+      doc.text(docNumberText, pageWidth / 2, cursorY, { align: "center" });
+      cursorY += 24;
+    }
+
+    // Draw Opening
+    if (openingText) {
+      doc.setFont("times", "normal");
+      doc.setFontSize(11);
+      const splitOpening = doc.splitTextToSize(openingText, maxTextWidth) as string[];
+      checkPageBreak(splitOpening.length * 16);
+      for (const line of splitOpening) {
+        doc.text(line, marginX, cursorY);
+        cursorY += 16;
+      }
+      cursorY += 12;
+    }
+
+    // Draw Pihak Pertama Details
+    if (pihak1Details.length > 0) {
+      checkPageBreak(20 + pihak1Details.length * 16);
+      doc.setFont("times", "bold");
+      doc.text("PIHAK PERTAMA", marginX, cursorY);
+      cursorY += 16;
+      
+      doc.setFont("times", "normal");
+      for (const detail of pihak1Details) {
+        doc.text(detail.key, marginX, cursorY);
+        doc.text(":", marginX + 130, cursorY);
+        
+        const valWidth = maxTextWidth - 140;
+        const splitVal = doc.splitTextToSize(detail.val, valWidth) as string[];
+        for (let idx = 0; idx < splitVal.length; idx++) {
+          doc.text(splitVal[idx], marginX + 140, cursorY);
+          if (idx < splitVal.length - 1) {
+            cursorY += 16;
+            checkPageBreak(16);
+          }
+        }
+        cursorY += 16;
+        checkPageBreak(16);
+      }
+      cursorY += 10;
+    }
+
+    // Draw Pihak Kedua Details
+    if (pihak2Details.length > 0) {
+      checkPageBreak(20 + pihak2Details.length * 16);
+      doc.setFont("times", "bold");
+      doc.text("PIHAK KEDUA", marginX, cursorY);
+      cursorY += 16;
+      
+      doc.setFont("times", "normal");
+      for (const detail of pihak2Details) {
+        doc.text(detail.key, marginX, cursorY);
+        doc.text(":", marginX + 130, cursorY);
+        
+        const valWidth = maxTextWidth - 140;
+        const splitVal = doc.splitTextToSize(detail.val, valWidth) as string[];
+        for (let idx = 0; idx < splitVal.length; idx++) {
+          doc.text(splitVal[idx], marginX + 140, cursorY);
+          if (idx < splitVal.length - 1) {
+            cursorY += 16;
+            checkPageBreak(16);
+          }
+        }
+        cursorY += 16;
+        checkPageBreak(16);
+      }
+      cursorY += 12;
+    }
+
+    // Draw Pasals
+    i = 0;
+    while (i < rawLines.length) {
+      const line = rawLines[i].trim();
+      if (!line) {
+        i++;
+        continue;
+      }
+
+      if (line.startsWith("Pasal ")) {
+        const pasalHeader = line;
+        i++;
+        let pasalBody = "";
+        while (i < rawLines.length) {
+          const subLine = rawLines[i].trim();
+          if (!subLine) {
+            i++;
+            continue;
+          }
+          if (subLine.startsWith("Pasal ") || subLine.startsWith("Demikian") || subLine.startsWith("PIHAK PERTAMA") || subLine.startsWith("PIHAK KEDUA")) {
+            break;
+          }
+          pasalBody += (pasalBody ? " " : "") + subLine;
+          i++;
+        }
+
+        checkPageBreak(36);
+        doc.setFont("times", "bold");
+        doc.text(pasalHeader, pageWidth / 2, cursorY, { align: "center" });
+        cursorY += 16;
+
+        doc.setFont("times", "normal");
+        const splitBody = doc.splitTextToSize(pasalBody, maxTextWidth) as string[];
+        checkPageBreak(splitBody.length * 16);
+        for (const bLine of splitBody) {
+          doc.text(bLine, marginX, cursorY);
+          cursorY += 16;
+        }
+        cursorY += 12;
+        continue;
+      }
+
+      if (line.startsWith("Demikian perjanjian")) {
+        closingText = line;
+      }
+      i++;
+    }
+
+    // Draw Closing
+    if (closingText) {
+      doc.setFont("times", "normal");
+      const splitClosing = doc.splitTextToSize(closingText, maxTextWidth) as string[];
+      checkPageBreak(splitClosing.length * 16);
+      for (const line of splitClosing) {
+        doc.text(line, marginX, cursorY);
+        cursorY += 16;
+      }
+      cursorY += 24;
+    }
+
+    // Draw Signatures
+    if (signatures.length > 0) {
+      checkPageBreak(100);
+      
+      const sig1 = signatures.find(s => s.role === "PIHAK PERTAMA");
+      const sig2 = signatures.find(s => s.role === "PIHAK KEDUA");
+      
+      const sigYStart = cursorY;
+      
+      if (sig1) {
+        doc.setFont("times", "bold");
+        doc.text("PIHAK PERTAMA,", marginX + 80, sigYStart, { align: "center" });
+        doc.setFont("times", "bold");
+        doc.text(sig1.name, marginX + 80, sigYStart + 80, { align: "center" });
+      }
+      
+      if (sig2) {
+        doc.setFont("times", "bold");
+        doc.text("PIHAK KEDUA,", pageWidth - marginX - 80, sigYStart, { align: "center" });
+        doc.setFont("times", "bold");
+        doc.text(sig2.name, pageWidth - marginX - 80, sigYStart + 80, { align: "center" });
+      }
     }
 
     const safeName = (form.employee_name ?? "kontrak")
@@ -395,11 +953,13 @@ export default function PKWTPage() {
         </div>
       )}
 
-      <Modal isOpen={previewOpen} onClose={() => setPreviewOpen(false)} title={"Preview Kontrak"} maxWidth="max-w-3xl">
-        <div className="space-y-3">
-          <pre className="whitespace-pre-wrap text-sm text-slate-800 bg-white p-3 rounded-md border border-slate-100">{previewContent}</pre>
+      <Modal isOpen={previewOpen} onClose={() => setPreviewOpen(false)} title={"Preview Kontrak"} maxWidth="max-w-4xl">
+        <div className="space-y-4">
+          <div className="max-h-[70vh] overflow-y-auto bg-slate-100 p-4 rounded-xl border border-slate-200">
+            <ContractDocument content={previewContent} />
+          </div>
           <div className="flex justify-end gap-3">
-            <button onClick={handleDownloadPdf} className="rounded-xl bg-blue-600 text-white px-4 py-2">Download PDF</button>
+            <button onClick={handleDownloadPdf} className="rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 font-medium">Download PDF</button>
           </div>
         </div>
       </Modal>
