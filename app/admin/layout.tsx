@@ -16,6 +16,7 @@ const navItems = [
       { label: "Vendor", href: "/admin/master-data/vendor", icon: "Truck" },
       { label: "Produk Induk", href: "/admin/master-data/produk", icon: "Package" },
       { label: "Varian Produk", href: "/admin/master-data/varian", icon: "Tags" },
+      { label: "Buku Tamu", href: "/admin/master-data/buku-tamu", icon: "ClipboardList" },
     ],
   },
   {
@@ -25,7 +26,6 @@ const navItems = [
     children: [
       { label: "Overview", href: "/management", icon: "LayoutDashboard" },
       { label: "Budget", href: "/management/budget", icon: "Banknote" },
-      { label: "KPI", href: "/management/kpi", icon: "TrendingUp" },
     ]
   },
   {
@@ -40,7 +40,9 @@ const navItems = [
       { label: "Chart of Accounts", href: "/finance/coa", icon: "BookOpen" },
       { label: "Journal", href: "/finance/journal", icon: "BookMarked" },
       { label: "Invoice", href: "/finance/invoice", icon: "FileText" },
-      { label: "Utang Piutang", href: "/finance/utang-piutang", icon: "HandCoins" },
+      { label: "Utang", href: "/finance/utang", icon: "TrendingDown" },
+      { label: "Piutang", href: "/finance/piutang", icon: "TrendingUp" },
+      { label: "Kasbon", href: "/finance/kasbon", icon: "HandCoins" },
     ]
   },
   {
@@ -100,7 +102,9 @@ const navItems = [
       { label: "Product", href: "/office/products", icon: "Package" },
       { label: "Vendors", href: "/office/vendors", icon: "Handshake" },
     ]
-  }
+  },
+  { label: "Penilaian Karyawan", href: "/penilaian-karyawan", icon: "FileUser" },
+  { label: "Buku Tamu", href: "/buku-tamu", icon: "ClipboardList" }
 ];
 
 export default function AdminLayout({

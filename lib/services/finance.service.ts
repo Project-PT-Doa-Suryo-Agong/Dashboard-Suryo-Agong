@@ -200,7 +200,7 @@ export async function listInvoice(client: DbClient, page = 1, limit = 100) {
   const { data, error, count } = await db(client)
     .from("t_invoice")
     .select("*", { count: "exact" })
-    .order("tanggal", { ascending: false })
+    .order("id_invoice", { ascending: false })
     .range(from, from + limit - 1);
   return { data: (data ?? []) as TInvoice[], error, meta: { page, limit, total: count ?? 0 } };
 }
@@ -252,7 +252,7 @@ export async function deleteInvoiceItem(client: DbClient, id_invoice: string, id
 
 // t_utang_piutang
 
-export async function listUtangPiutang(client: DbClient, page = 1, limit = 100, tipe?: "utang" | "piutang") {
+export async function listUtangPiutang(client: DbClient, page = 1, limit = 100, tipe?: "utang" | "piutang" | "kasbon") {
   const from = (page - 1) * limit;
   let query = db(client)
     .from("t_utang_piutang")

@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   CalendarDays,
   TrendingUp,
+  TrendingDown,
   Handshake,
   Palette,
   Plus,
@@ -53,6 +54,8 @@ import {
   HandCoins,
   MessageCircle,
   FileUser,
+  Crown,
+  Boxes,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -60,6 +63,7 @@ const ICONS: Record<string, LucideIcon> = {
   LayoutDashboard,
   CalendarDays,
   TrendingUp,
+  TrendingDown,
   Handshake,
   Palette,
   Plus,
@@ -102,6 +106,8 @@ const ICONS: Record<string, LucideIcon> = {
   HandCoins,
   MessageCircle,
   FileUser,
+  Crown,
+  Boxes,
 };
 
 export interface NavItem {
