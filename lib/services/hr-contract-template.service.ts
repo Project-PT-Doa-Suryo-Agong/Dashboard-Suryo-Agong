@@ -31,8 +31,8 @@ const CONTRACT_TYPES: HrContractTemplateType[] = ["pkwt", "pkwtp"];
 
 const COMPANY_TEMPLATE_CONTEXT: Record<string, string> = {
   company_name: "PT DOA SURYO AGONG",
-  company_address: "Alamat Perusahaan PT DOA SURYO AGONG",
-  company_city: "Surabaya",
+  company_address: "Jl. Nglinggo, Gobang, Nglinggo, Kec. Gondang, Kabupaten Nganjuk, Jawa Timur 64451",
+  company_city: "Nganjuk",
   company_representative: "Direktur PT DOA SURYO AGONG",
   company_representative_title: "Direktur",
 };
