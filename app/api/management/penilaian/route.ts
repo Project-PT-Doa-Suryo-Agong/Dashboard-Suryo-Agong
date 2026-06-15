@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireAuth } from "@/lib/guards/auth.guard";
 import { ErrorCode } from "@/lib/http/error-codes";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(request: Request) {
   try {
@@ -100,11 +101,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let body: any;
   try {
     const auth = await requireAuth();
     if (!auth.ok) return auth.response;
 
-    let body: any;
     try {
       body = await request.json();
     } catch {
@@ -112,7 +113,6 @@ export async function POST(request: Request) {
     }
 
     const {
-      penilai,
       dinilai,
       kepribadian_sikap,
       teamwork,
@@ -125,12 +125,38 @@ export async function POST(request: Request) {
       tanggal_penilaian,
     } = body;
 
-    const { data, error } = await (auth.ctx.supabase as any)
+    // Resolve the penilai's employee ID from hr.m_karyawan using the authenticated profile ID
+    const { data: karyawanPenilai, error: penilaiErr } = await (supabaseAdmin as any)
+      .schema("hr")
+      .from("m_karyawan")
+      .select("id")
+      .eq("profile_id", auth.ctx.userId)
+      .single();
+
+    if (penilaiErr || !karyawanPenilai) {
+      console.error("[PENILAIAN POST ERROR] Penilai karyawan record not found for profile_id:", auth.ctx.userId, penilaiErr);
+      return fail(ErrorCode.NOT_FOUND, "Data penilai tidak ditemukan di database karyawan.", 404);
+    }
+
+    // Resolve the dinilai's employee ID from hr.m_karyawan using the sent dinilai profile ID
+    const { data: karyawanDinilai, error: dinilaiErr } = await (supabaseAdmin as any)
+      .schema("hr")
+      .from("m_karyawan")
+      .select("id")
+      .eq("profile_id", dinilai)
+      .single();
+
+    if (dinilaiErr || !karyawanDinilai) {
+      console.error("[PENILAIAN POST ERROR] Dinilai karyawan record not found for profile_id:", dinilai, dinilaiErr);
+      return fail(ErrorCode.NOT_FOUND, "Data karyawan yang dinilai tidak ditemukan di database.", 404);
+    }
+
+    const { data, error } = await (supabaseAdmin as any)
       .schema("management")
       .from("penilaian_kerja")
       .insert({
-        penilai,
-        dinilai,
+        penilai: karyawanPenilai.id,
+        dinilai: karyawanDinilai.id,
         kepribadian_sikap,
         teamwork,
         pengetahuan_wawasan,
