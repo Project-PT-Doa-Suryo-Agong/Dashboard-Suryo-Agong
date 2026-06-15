@@ -42,32 +42,32 @@ services:
   # ========================================
   # DEVELOPMENT ENVIRONMENT
   # ========================================
-  # dev-nextjs_app-dashboard-doa:
-  #   build:
-  #     context: .
-  #     args:
-  #       - ENV_FILE=.env.dev
-  #   container_name: dev-nextjs_app-dashboard-doa
-  #   restart: always
-  #   env_file:
-  #     - .env.dev
-  #   networks:
-  #     - bolo-carubra-network
+  dev-nextjs_app-dashboard-doa:
+    build:
+      context: .
+      args:
+        - ENV_FILE=.env.dev
+    container_name: dev-nextjs_app-dashboard-doa
+    restart: always
+    env_file:
+      - .env.dev
+    networks:
+      - bolo-carubra-network
 
-  # dev-nginx-dashboard-doa:
-  #   image: nginx:alpine
-  #   container_name: dev-nginx_proxy_doa
-  #   restart: always
-  #   ports:
-  #     - "8084:80"
-  #   volumes:
-  #     - ./nginx.dev.conf:/etc/nginx/conf.d/default.conf:ro
-  #   depends_on:
-  #     - dev-nextjs_app-dashboard-doa
-  #   networks:
-  #     - bolo-carubra-network
+  dev-nginx-dashboard-doa:
+    image: nginx:alpine
+    container_name: dev-nginx_proxy_doa
+    restart: always
+    ports:
+      - "8084:80"
+    volumes:
+      - ./nginx.dev.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - dev-nextjs_app-dashboard-doa
+    networks:
+      - bolo-carubra-network
 
-networks:
+  networks:
   bolo-carubra-network:
     name: carubra-ai-launch_bolo-carubra-network
     external: true

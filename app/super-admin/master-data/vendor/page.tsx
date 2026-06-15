@@ -220,7 +220,7 @@ export default function VendorPage() {
           <table className="w-full text-left">
             <thead className="bg-slate-50/80">
               <tr>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">ID</th>
+                {/* <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">ID</th> */}
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Nama Vendor</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Kontak</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Terdaftar</th>
@@ -243,7 +243,7 @@ export default function VendorPage() {
               ) : (
                 filtered.map((v) => (
                   <tr key={v.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="px-6 py-4 text-xs font-mono text-slate-400">{v.id}</td>
+                    {/* <td className="px-6 py-4 text-xs font-mono text-slate-400">{v.id}</td> */}
                     <td className="px-6 py-4 text-sm font-semibold text-slate-800">{v.nama_vendor ?? "-"}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">{v.kontak ?? "-"}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{v.created_at ? v.created_at.split("T")[0] : "-"}</td>
