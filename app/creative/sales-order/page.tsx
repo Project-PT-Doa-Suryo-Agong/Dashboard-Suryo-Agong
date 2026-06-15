@@ -604,13 +604,13 @@ export default function SalesOrderPage() {
     doc.text("Terms of Payment :", 112, 48);
     doc.text(`${order.terms_of_payment ?? 0} Hari`, 144, 48);
     
-    doc.text("Bank Cash        :", 112, 53);
+    doc.text("COA Cash         :", 112, 53);
     const coaCashLines = doc.splitTextToSize(coaCashName, 48);
     doc.text(coaCashLines, 144, 53);
     
     const cashOffset = (coaCashLines.length - 1) * 4;
     const creditY = 58 + cashOffset;
-    doc.text("Bank Kredit      :", 112, creditY);
+    doc.text("COA Piutang      :", 112, creditY);
     const coaCreditLines = doc.splitTextToSize(coaCreditName, 48);
     doc.text(coaCreditLines, 144, creditY);
 
@@ -1229,9 +1229,9 @@ export default function SalesOrderPage() {
                 />
               </div>
 
-              {/* Row 2: Bank Cash (selalu tampil) */}
+              {/* Row 2: COA Cash (selalu tampil) */}
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Bank Cash</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">COA Cash</label>
                 <select
                   value={formData.coa_cash_id ?? ""}
                   onChange={(event) => setFormData((prev) => ({ ...prev, coa_cash_id: event.target.value || null }))}
@@ -1239,7 +1239,7 @@ export default function SalesOrderPage() {
                   disabled={isSubmitting || cashBankOptions.length === 0}
                 >
                   <option value="" disabled>
-                    {cashBankOptions.length === 0 ? "Bank cash tidak tersedia" : "-- Pilih Bank Cash --"}
+                    {cashBankOptions.length === 0 ? "COA cash tidak tersedia" : "-- Pilih COA Cash --"}
                   </option>
                   {cashBankOptions.map((coa) => (
                     <option key={coa.id} value={coa.id}>
@@ -1281,7 +1281,7 @@ export default function SalesOrderPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Bank Kredit</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">COA Piutang</label>
                     <select
                       value={formData.coa_credit_id ?? ""}
                       onChange={(event) => setFormData((prev) => ({ ...prev, coa_credit_id: event.target.value || null }))}
@@ -1289,7 +1289,7 @@ export default function SalesOrderPage() {
                       disabled={isSubmitting || creditBankOptions.length === 0}
                     >
                       <option value="" disabled>
-                        {creditBankOptions.length === 0 ? "Bank kredit tidak tersedia" : "-- Pilih Bank Kredit --"}
+                        {creditBankOptions.length === 0 ? "COA piutang tidak tersedia" : "-- Pilih COA Piutang --"}
                       </option>
                       {creditBankOptions.map((coa) => (
                         <option key={coa.id} value={coa.id}>
@@ -1666,9 +1666,9 @@ export default function SalesOrderPage() {
                   />
                 </div>
 
-                {/* Bank Cash (selalu tampil) */}
+                {/* COA Cash (selalu tampil) */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Bank Cash</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">COA Cash</label>
                   <select
                     value={formData.coa_cash_id ?? ""}
                     onChange={(event) => setFormData((prev) => ({ ...prev, coa_cash_id: event.target.value || null }))}
@@ -1676,7 +1676,7 @@ export default function SalesOrderPage() {
                     disabled={isSubmitting || cashBankOptions.length === 0}
                   >
                     <option value="" disabled>
-                      {cashBankOptions.length === 0 ? "Bank cash tidak tersedia" : "-- Pilih Bank Cash --"}
+                      {cashBankOptions.length === 0 ? "COA cash tidak tersedia" : "-- Pilih COA Cash --"}
                     </option>
                     {cashBankOptions.map((coa) => (
                       <option key={coa.id} value={coa.id}>
@@ -1718,7 +1718,7 @@ export default function SalesOrderPage() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">Bank Kredit</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-semibold">COA Piutang</label>
                       <select
                         value={formData.coa_credit_id ?? ""}
                         onChange={(event) => setFormData((prev) => ({ ...prev, coa_credit_id: event.target.value || null }))}
@@ -1726,7 +1726,7 @@ export default function SalesOrderPage() {
                         disabled={isSubmitting || creditBankOptions.length === 0}
                       >
                         <option value="" disabled>
-                          {creditBankOptions.length === 0 ? "Bank kredit tidak tersedia" : "-- Pilih Bank Kredit --"}
+                          {creditBankOptions.length === 0 ? "COA piutang tidak tersedia" : "-- Pilih COA Piutang --"}
                         </option>
                         {creditBankOptions.map((coa) => (
                           <option key={coa.id} value={coa.id}>
