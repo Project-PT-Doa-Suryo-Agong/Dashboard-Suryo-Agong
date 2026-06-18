@@ -65,17 +65,24 @@ export async function createPayroll(client: DbClient, input: Record<string, unkn
 }
 
 export async function updatePayroll(client: DbClient, id: string, input: Record<string, unknown>) {
+  const [employeeId, bulan] = id.split("_");
   const { data, error } = await db(client)
     .from("t_payroll_history")
     .update(input as never)
-    .eq("id", id)
+    .eq("employee_id", employeeId)
+    .eq("bulan", bulan)
     .select("*")
     .maybeSingle();
   return { data: data as TPayrollHistory | null, error };
 }
 
 export async function deletePayroll(client: DbClient, id: string) {
-  const { error, count } = await db(client).from("t_payroll_history").delete({ count: "exact" }).eq("id", id);
+  const [employeeId, bulan] = id.split("_");
+  const { error, count } = await db(client)
+    .from("t_payroll_history")
+    .delete({ count: "exact" })
+    .eq("employee_id", employeeId)
+    .eq("bulan", bulan);
   return { error, deleted: (count ?? 0) > 0 };
 }
 

@@ -3953,6 +3953,27 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "sales" GRANT SELECT ON T
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "sales" GRANT SELECT ON TABLES TO "service_role";
 
 
+--
+-- Trigger to clean up t_journal when a payroll record is deleted (cascades to t_journal_item and t_cashflow)
+--
+CREATE OR REPLACE FUNCTION "finance"."fn_delete_journal_entry_on_payroll_delete"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_no_bukti varchar;
+BEGIN
+    v_no_bukti := 'PAY-' || OLD.employee_id || '-' || TO_CHAR(OLD.bulan, 'YYYYMM');
+    DELETE FROM "finance"."t_journal" WHERE "no_bukti" = v_no_bukti;
+    RETURN OLD;
+END;
+$$;
+
+ALTER FUNCTION "finance"."fn_delete_journal_entry_on_payroll_delete"() OWNER TO "postgres";
+
+CREATE OR REPLACE TRIGGER "trg_delete_journal_payroll" BEFORE DELETE ON "finance"."t_payroll_history" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_delete_journal_entry_on_payroll_delete"();
+
+
+
 
 
 

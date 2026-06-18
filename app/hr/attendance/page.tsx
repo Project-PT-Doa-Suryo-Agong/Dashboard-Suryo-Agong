@@ -147,14 +147,16 @@ export default function AttendancePage() {
   };
 
   const isFormValid =
-    !!formData.status &&
-    !!formData.jam_masuk &&
-    !!formData.jam_keluar &&
-    !!formData.is_dinas &&
-    formData.jarak_meter !== null &&
-    formData.jarak_meter !== undefined &&
-    typeof formData.laporan_harian === "string" &&
-    formData.laporan_harian.trim() !== "";
+    formData.status === "hadir"
+      ? (!!formData.status &&
+         !!formData.jam_masuk &&
+         !!formData.jam_keluar &&
+         !!formData.is_dinas &&
+         formData.jarak_meter !== null &&
+         formData.jarak_meter !== undefined &&
+         typeof formData.laporan_harian === "string" &&
+         formData.laporan_harian.trim() !== "")
+      : !!formData.status;
 
   const openAddModal = () => {
     resetForm();
@@ -218,15 +220,12 @@ export default function AttendancePage() {
 
     const commonPayload: Record<string, unknown> = {
       status: formData.status,
-      jam_masuk: formData.jam_masuk ?? null,
-      jam_keluar: formData.jam_keluar ?? null,
-      is_dinas: formData.is_dinas ?? "Tidak",
+      jam_masuk: formData.status === "hadir" ? (formData.jam_masuk ?? null) : null,
+      jam_keluar: formData.status === "hadir" ? (formData.jam_keluar ?? null) : null,
+      is_dinas: formData.status === "hadir" ? (formData.is_dinas ?? "Tidak") : "Tidak",
       laporan_harian: formData.laporan_harian ?? null,
+      jarak_meter: formData.status === "hadir" ? (formData.jarak_meter ?? null) : null,
     };
-
-    if (formData.jarak_meter !== null && formData.jarak_meter !== undefined) {
-      commonPayload.jarak_meter = formData.jarak_meter;
-    }
 
     const payload: Record<string, unknown> = editData
       ? commonPayload
@@ -504,36 +503,42 @@ export default function AttendancePage() {
             </label>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Jam Masuk</span>
-              <input type="time" value={formData.jam_masuk ?? ""} onChange={(e) => setFormData((p) => ({ ...p, jam_masuk: e.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
-            </label>
+          {formData.status === "hadir" && (
+            <>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="space-y-1.5">
+                  <span className="text-sm font-medium text-slate-700">Jam Masuk</span>
+                  <input type="time" value={formData.jam_masuk ?? ""} onChange={(e) => setFormData((p) => ({ ...p, jam_masuk: e.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
+                </label>
 
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Jam Keluar</span>
-              <input type="time" value={formData.jam_keluar ?? ""} onChange={(e) => setFormData((p) => ({ ...p, jam_keluar: e.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
-            </label>
-          </div>
+                <label className="space-y-1.5">
+                  <span className="text-sm font-medium text-slate-700">Jam Keluar</span>
+                  <input type="time" value={formData.jam_keluar ?? ""} onChange={(e) => setFormData((p) => ({ ...p, jam_keluar: e.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
+                </label>
+              </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Jarak (meter)</span>
-              <input type="number" value={formData.jarak_meter ?? ""} onChange={(e) => setFormData((p) => ({ ...p, jarak_meter: e.target.value ? Number(e.target.value) : null }))} min={0} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
-            </label>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="space-y-1.5">
+                  <span className="text-sm font-medium text-slate-700">Jarak (meter)</span>
+                  <input type="number" value={formData.jarak_meter ?? ""} onChange={(e) => setFormData((p) => ({ ...p, jarak_meter: e.target.value ? Number(e.target.value) : null }))} min={0} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
+                </label>
 
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-slate-700">Dinas</span>
-              <select value={formData.is_dinas} onChange={(e) => setFormData((p) => ({ ...p, is_dinas: e.target.value as "Ya" | "Tidak" }))} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20">
-                <option value="Tidak">Tidak</option>
-                <option value="Ya">Ya</option>
-              </select>
-            </label>
-          </div>
+                <label className="space-y-1.5">
+                  <span className="text-sm font-medium text-slate-700">Dinas</span>
+                  <select value={formData.is_dinas} onChange={(e) => setFormData((p) => ({ ...p, is_dinas: e.target.value as "Ya" | "Tidak" }))} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20">
+                    <option value="Tidak">Tidak</option>
+                    <option value="Ya">Ya</option>
+                  </select>
+                </label>
+              </div>
+            </>
+          )}
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Laporan Harian</label>
-            <textarea rows={4} value={formData.laporan_harian ?? ""} onChange={(e) => setFormData((p) => ({ ...p, laporan_harian: e.target.value }))} placeholder="Ringkasan kegiatan..." className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
+            <label className="text-sm font-medium text-slate-700">
+              {formData.status === "hadir" ? "Laporan Harian" : "Keterangan / Alasan (Opsional)"}
+            </label>
+            <textarea rows={4} value={formData.laporan_harian ?? ""} onChange={(e) => setFormData((p) => ({ ...p, laporan_harian: e.target.value }))} placeholder={formData.status === "hadir" ? "Ringkasan kegiatan..." : "Contoh: Sakit flu, izin keperluan keluarga..."} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

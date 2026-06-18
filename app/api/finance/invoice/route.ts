@@ -45,8 +45,7 @@ export async function POST(request: Request) {
   const bayar_piutang = requireNumber(input, "bayar_piutang", { min: 0, optional: true });
   if (!bayar_piutang.ok) return fail(ErrorCode.VALIDATION_ERROR, bayar_piutang.message, 400);
 
-  const total_pelunasan_piutang = requireNumber(input, "total_pelunasan_piutang", { min: 0, optional: true });
-  if (!total_pelunasan_piutang.ok) return fail(ErrorCode.VALIDATION_ERROR, total_pelunasan_piutang.message, 400);
+
 
   const catatan = requireString(input, "catatan", { maxLen: 500, optional: true });
   if (!catatan.ok) return fail(ErrorCode.VALIDATION_ERROR, catatan.message, 400);
@@ -95,7 +94,6 @@ export async function POST(request: Request) {
     catatan: catatan.data,
     bayar_cash: bayar_cash.data !== undefined ? (bayar_cash.data as number) : null,
     bayar_piutang: bayar_piutang.data !== undefined ? (bayar_piutang.data as number) : null,
-    total_pelunasan_piutang: total_pelunasan_piutang.data !== undefined ? (total_pelunasan_piutang.data as number) : null,
     nomor_faktur_pajak: nomor_faktur_pajak.data || null,
   };
 

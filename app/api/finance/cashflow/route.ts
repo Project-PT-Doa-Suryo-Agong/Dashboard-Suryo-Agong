@@ -41,14 +41,10 @@ export async function POST(request: Request) {
   const keterangan = requireString(input, "keterangan", { maxLen: 255, optional: true });
   if (!keterangan.ok) return fail(ErrorCode.VALIDATION_ERROR, keterangan.message, 400);
 
-  const cashflowNumber = requireString(input, "cashflow_number", { optional: true });
-  if (!cashflowNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, cashflowNumber.message, 400);
-
   const payload: TCashflowInsert = {
     tipe: tipe.data as TCashflowInsert["tipe"],
     amount: amount.data as number,
     keterangan: keterangan.data,
-    ...(cashflowNumber.data ? { cashflow_number: cashflowNumber.data } : {}),
   };
 
   const { data, error } = await createCashflow(supabaseAdmin as any, payload);

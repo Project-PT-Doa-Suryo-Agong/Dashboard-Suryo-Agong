@@ -4,10 +4,12 @@ import { useState } from "react";
 import "./docs.css";
 import TabDokumentasi from "./tab-dokumentasi";
 import TabKontrakApi from "./tab-kontrak-api";
+import TabDatabase from "./tab-database";
 
 const TABS = [
   { key: "dokumentasi", label: "Dokumentasi SSO" },
   { key: "kontrak-api", label: "Kontrak API Auth" },
+  { key: "database", label: "Dokumentasi Database" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -39,6 +41,7 @@ export default function DocsPage() {
       <main className="docs-content">
         {activeTab === "dokumentasi" && <TabDokumentasi />}
         {activeTab === "kontrak-api" && <TabKontrakApi />}
+        {activeTab === "database" && <TabDatabase />}
       </main>
     </div>
   );

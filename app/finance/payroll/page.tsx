@@ -116,7 +116,7 @@ export default function FinancePayrollPage() {
     total: string;
   }>({
     employee_id: "",
-    coa_id: null,
+    coa_id: "654d8b38-ac1e-4db9-bcba-93fe87a6efa4",
     bulan: "",
     total: "",
   });
@@ -234,7 +234,7 @@ export default function FinancePayrollPage() {
     const defaultEmployee = employees[0];
     setFormData({
       employee_id: defaultEmployee?.id ?? "",
-      coa_id: null,
+      coa_id: "654d8b38-ac1e-4db9-bcba-93fe87a6efa4",
       bulan: "",
       total:
         defaultEmployee?.gaji_pokok != null && defaultEmployee.gaji_pokok > 0
@@ -303,7 +303,8 @@ export default function FinancePayrollPage() {
       };
 
       if (editData) {
-        const response = await apiFetch(`/api/finance/payroll/${editData.id}`, {
+        const identifier = `${editData.employee_id}_${toDateInput(editData.bulan)}`;
+        const response = await apiFetch(`/api/finance/payroll/${identifier}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -458,7 +459,7 @@ export default function FinancePayrollPage() {
                       <td className="px-4 md:px-6 py-3 text-right whitespace-nowrap">
                         <RowActions>
                           <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
-                          <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
+                          <DeleteButton onClick={() => openDeleteModal(`${item.employee_id}_${toDateInput(item.bulan)}`)} disabled={isSubmitting} />
                         </RowActions>
                       </td>
                     </tr>

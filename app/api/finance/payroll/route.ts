@@ -62,6 +62,9 @@ export async function POST(request: Request) {
   const total = requireNumber(input, "total", { min: 0, optional: true });
   if (!total.ok) return fail(ErrorCode.VALIDATION_ERROR, total.message, 400);
 
+  const coaId = requireUUID(input, "coa_id", { optional: true });
+  if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+
   let finalTotal = total.data ?? 0;
   
   // Jika tidak diinputkan (misalkan dikirim kosong atau 0), kita ambilkan dari gaji_pokok HR
@@ -76,6 +79,7 @@ export async function POST(request: Request) {
     employee_id: employeeId.data,
     bulan: normalizedBulan,
     total: finalTotal,
+    coa_id: coaId.data || "654d8b38-ac1e-4db9-bcba-93fe87a6efa4",
   };
 
   const { data, error } = await createPayroll(auth.ctx.supabase, payload);
