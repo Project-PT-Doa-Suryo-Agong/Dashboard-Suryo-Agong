@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     employee_id: employeeId.data,
     bulan: normalizedBulan,
     total: finalTotal,
-    coa_id: coaId.data || null,
+    coa_id: coaId.data || "654d8b38-ac1e-4db9-bcba-93fe87a6efa4",
   };
 
   const { data, error } = await createPayroll(auth.ctx.supabase, payload);
