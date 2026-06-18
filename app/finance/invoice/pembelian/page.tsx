@@ -234,11 +234,16 @@ export default function FinancePurchaseInvoicePage() {
 
   const updateItemsAndTotal = (newItems: TPurchaseItem[]) => {
     const total = newItems.reduce((acc, it) => acc + it.total, 0);
-    setFormData(prev => ({
-      ...prev,
-      items: newItems,
-      total_amount: String(total)
-    }));
+    setFormData(prev => {
+      const cash = Number(prev.bayar_cash) || 0;
+      const piutang = Math.max(0, total - cash);
+      return {
+        ...prev,
+        items: newItems,
+        total_amount: String(total),
+        bayar_piutang: String(piutang)
+      };
+    });
   };
 
   const handleAddItemRow = () => {
@@ -478,11 +483,43 @@ export default function FinancePurchaseInvoicePage() {
             
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bayar Cash (DP)</label>
-              <input type="number" required value={formData.bayar_cash} onChange={e => setFormData(f => ({...f, bayar_cash: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
+              <input
+                type="number"
+                required
+                value={formData.bayar_cash}
+                onChange={e => {
+                  const val = e.target.value;
+                  const cash = Number(val) || 0;
+                  const total = Number(formData.total_amount) || 0;
+                  const piutang = Math.max(0, total - cash);
+                  setFormData(f => ({
+                    ...f,
+                    bayar_cash: val,
+                    bayar_piutang: String(piutang)
+                  }));
+                }}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bayar Piutang</label>
-              <input type="number" required value={formData.bayar_piutang} onChange={e => setFormData(f => ({...f, bayar_piutang: e.target.value}))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20" />
+              <input
+                type="number"
+                required
+                value={formData.bayar_piutang}
+                onChange={e => {
+                  const val = e.target.value;
+                  const piutang = Number(val) || 0;
+                  const total = Number(formData.total_amount) || 0;
+                  const cash = Math.max(0, total - piutang);
+                  setFormData(f => ({
+                    ...f,
+                    bayar_piutang: val,
+                    bayar_cash: String(cash)
+                  }));
+                }}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+              />
             </div>
           </div>
 
@@ -538,9 +575,7 @@ export default function FinancePurchaseInvoicePage() {
                         className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs text-slate-600 font-semibold"
                       />
                     </div>
-                    <button type="button" onClick={() => handleRemoveItemRow(idx)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg shrink-0">
-                      <DeleteButton onClick={() => {}} />
-                    </button>
+                    <DeleteButton onClick={() => handleRemoveItemRow(idx)} />
                   </div>
                 ))}
               </div>
