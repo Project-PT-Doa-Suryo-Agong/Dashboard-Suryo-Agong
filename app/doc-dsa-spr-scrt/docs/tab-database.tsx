@@ -178,6 +178,7 @@ export default function TabDatabase() {
           ["<code>is_admin()</code>", "<code>core</code>", "<code>boolean</code>", "Memeriksa apakah user yang sedang masuk memiliki hak akses admin global (Super Admin atau Admin)."],
           ["<code>prevent_role_escalation()</code>", "<code>core</code>", "<code>trigger</code>", "Fungsi trigger keamanan untuk mencegah user mengubah role mereka sendiri ke tingkat yang lebih tinggi."],
           ["<code>update_timestamp()</code>", "<code>core</code>", "<code>trigger</code>", "Mengotomatisasi pembaruan kolom <code>updated_at</code> di setiap tabel saat record mengalami modifikasi."],
+          ["<code>fn_delete_journal_entry_on_payroll_delete()</code>", "<code>finance</code>", "<code>trigger</code>", "Menghapus entri jurnal di <code>t_journal</code> (beserta relasi cascade item & cashflow) saat data di <code>t_payroll_history</code> dihapus."],
         ]}
       />
 
@@ -224,6 +225,11 @@ export default function TabDatabase() {
             "<code>fn_auto_insert_manifest</code> & <code>fn_auto_insert_packing</code>",
             "Sales order dicatat / divalidasi",
             "Otomatis menambahkan antrean pengemasan di tabel <code>t_packing</code> serta rancangan manifes pengiriman di <code>t_logistik_manifest</code>.",
+          ],
+          [
+            "<code>trg_delete_journal_payroll</code>",
+            "Data payroll didelete dari <code>t_payroll_history</code>",
+            "Otomatis menghapus entri jurnal, item jurnal, dan cashflow yang bersangkutan demi mencegah terjadinya duplicate constraint.",
           ],
         ]}
       />
