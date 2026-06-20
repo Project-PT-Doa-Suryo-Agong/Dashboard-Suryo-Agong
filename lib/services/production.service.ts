@@ -80,16 +80,11 @@ export async function updateQCInbound(client: DbClient, id: string, input: Recor
 }
 
 export async function deleteQCInbound(client: DbClient, id: string) {
-  const byId = await db(client).from("t_qc_inbound").delete({ count: "exact" }).eq("id", id);
-  if ((byId.count ?? 0) > 0 || byId.error) {
-    return { error: byId.error, deleted: (byId.count ?? 0) > 0 };
-  }
-
-  const byOrder = await db(client)
+  const { error, count } = await db(client)
     .from("t_qc_inbound")
     .delete({ count: "exact" })
     .eq("produksi_order_id", id);
-  return { error: byOrder.error, deleted: (byOrder.count ?? 0) > 0 };
+  return { error, deleted: (count ?? 0) > 0 };
 }
 
 //  t_qc_outbound 
@@ -120,15 +115,10 @@ export async function updateQCOutbound(client: DbClient, id: string, input: Reco
 }
 
 export async function deleteQCOutbound(client: DbClient, id: string) {
-  const byId = await db(client).from("t_qc_outbound").delete({ count: "exact" }).eq("id", id);
-  if ((byId.count ?? 0) > 0 || byId.error) {
-    return { error: byId.error, deleted: (byId.count ?? 0) > 0 };
-  }
-
-  const byOrder = await db(client)
+  const { error, count } = await db(client)
     .from("t_qc_outbound")
     .delete({ count: "exact" })
     .eq("produksi_order_id", id);
-  return { error: byOrder.error, deleted: (byOrder.count ?? 0) > 0 };
+  return { error, deleted: (count ?? 0) > 0 };
 }
 
