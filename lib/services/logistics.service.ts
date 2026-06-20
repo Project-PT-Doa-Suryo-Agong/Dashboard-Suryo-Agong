@@ -61,9 +61,10 @@ async function enrichLogisticsRows<T extends LogisticsRowWithOrder>(client: DbCl
     return { data: rows, error: null };
   }
 
+  // Fetch orders with columns that actually exist in the database table
   const { data: orders, error: orderError } = await schema(readClient(client), "sales")
     .from("t_sales_order")
-    .select("id, order_code, varian_id, affiliator_id, quantity, total_price, created_at")
+    .select("id, order_number, created_at")
     .in("id", orderIds);
 
   if (orderError) {
@@ -72,12 +73,26 @@ async function enrichLogisticsRows<T extends LogisticsRowWithOrder>(client: DbCl
     return { data: toBaseRows(rows), error: null };
   }
 
-  const orderList = (orders ?? []) as SalesOrderLite[];
+  const orderList = (orders ?? []) as Array<{ id: string; order_number: string | null; created_at: string | null }>;
   const orderById = new Map(orderList.map((order) => [order.id, order]));
 
-  const variantIds = Array.from(
-    new Set(orderList.map((order) => order.varian_id).filter((value): value is string => typeof value === "string" && value.length > 0)),
-  );
+  // Fetch items from sales.t_item to resolve variant IDs (since t_sales_order doesn't have varian_id)
+  const { data: items, error: itemsError } = await schema(readClient(client), "sales")
+    .from("t_item")
+    .select("id_order, id_varian")
+    .in("id_order", orderIds);
+
+  const orderVarianMap = new Map<string, string>();
+  if (items && !itemsError) {
+    const itemsList = items as Array<{ id_order?: string; id_varian?: string }>;
+    for (const item of itemsList) {
+      if (item.id_order && item.id_varian && !orderVarianMap.has(item.id_order)) {
+        orderVarianMap.set(item.id_order, item.id_varian);
+      }
+    }
+  }
+
+  const variantIds = Array.from(new Set(orderVarianMap.values()));
 
   let variantById = new Map<string, VariantLite>();
   if (variantIds.length > 0) {
@@ -121,12 +136,18 @@ async function enrichLogisticsRows<T extends LogisticsRowWithOrder>(client: DbCl
 
   const enriched = rows.map((row) => {
     const order = row.order_id ? orderById.get(row.order_id) ?? null : null;
-    const variant = order?.varian_id ? variantById.get(order.varian_id) ?? null : null;
+    const mappedOrder = order ? {
+      ...order,
+      order_code: order.order_number, // map order_number to order_code for frontend
+    } : null;
+
+    const variantId = row.order_id ? orderVarianMap.get(row.order_id) ?? null : null;
+    const variant = variantId ? variantById.get(variantId) ?? null : null;
     const product = variant?.product_id ? productById.get(variant.product_id) ?? null : null;
 
     return {
       ...row,
-      order,
+      order: mappedOrder,
       variant,
       product,
     };
