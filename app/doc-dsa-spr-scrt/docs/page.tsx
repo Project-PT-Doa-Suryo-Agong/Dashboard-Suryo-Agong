@@ -5,12 +5,14 @@ import "./docs.css";
 import TabDokumentasi from "./tab-dokumentasi";
 import TabKontrakApi from "./tab-kontrak-api";
 import TabDatabase from "./tab-database";
+import TabFolder from "./tab-folder";
 import TabBacklog from "./tab-backlog";
 
 const TABS = [
   { key: "dokumentasi", label: "Dokumentasi SSO" },
   { key: "kontrak-api", label: "Kontrak API Auth" },
   { key: "database", label: "Dokumentasi Database" },
+  { key: "folder", label: "Dokumentasi Folder" },
   { key: "backlog", label: "Backlog Pengembangan" },
 ] as const;
 
@@ -44,8 +46,10 @@ export default function DocsPage() {
         {activeTab === "dokumentasi" && <TabDokumentasi />}
         {activeTab === "kontrak-api" && <TabKontrakApi />}
         {activeTab === "database" && <TabDatabase />}
+        {activeTab === "folder" && <TabFolder />}
         {activeTab === "backlog" && <TabBacklog />}
       </main>
     </div>
   );
 }
+
