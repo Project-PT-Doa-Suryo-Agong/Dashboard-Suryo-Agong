@@ -86,6 +86,18 @@ Database menggunakan multi-schema PostgreSQL:
   - `Office` → Support (akses terbatas)
 - **RLS Policies:** Didefinisikan di `supabase/rls-policies.sql`
 
+## Dokumentasi Internal & Backlog
+
+Project ini dilengkapi dengan portal dokumentasi interaktif internal yang dapat diakses langsung melalui browser di:
+👉 **`/doc-dsa-spr-scrt/docs`** (contoh: `http://localhost:3000/doc-dsa-spr-scrt/docs`)
+
+Dokumentasi ini mencakup:
+- **Dokumentasi SSO:** Alur autentikasi dan integrasi Single Sign-On.
+- **Kontrak API Auth:** Definisi request dan response schema untuk API Auth.
+- **Dokumentasi Database:** Detail schema database, storage, dan kebijakan Row Level Security (RLS).
+- **Dokumentasi Folder:** Panduan struktur direktori project serta deskripsi fungsi file-file utama.
+- **Backlog Pengembangan:** Pelacakan fitur (development backlog) dan rencana aksi (action plan) pengembangan sistem.
+
 ## Struktur Folder
 
 ```
@@ -119,7 +131,7 @@ lib/
 ├── access/               # Policy engine & menu catalog
 ├── guards/               # Server-side auth guard (untuk API routes)
 ├── http/                 # HTTP client & response helpers
-├── services/             # Service layer (untuk API routes)
+├── services/             # Service layer (logistics.service, production.service, payroll, dll.)
 ├── supabase/
 │   ├── admin.ts          # Supabase Admin client (service_role_key)
 │   ├── auth-context.tsx  # AuthProvider (client-side auth state)
