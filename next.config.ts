@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "supabase.maskhar.site",
+        hostname: "supabase.carubra.com",
         pathname: "/storage/v1/object/public/**",
       },
       // {
