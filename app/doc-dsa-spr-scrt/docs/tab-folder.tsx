@@ -5,12 +5,12 @@ import { Table } from "./components";
 export default function TabFolder() {
   return (
     <>
-      <h1 className="docs-title">Dokumentasi Struktur Folder & File</h1>
+      <h1 className="docs-title">Dokumentasi Detail Struktur Folder, File & Logika Program</h1>
 
-      {/* ── 1. STRUKTUR UTAMA ────────────────────────────────────── */}
-      <h2 className="docs-h2">1. Gambaran Umum Struktur Folder</h2>
+      {/* ── 1. GAMBARAN UMUM ────────────────────────────────────── */}
+      <h2 className="docs-h2">1. Peta Arsitektur Berkas (File Architecture Map)</h2>
       <p className="docs-p">
-        Proyek ini dibangun menggunakan <strong>Next.js (App Router)</strong> dengan arsitektur modular. Berikut adalah struktur direktori utama dalam proyek:
+        Sistem enterprise ini menggunakan struktur modular untuk membagi tanggung jawab antara client-side, server-side (Next.js API), dan database schema. Berikut gambaran umum pohon direktori proyek:
       </p>
       <pre className="docs-code" style={{ padding: "1rem", lineHeight: "1.5" }}>
 {`Dashboard-Suryo-Agung/
@@ -36,10 +36,9 @@ export default function TabFolder() {
 └── types/                # Definisi Type TypeScript Global`}
       </pre>
 
-      {/* ── 2. DAFTAR FOLDER PENTING ────────────────────────────── */}
-      <h2 className="docs-h2">2. Daftar Folder Penting & Fungsinya</h2>
+      <h2 className="docs-h2">2. Daftar Folder Utama & Fungsinya</h2>
       <p className="docs-p">
-        Berikut adalah penjelasan fungsi detail dari setiap direktori utama dalam sistem ini:
+        Berikut adalah penjelasan kegunaan dan peran dari setiap direktori utama dalam sistem ini:
       </p>
       <Table
         headers={["Nama Folder", "Isi Utama", "Fungsi / Peran dalam Sistem"]}
@@ -82,112 +81,219 @@ export default function TabFolder() {
         ]}
       />
 
-      {/* ── 3. FUNGSI FILE TIAP FOLDER ──────────────────────────── */}
-      <h2 className="docs-h2">3. Fungsi File Penting per Folder</h2>
+      {/* ── 3. CARA KERJA BACKEND HYBRID ────────────────────────── */}
+      <h2 className="docs-h2">3. Cara Kerja Backend & Supabase (Arsitektur Hybrid)</h2>
       <p className="docs-p">
-        Untuk memahami alur kode, berikut adalah daftar file kunci di dalam folder-folder penting beserta fungsi spesifiknya:
+        Aplikasi ini menggunakan pendekatan <strong>Hybrid Backend</strong>. Beban kerja dibagi secara efisien antara interaksi langsung ke Supabase (Client-to-Database) dan interaksi melalui Server Backend Next.js (Client-to-Server-to-Database):
+      </p>
+      <pre className="docs-code" style={{ padding: "1.2rem", lineHeight: "1.6", fontSize: "0.75rem" }}>
+{`+--------------------------------------------------------+
+|                        BROWSER                         |
++---------------+------------------------+---------------+
+                |                        |
+     (A) Direct CRUD Query      (B) Complex Service Request
+    [useTable / Supabase SDK]      [fetch / Next.js API]
+                |                        |
+                v                        v
++------------------------+      +------------------------+
+|    SUPABASE DIRECT     |      |     NEXT.JS SERVER     |
+|   (PostgREST Engine)   |      |    (Route Handlers)    |
++---------------+--------+      +--------+---------------+
+                |                        |
+          RLS Validation          Admin / Service Role
+         [get_user_role()]        [Bypass RLS check]
+                |                        |
+                v                        v
++--------------------------------------------------------+
+|                 DATABASE (POSTGRESQL)                  |
++--------------------------------------------------------+`}
+      </pre>
+
+      <Table
+        headers={["Mekanisme Alur", "Cara Kerja & Proses", "Keamanan & Validasi"]}
+        rows={[
+          [
+            "<strong>(A) Supabase Direct Access</strong><br/>(Operasi CRUD Ringan)",
+            "Browser berinteraksi langsung ke Supabase API menggunakan React Hooks (seperti <code>useTable</code> atau <code>useRow</code>). Klien browser menggunakan <em>anon_key</em> untuk mengambil data produk, kehadiran, logistik, dll.",
+            "Keamanan dijamin penuh di level database menggunakan <strong>Row Level Security (RLS)</strong>. Database memeriksa JWT token user aktif dengan fungsi <code>get_user_role()</code> untuk membatasi hak akses baca/tulis."
+          ],
+          [
+            "<strong>(B) Next.js API Routes</strong><br/>(Transaksi & Logika Kompleks)",
+            "Browser mengirim HTTP Request (JSON) ke endpoint <code>/api/...</code>. Server Next.js menerima request, memanggil <code>body-validator</code>, lalu mengeksekusi logika di service layer (<code>lib/services/</code>) secara transaksional.",
+            "Server divalidasi oleh <code>auth.guard.ts</code> di sisi server. Untuk menulis ke multi-tabel atau database lintas skema, server menggunakan <code>SUPABASE_SERVICE_ROLE_KEY</code> (bypassing RLS) demi integritas data."
+          ]
+        ]}
+      />
+
+      <h3 className="docs-h3">A. Daftar Fitur yang Menggunakan Supabase Direct API</h3>
+      <p className="docs-p">
+        Fitur-fitur CRUD standar yang langsung diakses dari browser ke database Supabase demi performa dan kemudahan sinkronisasi real-time:
+      </p>
+      <Table
+        headers={["Kategori Fitur", "Data / Tabel yang Diakses", "Deskripsi Akses"]}
+        rows={[
+          ["Otentikasi Utama", "Supabase Auth", "Proses sign-in, sign-out, dan manajemen sesi login aktif di sisi klien."],
+          ["Modul Core", "<code>m_produk</code>, <code>m_varian</code>, <code>m_vendor</code>", "Melihat katalog produk, variasi SKU, dan master supplier."],
+          ["Modul HR (SDM)", "<code>m_karyawan</code>, <code>t_attendance</code>, <code>t_employee_warning</code>", "Input presensi harian karyawan, rekap absensi, dan data surat peringatan."],
+          ["Modul Finance", "<code>t_cashflow</code>", "Pencatatan langsung transaksi pemasukan dan pengeluaran kas kecil/besar."],
+          ["Modul Logistik", "<code>t_packing</code>, <code>t_logistik_manifest</code>, <code>t_return_order</code>", "Melihat antrean pengemasan barang dan manifest kurir."],
+          ["Modul Sales / Penjualan", "<code>m_affiliator</code>, <code>t_content_planner</code>, <code>t_sales_order</code>", "Penjadwalan live streaming, data affiliator, serta pemantauan pesanan."],
+          ["Modul Management", "<code>t_kpi_weekly</code>", "Pengisian penilaian performa mingguan divisi oleh manager."]
+        ]}
+      />
+
+      <h3 className="docs-h3">B. Daftar Fitur yang Menggunakan Next.js API Routes (REST API)</h3>
+      <p className="docs-p">
+        Fitur-fitur transaksional yang memerlukan penanganan server backend untuk validasi, manipulasi multi-tabel, atau pemanggilan Supabase Admin API:
+      </p>
+      <Table
+        headers={["Endpoint REST API", "Metode HTTP", "Logika Bisnis yang Dijalankan"]}
+        rows={[
+          ["<code>/api/access/catalog</code>", "<code>GET</code>", "Mendapatkan daftar navigasi menu sidebar yang sesuai dengan level akses / divisi user."],
+          ["<code>/api/access/check</code>", "<code>GET</code>", "Memeriksa otorisasi apakah user berhak mengakses modul tertentu."],
+          ["<code>/api/dashboard/metrics</code>", "<code>GET</code>", "Query agregasi berskala besar lintas skema untuk menghasilkan angka statistik dashboard."],
+          ["<code>/api/profiles</code> dan <code>/api/profiles/[id]</code>", "<code>GET, POST, PUT, DELETE</code>", "Manajemen akun pengguna dashboard oleh admin (memerlukan hak Supabase Admin API)."],
+          ["<code>/api/finance/reimburse</code>", "<code>GET, POST, PUT</code>", "Workflow pengajuan nota belanja operasional dan persetujuan (approval) oleh atasan."],
+          ["<code>/api/finance/payroll</code>", "<code>GET, POST</code>", "Melakukan kalkulasi penggajian bulanan staf berdasarkan sanksi SP dan rekap kehadiran."],
+          ["<code>/api/management/budget</code>", "<code>GET, POST, PUT</code>", "Workflow pengajuan anggaran belanja divisi bulanan beserta persetujuannya."]
+        ]}
+      />
+
+      {/* ── 4. DETAIL FILE & LOGIKA ────────────────────────────── */}
+      <h2 className="docs-h2">4. Rincian File, Isi, & Logika Fungsi per Folder</h2>
+      <p className="docs-p">
+        Berikut adalah daftar file kunci di dalam folder-folder penting beserta fungsi spesifik dan logika programnya:
       </p>
 
-      <h3 className="docs-h3">Folder: <code>lib/access/</code></h3>
+      <h3 className="docs-h3">Folder: <code>lib/services/</code></h3>
+      <p className="docs-p">
+        Folder ini berisi file-file service yang mendefinisikan logika bisnis kompleks di tingkat server. Service ini dipanggil oleh Next.js API Routes (<code>app/api/...</code>) untuk mengisolasi query database.
+      </p>
+      
       <Table
-        headers={["Nama File", "Fungsi Spesifik"]}
+        headers={["Nama File", "Isi Berkas / Antarmuka (Interface)", "Logika Bisnis & Fungsi Utama"]}
         rows={[
-          [
-            "<code>catalog.ts</code>",
-            "Menyimpan master data menu navigasi (sidebar) lengkap dengan nama cluster, path, ikon, dan filter level akses untuk setiap divisi.",
-          ],
-          [
-            "<code>policy.ts</code>",
-            "Menyediakan fungsi pengecekan izin (seperti <code>hasAccessToMenu</code> atau <code>getVisibleMenuCatalog</code>) berdasarkan role pengguna saat ini.",
-          ],
-        ]}
-      />
-
-      <h3 className="docs-h3">Folder: <code>lib/supabase/</code></h3>
-      <Table
-        headers={["Nama File", "Fungsi Spesifik"]}
-        rows={[
-          [
-            "<code>browser.ts</code>",
-            "Menginisialisasi Supabase client khusus untuk lingkungan browser (client-side) menggunakan variable anon public key.",
-          ],
-          [
-            "<code>server.ts</code>",
-            "Menginisialisasi Supabase client khusus untuk SSR / API Routes (server-side) dengan penanganan cookies otomatis.",
-          ],
-          [
-            "<code>admin.ts</code>",
-            "Menginisialisasi Supabase Admin client menggunakan <code>SUPABASE_SERVICE_ROLE_KEY</code> untuk melakukan aksi bypass RLS / manajemen user.",
-          ],
-          [
-            "<code>auth-context.tsx</code>",
-            "Context provider React untuk melacak status login user secara global di aplikasi client-side (session, profile, loading).",
-          ],
-          [
-            "<code>hooks.ts</code>",
-            "Kumpulan generic React hooks seperti <code>useTable</code> (ambil list data berhalaman), <code>useRow</code> (ambil satu data), <code>useInsert</code>, <code>useUpdate</code>, dan <code>useDelete</code>.",
-          ],
-        ]}
-      />
-
-      <h3 className="docs-h3">Folder: <code>lib/services/</code> (Logika Bisnis Server)</h3>
-      <Table
-        headers={["Nama File", "Fungsi Spesifik"]}
-        rows={[
-          [
-            "<code>core.service.ts</code>",
-            "Mengelola data master inti platform seperti produk, varian, dan vendor.",
-          ],
           [
             "<code>finance.service.ts</code>",
-            "Menangani proses penggajian (payroll), persetujuan reimbursement, pencatatan kas kecil/besar, dan pelunasan utang-piutang.",
+            "Fungsi CRUD untuk cashflow, payroll history, reimbursement, COA (Chart of Accounts), journal entries, invoice, dan utang-piutang.",
+            "<strong>Logika Payroll & Akuntansi:</strong> Menghitung total pengeluaran gaji karyawan, memetakan transaksi ke kode COA akuntansi yang sesuai, memicu entri jurnal double-entry otomatis (debit/kredit) pada <code>t_journal_item</code>, serta validasi status persetujuan reimbursement sebelum memotong dana kas."
           ],
           [
             "<code>hr.service.ts</code>",
-            "Mengelola data karyawan, rekap kehadiran (attendance), penerbitan surat peringatan (SP), dan kontrak kerja PKWT.",
-          ],
-          [
-            "<code>logistics.service.ts</code>",
-            "Menangani proses antrean packing logistik, manifest pengiriman kurir, dan verifikasi return order barang retur.",
-          ],
-          [
-            "<code>production.service.ts</code>",
-            "Mengelola alur surat perintah kerja (SPK) produksi, serta validasi QC inbound dan QC outbound.",
+            "Fungsi manajemen karyawan, attendance, warning, PKWT, serta pembuatan template dokumen legal.",
+            "<strong>Logika Kehadiran & Kontrak:</strong> Menghitung persentase absensi bulanan, memproses sanksi SP (Surat Peringatan) secara bertahap (SP 1 ke SP 2), serta generate draf dokumen PKWT otomatis berdasarkan masa kontrak karyawan."
           ],
           [
             "<code>sales.service.ts</code>",
-            "Menyimpan logika integrasi content planner afiliasi, live streaming performance harian, membership pelanggan, dan order penjualan.",
+            "Fungsi pelacakan penjualan, content planner, live stream stats, affiliator, dan data order.",
+            "<strong>Logika Afiliasi & Sales Order:</strong> Menghitung pembagian komisi untuk affiliator secara dinamis berdasarkan persentase penjualan produk, melacak efektivitas konten live streaming, serta memicu pembuatan otomatis antrean packing gudang saat status sales order divalidasi lunas."
           ],
+          [
+            "<code>logistics.service.ts</code>",
+            "Fungsi packing barang, manifest logistik, dan pengelolaan return order.",
+            "<strong>Logika Gudang & Ekspedisi:</strong> Mengelompokkan barang pesanan berdasarkan kurir/ekspedisi dalam satu manifes pengiriman, memperbarui status stok fisik produk setelah barang dikemas, serta memproses validasi foto bukti fisik barang cacat pada klaim retur."
+          ],
+          [
+            "<code>production.service.ts</code>",
+            "Fungsi order produksi (SPK) dan Quality Control (Inbound/Outbound).",
+            "<strong>Logika SPK & QC:</strong> Memantau tahapan produksi (antre -> proses -> selesai), memvalidasi status kelayakan bahan baku masuk (inbound QC), serta memastikan produk jadi (outbound QC) memenuhi spesifikasi standar mutu sebelum dipindah ke gudang."
+          ]
         ]}
       />
 
-      <h3 className="docs-h3">Folder: <code>components/auth/</code> & <code>lib/guards/</code></h3>
+      {/* ── 3. LIB/SUPABASE/HOOKS ────────────────────────────────── */}
+      <h2 className="docs-h2">3. Folder: <code>lib/supabase/hooks/</code> (Client-Side Hooks Khusus Entitas)</h2>
+      <p className="docs-p">
+        Dalam arsitektur hybrid, browser dapat melakukan query ringan secara langsung ke Supabase yang diamankan oleh RLS. Hooks ini membungkus query tersebut agar reaktif dalam React.
+      </p>
+      
       <Table
-        headers={["Nama File", "Fungsi Spesifik"]}
+        headers={["Nama File Hooks", "Isi Berkas / State", "Kegunaan & Logika Reaktif Client"]}
         rows={[
           [
-            "<code>AuthGuard.tsx</code> (components)",
-            "Melindungi halaman di sisi browser. Mengecek session aktif dan mencocokkan level role pengguna dengan rute yang coba diakses. Jika tidak diizinkan, akan di-redirect ke halaman login/unauthorized.",
+            "<code>use-products.ts</code>",
+            "State: <code>products</code>, <code>loading</code>, <code>error</code>.<br/>Method: <code>fetchProducts()</code>, <code>addProduct()</code>, <code>editProduct()</code>.",
+            "Menghubungkan visual UI katalog ke skema tabel <code>core.m_produk</code> secara real-time. Menyediakan fitur pencarian produk terintegrasi dengan filter kategori langsung di browser."
           ],
           [
-            "<code>auth.guard.ts</code> (lib/guards)",
-            "Middleware / guard di sisi server Next.js API Routes. Mencegah pemanggilan API ilegal dengan memvalidasi Bearer Token JWT / session sebelum mengeksekusi service logic.",
+            "<code>use-karyawan.ts</code>",
+            "State: Karyawan list, pagination metadata.<br/>Method: CRUD karyawan, update status keaktifan.",
+            "Menyajikan data list karyawan untuk kebutuhan divisi HRD secara langsung dari tabel <code>hr.m_karyawan</code> dengan filter instan berdasarkan status (aktif/kontrak habis)."
           ],
+          [
+            "<code>use-attendance.ts</code>",
+            "State: Data kehadiran harian, detail jam kerja.<br/>Method: <code>clockIn()</code>, <code>clockOut()</code>.",
+            "Mendapatkan koordinat lokasi absen serta jam masuk/pulang, mencocokkannya dengan toleransi waktu keterlambatan perusahaan, lalu menyimpannya ke tabel <code>hr.t_attendance</code>."
+          ],
+          [
+            "<code>use-logistics.ts</code>",
+            "State: List manifest, antrean packing.<br/>Method: Update status packing & manifest.",
+            "Menyajikan daftar antrean kemasan barang pesanan (packing status) untuk staf gudang dan memicu update status pengiriman manifest kurir secara real-time."
+          ],
+          [
+            "<code>use-variants.ts</code> & <code>use-vendors.ts</code>",
+            "State: List varian SKU, data supplier.<br/>Method: CRUD varian & vendor.",
+            "Mengurus relasi data produk dengan variasi spesifiknya (warna, ukuran) dan mengelola database kontak vendor penyuplai bahan baku utama."
+          ]
         ]}
       />
 
-      <h3 className="docs-h3">Folder: <code>types/</code></h3>
+      {/* ── 4. APP/API ──────────────────────────────────────────── */}
+      <h2 className="docs-h2">4. Folder: <code>app/api/</code> (Server-Side Route Handlers / Endpoints)</h2>
+      <p className="docs-p">
+        API Routes berfungsi sebagai jembatan backend Next.js yang memproses validasi, otorisasi token JWT, dan mengontrol eksekusi service layer.
+      </p>
+
       <Table
-        headers={["Nama File", "Fungsi Spesifik"]}
+        headers={["Rute API / File", "Isi handler", "Logika Aliran Program (Flow Logic)"]}
         rows={[
           [
-            "<code>supabase.ts</code>",
-            "Definisi type otomatis yang digenerate oleh Supabase CLI dari PostgreSQL. Berisi definisi skema kolom tabel secara presisi.",
+            "<code>api/finance/payroll/route.ts</code>",
+            "Handler: <code>GET</code> (list payroll), <code>POST</code> (kalkulasi gaji bulanan).",
+            "Menerima parameter bulan dan tahun. Memanggil <code>hr.service</code> untuk mengambil data kehadiran & potongan SP karyawan, memproses nominal gaji bersih, membuat record transaksi pengeluaran di <code>t_cashflow</code>, lalu menyimpannya ke <code>t_payroll_history</code>."
           ],
           [
-            "<code>access.ts</code>",
-            "Mendefinisikan tipe data navigasi, role tingkat pengguna (Super Admin, Developer, CEO, dll), dan cluster menu.",
+            "<code>api/finance/reimburse/route.ts</code> &<br/><code>[id]/route.ts</code>",
+            "Handler: <code>GET</code>, <code>POST</code> (pengajuan), <code>PUT</code> (approval status).",
+            "Memvalidasi payload nota bukti fisik belanja. Jika status diubah menjadi <code>approved</code> oleh supervisor, route memicu transfer jurnal di modul akuntansi akrual dan memotong saldo COA Kas."
           ],
+          [
+            "<code>api/access/catalog/route.ts</code>",
+            "Handler: <code>GET</code> (mengambil katalog menu).",
+            "Membaca cookie session pengguna, memanggil policy engine di <code>lib/access/policy.ts</code>, dan merespons dengan daftar menu navigasi yang berhak dilihat sesuai role aktif (CEO, Finance, HR, dll.)."
+          ],
+          [
+            "<code>api/dashboard/metrics/route.ts</code>",
+            "Handler: <code>GET</code> (aggregation data dashboard).",
+            "Melakukan query agregasi lintas schema (core, finance, hr, production) secara simultan menggunakan raw query di server untuk menyajikan data grafik omzet, performa KPI divisi, dan jumlah antrean QC ke dashboard eksekutif."
+          ]
+        ]}
+      />
+
+      {/* ── 5. LIB/VALIDATION ────────────────────────────────────── */}
+      <h2 className="docs-h2">5. Folder: <code>lib/validation/</code> (Data Integrity / Zod Schemas)</h2>
+      <p className="docs-p">
+        Menampung berkas skema Zod untuk menjaga keamanan tipe data input sebelum masuk ke database, mencegah SQL injection atau payload korup.
+      </p>
+
+      <Table
+        headers={["Nama File", "Skema Validasi (Zod Schema)", "Aturan Logika Validasi"]}
+        rows={[
+          [
+            "<code>profiles-admin.ts</code>",
+            "<code>CreateProfileSchema</code>, <code>UpdateProfileSchema</code>.",
+            "Memastikan input nama lengkap minimal 3 karakter, format email valid, penetapan role harus sesuai dengan enum role resmi (CEO, Finance, HR, Staf, dll.), serta kata sandi memenuhi kriteria keamanan."
+          ],
+          [
+            "<code>hr-admin.ts</code>",
+            "<code>EmployeeSchema</code>, <code>AttendanceSchema</code>.",
+            "Memvalidasi tipe data masukan karyawan seperti kecocokan format NIK (Nomor Induk Karyawan), nomor rekening bank, besaran gaji pokok (harus bernilai positif), dan kelengkapan dokumen pendukung."
+          ],
+          [
+            "<code>body-validator.ts</code>",
+            "Helper function: <code>validateBody()</code>.",
+            "Helper generic yang memproses request body JSON dan mencocokkannya dengan skema Zod secara dinamis. Jika input tidak valid, secara otomatis membalas dengan status <code>400 Bad Request</code> beserta detail kolom yang error."
+          ]
         ]}
       />
     </>
