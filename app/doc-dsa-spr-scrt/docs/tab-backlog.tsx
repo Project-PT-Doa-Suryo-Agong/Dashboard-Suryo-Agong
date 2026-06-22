@@ -48,15 +48,7 @@ export default function TabBacklog() {
         </li>
       </ul>
 
-      <h3 className="docs-h3">3. Modul Manajemen SDM / HR</h3>
-      <ul className="docs-list">
-        <li>
-          <input type="checkbox" disabled style={{ marginRight: "0.5rem" }} />
-          <strong>[BUG FIX]</strong> Perbaiki kendala pada menu <em>PKWT/PKWTP</em>: Tombol/fitur sudah ada, tetapi tidak bisa digunakan untuk menambahkan data baru.
-        </li>
-      </ul>
-
-      <h3 className="docs-h3">4. Modul Produksi & Manajemen Aset</h3>
+      <h3 className="docs-h3">3. Modul Produksi & Manajemen Aset</h3>
       <ul className="docs-list">
         <li>
           <input type="checkbox" disabled style={{ marginRight: "0.5rem" }} />
@@ -68,7 +60,7 @@ export default function TabBacklog() {
         </li>
       </ul>
 
-      <h3 className="docs-h3">5. Fitur Global & Sistem Pelaporan</h3>
+      <h3 className="docs-h3">4. Fitur Global & Sistem Pelaporan</h3>
       <ul className="docs-list">
         <li>
           <input type="checkbox" disabled style={{ marginRight: "0.5rem" }} />
@@ -82,14 +74,6 @@ export default function TabBacklog() {
         rows={[
           [
             "1",
-            "Perbaikan Bug Input Data PKWT/PKWTP",
-            '<span class="docs-badge docs-badge-red">Bug Fix</span>',
-            "Tim Developer",
-            "<strong>Tinggi</strong>",
-            '<span class="docs-badge docs-badge-amber">Pending</span>'
-          ],
-          [
-            "2",
             "Pengembangan Logika Kontrol Max Budget & Validasi",
             '<span class="docs-badge docs-badge-blue">Fitur Baru</span>',
             "Tim Developer",
@@ -97,7 +81,7 @@ export default function TabBacklog() {
             '<span class="docs-badge docs-badge-amber">Pending</span>'
           ],
           [
-            "3",
+            "2",
             "Integrasi Otomatisasi Potongan Kasbon ke Slip Gaji",
             '<span class="docs-badge docs-badge-blue">Fitur Baru</span>',
             "Tim Developer",
@@ -105,7 +89,7 @@ export default function TabBacklog() {
             '<span class="docs-badge docs-badge-amber">Pending</span>'
           ],
           [
-            "4",
+            "3",
             "Pembuatan Skema Auto-Generate Kode Jurnal",
             '<span class="docs-badge docs-badge-blue">Fitur Baru</span>',
             "Tim Developer",
@@ -113,7 +97,7 @@ export default function TabBacklog() {
             '<span class="docs-badge docs-badge-amber">Pending</span>'
           ],
           [
-            "5",
+            "4",
             "Pengembangan Modul Laporan Keuangan & Bahan Baku",
             '<span class="docs-badge docs-badge-blue">Fitur Baru</span>',
             "Tim Developer",
@@ -121,7 +105,7 @@ export default function TabBacklog() {
             '<span class="docs-badge docs-badge-amber">Pending</span>'
           ],
           [
-            "6",
+            "5",
             "Implementasi Mesin Cetak PDF Global (All Features)",
             '<span class="docs-badge docs-badge-blue">Fitur Baru</span>',
             "Tim Developer",
@@ -129,7 +113,7 @@ export default function TabBacklog() {
             '<span class="docs-badge docs-badge-amber">Pending</span>'
           ],
           [
-            "7",
+            "6",
             "Pengujian Internal Seluruh Komponen Sistem",
             '<span class="docs-badge docs-badge-gray">Testing</span>',
             "Dev & User",
@@ -137,7 +121,7 @@ export default function TabBacklog() {
             '<span class="docs-badge docs-badge-amber">Pending</span>'
           ],
           [
-            "8",
+            "7",
             "Sesi User Acceptance Test (UAT) Bersama Klien",
             '<span class="docs-badge docs-badge-gray">Evaluasi</span>',
             "Tim Project",
