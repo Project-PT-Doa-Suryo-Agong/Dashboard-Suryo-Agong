@@ -41,6 +41,8 @@ const KATEGORI_LIST = [
 export default function ProdukPage() {
   const [namaProduk, setNamaProduk] = useState("");
   const [kategori, setKategori] = useState("");
+  const [isAddingNewKategori, setIsAddingNewKategori] = useState(false);
+  const [newKategori, setNewKategori] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,6 +66,16 @@ export default function ProdukPage() {
   const { update } = useUpdateProduct();
   const { remove } = useDeleteProduct();
 
+  const dynamicKategoriList = useMemo(() => {
+    const list = [...KATEGORI_LIST];
+    (produkList || []).forEach((p) => {
+      if (p.kategori && !list.includes(p.kategori)) {
+        list.push(p.kategori);
+      }
+    });
+    return list;
+  }, [produkList]);
+
   const handleFotoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -81,6 +93,8 @@ export default function ProdukPage() {
   const resetForm = useCallback(() => {
     setNamaProduk("");
     setKategori("");
+    setIsAddingNewKategori(false);
+    setNewKategori("");
     setEditingId(null);
     setFotoFile(null);
     setFotoPreview(null);
@@ -91,6 +105,12 @@ export default function ProdukPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    const finalKategori = isAddingNewKategori ? newKategori.trim() : kategori;
+    if (!finalKategori) {
+      alert("Kategori harus dipilih atau diisi.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -106,7 +126,7 @@ export default function ProdukPage() {
         setIsUploading(false);
       }
 
-      const payload = { nama_produk: namaProduk, kategori, foto_url: fotoUrl };
+      const payload = { nama_produk: namaProduk, kategori: finalKategori, foto_url: fotoUrl };
 
       if (editingId) {
         const result = await update(editingId, payload);
@@ -131,6 +151,8 @@ export default function ProdukPage() {
     setEditingId(p.id);
     setNamaProduk(p.nama_produk);
     setKategori(p.kategori ?? "");
+    setIsAddingNewKategori(false);
+    setNewKategori("");
     setFotoFile(null);
     setFotoPreview(null);
     setExistingFotoUrl(p.foto_url ?? null);
@@ -253,25 +275,60 @@ export default function ProdukPage() {
             </label>
             <div className="relative">
               <select
-                value={kategori}
-                onChange={(e) => setKategori(e.target.value)}
-                required
+                value={isAddingNewKategori ? "__new__" : kategori}
+                onChange={(e) => {
+                  if (e.target.value === "__new__") {
+                    setIsAddingNewKategori(true);
+                    setKategori("");
+                  } else {
+                    setIsAddingNewKategori(false);
+                    setKategori(e.target.value);
+                  }
+                }}
+                required={!isAddingNewKategori}
                 className="w-full appearance-none px-4 py-3 bg-slate-200 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-slate-200/20 focus:border-slate-200 text-sm outline-none transition-all cursor-pointer"
               >
                 <option value="" disabled>
                   - Pilih Kategori -
                 </option>
-                {KATEGORI_LIST.map((k) => (
+                {dynamicKategoriList.map((k) => (
                   <option key={k} value={k}>
                     {k}
                   </option>
                 ))}
+                <option value="__new__" className="text-emerald-600 font-semibold">
+                  + Tambah Kategori Baru
+                </option>
               </select>
               <ChevronDown
                 size={16}
                 className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"
               />
             </div>
+
+            {isAddingNewKategori && (
+              <div className="mt-3 flex gap-2">
+                <input
+                  type="text"
+                  value={newKategori}
+                  onChange={(e) => setNewKategori(e.target.value)}
+                  required
+                  placeholder="Masukkan kategori baru..."
+                  className="flex-1 px-4 py-2 bg-slate-200 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-slate-200/20 focus:border-slate-200 text-sm outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingNewKategori(false);
+                    setNewKategori("");
+                    setKategori("");
+                  }}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-500 rounded-xl text-xs font-semibold transition-colors"
+                >
+                  Batal
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Foto Produk — full width */}
