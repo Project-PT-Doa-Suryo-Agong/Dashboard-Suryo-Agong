@@ -58,6 +58,7 @@ type FormItem = {
   nama_varian?: string;
   harga?: string;
   kategori?: string;
+  is_adding_new_kategori?: boolean;
 };
 
 type FormState = {
@@ -234,7 +235,7 @@ export default function SalesOrderPage() {
     }));
   };
 
-  const handleItemChange = (index: number, field: keyof FormItem, value: string) => {
+  const handleItemChange = (index: number, field: keyof FormItem, value: any) => {
     setFormData((prev) => {
       const nextItems = [...prev.items];
       nextItems[index] = {
@@ -249,6 +250,7 @@ export default function SalesOrderPage() {
         nextItems[index].nama_varian = "";
         nextItems[index].harga = "";
         nextItems[index].kategori = "";
+        nextItems[index].is_adding_new_kategori = false;
       } else if (field === "varian_id" && value === "new") {
         nextItems[index].is_new = true;
       }
@@ -1151,21 +1153,56 @@ export default function SalesOrderPage() {
 
                       <div className="md:col-span-2 space-y-1">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Kategori Baru <span className="text-red-400">*</span></label>
-                        <select
-                          required
-                          value={it.kategori || ""}
-                          onChange={(event) => handleItemChange(idx, "kategori", event.target.value)}
-                          className="w-full bg-white border text-slate-700 border-blue-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
-                          disabled={isSubmitting}
-                        >
-                          <option value="" disabled>-- Pilih Kategori --</option>
-                          <option value="Pakaian">Pakaian</option>
-                          <option value="Aksesoris">Aksesoris</option>
-                          <option value="Sepatu">Sepatu</option>
-                          <option value="Tas">Tas</option>
-                          <option value="Elektronik">Elektronik</option>
-                          <option value="Lainnya">Lainnya</option>
-                        </select>
+                        <div className="relative">
+                          <select
+                            required={!it.is_adding_new_kategori}
+                            value={it.is_adding_new_kategori ? "__new__" : (it.kategori || "")}
+                            onChange={(event) => {
+                              if (event.target.value === "__new__") {
+                                handleItemChange(idx, "is_adding_new_kategori", true);
+                                handleItemChange(idx, "kategori", "");
+                              } else {
+                                handleItemChange(idx, "is_adding_new_kategori", false);
+                                handleItemChange(idx, "kategori", event.target.value);
+                              }
+                            }}
+                            className="w-full bg-white border text-slate-700 border-blue-200 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+                            disabled={isSubmitting}
+                          >
+                            <option value="" disabled>-- Pilih Kategori --</option>
+                            <option value="Pakaian">Pakaian</option>
+                            <option value="Aksesoris">Aksesoris</option>
+                            <option value="Sepatu">Sepatu</option>
+                            <option value="Tas">Tas</option>
+                            <option value="Elektronik">Elektronik</option>
+                            <option value="Lainnya">Lainnya</option>
+                            <option value="__new__" className="text-blue-600 font-bold">+ Tambah Kategori Baru</option>
+                          </select>
+                        </div>
+
+                        {it.is_adding_new_kategori && (
+                          <div className="mt-2 flex gap-2">
+                            <input
+                              required
+                              type="text"
+                              value={it.kategori || ""}
+                              onChange={(event) => handleItemChange(idx, "kategori", event.target.value)}
+                              className="flex-1 bg-white border text-slate-700 border-blue-200 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                              placeholder="Masukkan kategori baru..."
+                              disabled={isSubmitting}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleItemChange(idx, "is_adding_new_kategori", false);
+                                handleItemChange(idx, "kategori", "");
+                              }}
+                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-500 rounded-lg text-[10px] font-semibold transition-colors"
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       <div className="md:col-span-2 flex items-center pt-5 text-blue-700 text-xs font-semibold gap-1.5">
