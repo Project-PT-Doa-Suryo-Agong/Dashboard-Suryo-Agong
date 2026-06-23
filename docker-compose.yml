@@ -1,22 +1,33 @@
-version: '3.8'
-
+name: carubra-dashboard_client-doa
 services:
-  web:
+  # ========================================
+  # PRODUCTION ENVIRONMENT
+  # ========================================
+  node-carubra-dashboard-client_doa:
     build:
       context: .
-      dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
-        - NEXT_PUBLIC_COOKIE_DOMAIN=${NEXT_PUBLIC_COOKIE_DOMAIN}
-    image: dashboard-suryo-agung:latest
-    container_name: dashboard-suryo-agung
+        - ENV_FILE=.env
+    container_name: carubra-dashboard-client_doa
     restart: always
-    ports:
-      - "3000:3000"
     env_file:
       - .env
-    environment:
-      - PORT=3000
-      - HOSTNAME=0.0.0.0
+    networks:
+      - carubra-network
+
+  nginx-carubra-dashboard-client_doa:
+    image: nginx:alpine
+    container_name: nginx_proxy_client_doa
+    restart: always
+    ports:
+      - "8083:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - node-carubra-dashboard-client_doa
+    networks:
+      - carubra-network
+
+networks:
+  carubra-network:
+    external: true

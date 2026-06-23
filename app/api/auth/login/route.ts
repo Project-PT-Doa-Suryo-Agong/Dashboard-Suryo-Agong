@@ -8,9 +8,7 @@ import { ErrorCode } from "@/lib/http/error-codes";
 
 // --------------- helpers ---------------
 
-const ALLOWED_ORIGINS = [
-  "http://localhost:3000",
-];
+const ALLOWED_ORIGINS = ["http://localhost:3000"];
 
 function isAllowedOrigin(origin: string | null): origin is string {
   if (!origin) return false;
@@ -25,7 +23,9 @@ function isAllowedOrigin(origin: string | null): origin is string {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (siteUrl) {
-      const base = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`);
+      const base = new URL(
+        siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`,
+      );
       const baseHost = base.hostname.replace(/^www\./, "");
       const reqHost = parsed.hostname.replace(/^www\./, "");
       if (reqHost === baseHost || reqHost.endsWith(`.${baseHost}`)) return true;
@@ -56,63 +56,69 @@ function slugifyRole(role: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function mapRoleToDashboardPath(role: string | null | undefined): string | null {
+function mapRoleToDashboardPath(
+  role: string | null | undefined,
+): string | null {
   if (!role) return null;
   const slug = slugifyRole(role);
 
   const exactMap: Record<string, string> = {
-    "super-admin":         "/super-admin",
-    "admin":               "/admin",
-    "developer":           "/super-admin",
-    "senior-developer":    "/super-admin",
-    "ceo":                 "/management",
-    "management":          "/management",
-    "manager":             "/management",
+    "super-admin": "/super-admin",
+    admin: "/admin",
+    developer: "/super-admin",
+    "senior-developer": "/super-admin",
+    ceo: "/management",
+    management: "/management",
+    manager: "/management",
     "management-strategy": "/management",
-    "management-strategic":"/management",
-    "finance":             "/finance",
-    "finance-accounting":  "/finance",
-    "finance-team":        "/finance",
-    "hr":                  "/hr",
-    "human-resource":      "/hr",
-    "human-resources":     "/hr",
+    "management-strategic": "/management",
+    finance: "/finance",
+    "finance-accounting": "/finance",
+    "finance-team": "/finance",
+    hr: "/hr",
+    "human-resource": "/hr",
+    "human-resources": "/hr",
     "human-resource-dept": "/hr",
-    "human-resources-dept":"/hr",
-    "produksi":            "/produksi",
-    "production":          "/produksi",
-    "produksi-team":       "/produksi",
-    "logistik":            "/logistik",
-    "logistics":           "/logistik",
-    "logistik-team":       "/logistik",
-    "creative":            "/creative",
-    "creative-manager":    "/creative",
-    "sales":               "/creative",
-    "creative-sales":      "/creative",
-    "office":              "/office",
-    "office-support":      "/office",
+    "human-resources-dept": "/hr",
+    produksi: "/produksi",
+    production: "/produksi",
+    "produksi-team": "/produksi",
+    logistik: "/logistik",
+    logistics: "/logistik",
+    "logistik-team": "/logistik",
+    creative: "/creative",
+    "creative-manager": "/creative",
+    sales: "/creative",
+    "creative-sales": "/creative",
+    office: "/office",
+    "office-support": "/office",
   };
 
   if (exactMap[slug]) return exactMap[slug];
 
   if (slug.includes("admin") && !slug.includes("super")) return "/admin";
-  if (slug.includes("super-admin") || slug.includes("developer")) return "/super-admin";
+  if (slug.includes("super-admin") || slug.includes("developer"))
+    return "/super-admin";
   if (slug.includes("management")) return "/management";
-  if (slug.includes("ceo"))        return "/management";
-  if (slug.includes("finance"))    return "/finance";
+  if (slug.includes("ceo")) return "/management";
+  if (slug.includes("finance")) return "/finance";
   if (slug.includes("human-resource")) return "/hr";
-  if (slug.includes("produksi"))   return "/produksi";
+  if (slug.includes("produksi")) return "/produksi";
   if (slug.includes("production")) return "/produksi";
-  if (slug.includes("logistik"))   return "/logistik";
-  if (slug.includes("logistics"))  return "/logistik";
-  if (slug.includes("creative"))   return "/creative";
-  if (slug.includes("sales"))      return "/creative";
-  if (slug.includes("office"))     return "/office";
-  if (slug.includes("hr"))         return "/hr";
+  if (slug.includes("logistik")) return "/logistik";
+  if (slug.includes("logistics")) return "/logistik";
+  if (slug.includes("creative")) return "/creative";
+  if (slug.includes("sales")) return "/creative";
+  if (slug.includes("office")) return "/office";
+  if (slug.includes("hr")) return "/hr";
 
   return "/management";
 }
 
-function buildRedirectUrl(dashboardPath: string, requestOrigin: string): string {
+function buildRedirectUrl(
+  dashboardPath: string,
+  requestOrigin: string,
+): string {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
   if (siteUrl) {
@@ -152,8 +158,14 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch {
-      const response = fail(ErrorCode.INVALID_JSON, "Body request harus JSON valid.", 400);
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+      const response = fail(
+        ErrorCode.INVALID_JSON,
+        "Body request harus JSON valid.",
+        400,
+      );
+      Object.entries(corsHeaders).forEach(([key, value]) =>
+        response.headers.set(key, value),
+      );
       return response;
     }
 
@@ -161,18 +173,29 @@ export async function POST(request: NextRequest) {
     const password = typeof body.password === "string" ? body.password : "";
 
     if (!email || !password) {
-      const response = fail(ErrorCode.VALIDATION_ERROR, "Email dan password wajib diisi.", 400);
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+      const response = fail(
+        ErrorCode.VALIDATION_ERROR,
+        "Email dan password wajib diisi.",
+        400,
+      );
+      Object.entries(corsHeaders).forEach(([key, value]) =>
+        response.headers.set(key, value),
+      );
       return response;
     }
 
-    const cookieDomain = getCookieDomain(request.headers.get("host") ?? fallbackOrigin);
+    const cookieDomain = getCookieDomain(
+      request.headers.get("host") ?? fallbackOrigin,
+    );
 
     // Collect all cookies Supabase sets, including chunked auth cookies.
-    const cookieMap = new Map<string, {
-      value: string;
-      options: Record<string, unknown>;
-    }>();
+    const cookieMap = new Map<
+      string,
+      {
+        value: string;
+        options: Record<string, unknown>;
+      }
+    >();
 
     const supabase = createServerClient<Database>(
       env.supabaseUrl,
@@ -192,7 +215,7 @@ export async function POST(request: NextRequest) {
             });
           },
         },
-      }
+      },
     );
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -214,7 +237,9 @@ export async function POST(request: NextRequest) {
       }
 
       const response = fail(ErrorCode.UNAUTHORIZED, error.message, 401);
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+      Object.entries(corsHeaders).forEach(([key, value]) =>
+        response.headers.set(key, value),
+      );
       return response;
     }
 
@@ -226,8 +251,12 @@ export async function POST(request: NextRequest) {
         ? data.user.app_metadata.role
         : null);
     let displayName =
-      (typeof data.user?.user_metadata?.nama === "string" ? data.user.user_metadata.nama : null) ??
-      (typeof data.user?.user_metadata?.full_name === "string" ? data.user.user_metadata.full_name : null) ??
+      (typeof data.user?.user_metadata?.nama === "string"
+        ? data.user.user_metadata.nama
+        : null) ??
+      (typeof data.user?.user_metadata?.full_name === "string"
+        ? data.user.user_metadata.full_name
+        : null) ??
       null;
 
     let profile = null;
@@ -240,25 +269,43 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
       profile = res.data;
       if (!role) role = typeof profile?.role === "string" ? profile.role : null;
-      if (!displayName) displayName = typeof profile?.nama === "string" ? profile.nama : null;
+      if (!displayName)
+        displayName = typeof profile?.nama === "string" ? profile.nama : null;
     }
 
     const dashboardPath = mapRoleToDashboardPath(role);
+    console.log("USER ID:", data.user?.id);
+    console.log("ROLE:", role);
+    console.log("PROFILE:", profile);
 
+    const res = await supabase
+    .schema("core")
+    .from("profiles")
+    .select("role, nama")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+    console.log("PROFILE QUERY:", res);
+
+    
     if (!dashboardPath) {
       const response = fail(
         ErrorCode.UNAUTHORIZED,
         "Akun ini belum memiliki role yang terdaftar. Hubungi administrator.",
-        401
+        401,
       );
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+      Object.entries(corsHeaders).forEach(([key, value]) =>
+        response.headers.set(key, value),
+      );
       return response;
     }
 
     const redirectUrl = buildRedirectUrl(dashboardPath, fallbackOrigin);
 
     const finalResponse = ok({ redirectUrl }, "Login berhasil.");
-    Object.entries(corsHeaders).forEach(([key, value]) => finalResponse.headers.set(key, value));
+    Object.entries(corsHeaders).forEach(([key, value]) =>
+      finalResponse.headers.set(key, value),
+    );
 
     for (const [name, { value, options }] of cookieMap.entries()) {
       finalResponse.cookies.set({
@@ -295,9 +342,12 @@ export async function POST(request: NextRequest) {
 
     return finalResponse;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal Server Error";
+    const message =
+      error instanceof Error ? error.message : "Internal Server Error";
     const response = fail(ErrorCode.INTERNAL_ERROR, message, 500);
-    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
+    Object.entries(corsHeaders).forEach(([key, value]) =>
+      response.headers.set(key, value),
+    );
     return response;
   }
 }
