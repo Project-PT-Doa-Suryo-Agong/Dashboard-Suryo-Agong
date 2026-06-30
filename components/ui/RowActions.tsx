@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, Trash2, Eye } from "lucide-react";
+import { Edit, Trash2, Eye, FileSpreadsheet } from "lucide-react";
 
 // ─── Shared base className ─────────────────────────────────────────────────
 const BASE =
@@ -104,6 +104,28 @@ export function DownloadButton({ onClick, disabled = false, label = "PDF" }: Dow
         <polyline points="7 10 12 15 17 10" />
         <line x1="12" x2="12" y1="15" y2="3" />
       </svg>
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+}
+
+// ─── ExcelButton ──────────────────────────────────────────────────────
+type ExcelButtonProps = {
+  onClick: () => void;
+  disabled?: boolean;
+  label?: string;
+};
+
+export function ExcelButton({ onClick, disabled = false, label = "Excel" }: ExcelButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      className={`${BASE} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-500 hover:border-emerald-500`}
+    >
+      <FileSpreadsheet size={14} />
       <span className="hidden sm:inline">{label}</span>
     </button>
   );

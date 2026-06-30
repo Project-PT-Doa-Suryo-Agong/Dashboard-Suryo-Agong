@@ -1,13 +1,15 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Edit, Eye, PlusCircle, Trash2 } from "lucide-react";
+import { Edit, Eye, PlusCircle, Trash2, Download } from "lucide-react";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MCOA, ManagementBudgetStatus, TBudgetRequest } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
-import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { RowActions, EditButton, DetailButton, DeleteButton, ExcelButton } from "@/components/ui/RowActions";
 import { SearchBar } from "@/components/ui/search-bar";
 
 type TBudgetRequestWithCoa = TBudgetRequest & {
@@ -327,6 +329,125 @@ export default function ManagementBudgetPage() {
     }
   };
 
+  const generateExcel = async (dataToExport: TBudgetRequestWithCoa[], filenamePrefix: string) => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Budget");
+
+    // 1. Header Dokumen
+    worksheet.mergeCells("A1:F1");
+    const titleRow = worksheet.getCell("A1");
+    titleRow.value = "PT Doa Suryo Agong";
+    titleRow.font = { name: "Arial", size: 16, bold: true, color: { argb: "FF1B365D" } };
+    titleRow.alignment = { vertical: "middle", horizontal: "center" };
+
+    worksheet.mergeCells("A2:F2");
+    const subTitleRow = worksheet.getCell("A2");
+    subTitleRow.value = "Laporan Pengajuan Anggaran Operasional";
+    subTitleRow.font = { name: "Arial", size: 12 };
+    subTitleRow.alignment = { vertical: "middle", horizontal: "center" };
+
+    worksheet.mergeCells("A3:F3");
+    const dateRow = worksheet.getCell("A3");
+    const printDate = new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(new Date());
+    dateRow.value = `Tanggal Cetak: ${printDate}`;
+    dateRow.font = { name: "Arial", size: 10, italic: true };
+    dateRow.alignment = { vertical: "middle", horizontal: "center" };
+
+    // Row 4 is empty (automatically skipped by just moving to row 5)
+
+    // 2. Table Header (Row 5)
+    const headerRow = worksheet.getRow(5);
+    headerRow.values = ["Nomor Pengajuan", "Tanggal", "Divisi", "COA", "Nominal", "Status"];
+    headerRow.height = 25;
+    
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF1B365D" },
+      };
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFD3D3D3" } },
+        left: { style: "thin", color: { argb: "FFD3D3D3" } },
+        bottom: { style: "thin", color: { argb: "FFD3D3D3" } },
+        right: { style: "thin", color: { argb: "FFD3D3D3" } },
+      };
+    });
+
+    // 3. Data Rows
+    dataToExport.forEach((item, index) => {
+      const rowIndex = 6 + index;
+      const row = worksheet.getRow(rowIndex);
+      
+      const tanggalFormat = item.created_at ? new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(item.created_at)) : "-";
+      const statusStr = item.status === "pending" ? "Menunggu" : item.status === "approved" ? "Disetujui" : "Ditolak";
+      const coaStr = item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-";
+      
+      row.values = [
+        item.budget_number ?? item.id,
+        tanggalFormat,
+        item.divisi,
+        coaStr,
+        item.amount,
+        statusStr
+      ];
+
+      const isEven = index % 2 === 0;
+      const fillColor = isEven ? "FFFFFFFF" : "FFF9F9F9";
+
+      row.eachCell((cell, colNumber) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: fillColor },
+        };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFD3D3D3" } },
+          left: { style: "thin", color: { argb: "FFD3D3D3" } },
+          bottom: { style: "thin", color: { argb: "FFD3D3D3" } },
+          right: { style: "thin", color: { argb: "FFD3D3D3" } },
+        };
+        cell.alignment = { vertical: "middle", horizontal: colNumber === 5 ? "right" : "left" };
+        
+        if (colNumber === 5) {
+          cell.numFmt = '"Rp" #,##0'; // Excel custom format for Rupiah
+        }
+      });
+    });
+
+    // Auto-fit Width
+    worksheet.columns.forEach((col, idx) => {
+      let maxLength = 10;
+      col.eachCell?.({ includeEmpty: true }, (cell, rowNumber) => {
+        if (rowNumber > 4) { // measure only headers and data
+          const textLength = cell.value ? cell.value.toString().length : 0;
+          if (textLength > maxLength) {
+            maxLength = textLength;
+          }
+        }
+      });
+      // add some padding
+      col.width = maxLength + 3;
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `${filenamePrefix}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const exportToExcel = () => {
+    if (items.length === 0) {
+      alert("Tidak ada data untuk diekspor");
+      return;
+    }
+    void generateExcel(filteredItems, "Data_Budget");
+  };
+
+  const handleExportSingle = (item: TBudgetRequestWithCoa) => {
+    void generateExcel([item], `Budget_${item.budget_number ?? "Single"}`);
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
@@ -355,14 +476,24 @@ export default function ManagementBudgetPage() {
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
-        >
-          <PlusCircle size={17} />
-          Tambah Pengajuan
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={exportToExcel}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+          >
+            <Download size={17} />
+            Export Excel
+          </button>
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600 transition"
+          >
+            <PlusCircle size={17} />
+            Tambah Pengajuan
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
@@ -403,8 +534,9 @@ export default function ManagementBudgetPage() {
                     <td className="px-4 py-3 text-center">
                       <RowActions>
                         <DetailButton onClick={() => openReviewModal(item)} disabled={isSubmitting} label="Tinjau" />
-                        <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
-                        <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
+                        <ExcelButton onClick={() => handleExportSingle(item)} disabled={isSubmitting} label="" />
+                        <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} label="" />
+                        <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} label="" />
                       </RowActions>
                     </td>
                   </tr>

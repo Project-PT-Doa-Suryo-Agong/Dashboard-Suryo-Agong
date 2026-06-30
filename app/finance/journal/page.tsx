@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Edit, PlusCircle, Trash2 } from "lucide-react";
+import { Edit, PlusCircle, Trash2, RefreshCw } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { SearchBar } from "@/components/ui/search-bar";
@@ -253,6 +253,15 @@ export default function FinanceJournalPage() {
     [journalItems],
   );
   const isBalanced = debitTotal === kreditTotal;
+
+  const generateNoBukti = () => {
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+    setFormData((prev) => ({ ...prev, no_bukti: `BKT-${yy}${mm}${dd}-${random}` }));
+  };
 
   const resetForm = () => {
     setFormData({ no_bukti: "", tanggal: "", keterangan: "" });
@@ -527,13 +536,23 @@ export default function FinanceJournalPage() {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">No Bukti</label>
-              <input
-                required
-                value={formData.no_bukti}
-                onChange={(event) => setFormData((prev) => ({ ...prev, no_bukti: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-                placeholder="Nomor bukti"
-              />
+              <div className="flex gap-2">
+                <input
+                  required
+                  value={formData.no_bukti}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, no_bukti: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                  placeholder="Nomor bukti"
+                />
+                <button
+                  type="button"
+                  onClick={generateNoBukti}
+                  className="inline-flex items-center justify-center rounded-xl bg-slate-200 px-3 py-2.5 text-slate-700 hover:bg-slate-300 transition"
+                  title="Auto Generate No Bukti"
+                >
+                  <RefreshCw size={16} />
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tanggal</label>
