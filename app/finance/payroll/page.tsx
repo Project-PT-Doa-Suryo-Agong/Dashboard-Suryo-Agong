@@ -3,8 +3,7 @@ import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Edit, PlusCircle, Search, Trash2 } from "lucide-react";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import { exportToPDF } from "@/lib/utils/export-pdf";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -350,7 +349,6 @@ export default function FinancePayrollPage() {
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const exportRows = filteredPayroll.map((item) => {
       const employeeName = employeeById[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan";
       return [
@@ -361,20 +359,12 @@ export default function FinancePayrollPage() {
       ];
     });
 
-    doc.setFontSize(14);
-    doc.text("Slip Gaji - PT Doa Suryo Agong", 14, 16);
-    doc.setFontSize(10);
-    doc.text(`Tanggal cetak: ${formatDate(new Date().toISOString())}`, 14, 22);
-
-    autoTable(doc, {
-      startY: 28,
-      head: [["Periode", "Nama Karyawan", "Total Gaji", "Tanggal Eksekusi"]],
-      body: exportRows,
-      styles: { fontSize: 9, cellPadding: 2.5 },
-      headStyles: { fillColor: [30, 58, 138] },
+    exportToPDF({
+      title: "Slip Gaji - PT Doa Suryo Agong",
+      headers: ["Periode", "Nama Karyawan", "Total Gaji", "Tanggal Eksekusi"],
+      rows: exportRows,
+      fileName: "Slip_Gaji_PT_Doa_Suryo_Agong.pdf",
     });
-
-    doc.save("Slip_Gaji_PT_Doa_Suryo_Agong.pdf");
   };
 
   return (

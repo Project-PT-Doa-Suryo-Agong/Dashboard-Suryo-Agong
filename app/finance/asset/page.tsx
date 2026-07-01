@@ -15,11 +15,13 @@ import {
   XCircle, 
   ArrowRight,
   TrendingDown,
-  DollarSign
+  DollarSign,
+  Download
 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { exportToPDF } from "@/lib/utils/export-pdf";
 import type { ApiSuccess, ApiError } from "@/types/api";
 import type { TAsset, TAssetDepreciationSchedule, MCOA } from "@/types/supabase";
 import { 
@@ -50,6 +52,17 @@ function formatDate(dateValue: string): string {
     month: "short",
     year: "numeric",
   }).format(new Date(dateValue));
+}
+
+function getDivisi(keterangan: string | null): string {
+  if (!keterangan) return "-";
+  const match = keterangan.match(/^\[DIVISI: (.*?)\]\s*/);
+  return match ? match[1] : "-";
+}
+
+function stripDivisiFromKeterangan(keterangan: string | null): string {
+  if (!keterangan) return "";
+  return keterangan.replace(/^\[DIVISI: .*?\]\s*/, "");
 }
 
 // Helper to compute standard depreciation schedule
@@ -151,6 +164,7 @@ export default function AssetManagementPage() {
   const [formData, setFormData] = useState({
     kode_aset: "",
     nama_aset: "",
+    divisi: "",
     tanggal_perolehan: new Date().toISOString().split("T")[0],
     nilai_perolehan: "",
     nilai_residu: "0",
@@ -201,6 +215,7 @@ export default function AssetManagementPage() {
     setFormData({
       kode_aset: `AST-${yearMonth}-${nextNum}`,
       nama_aset: "",
+      divisi: "",
       tanggal_perolehan: new Date().toISOString().split("T")[0],
       nilai_perolehan: "",
       nilai_residu: "0",
@@ -217,9 +232,13 @@ export default function AssetManagementPage() {
 
   const handleOpenEditModal = (asset: TAsset) => {
     setSelectedAsset(asset);
+    const rawKeterangan = asset.keterangan || "";
+    const divisi = getDivisi(rawKeterangan);
+    const cleanedKeterangan = stripDivisiFromKeterangan(rawKeterangan);
     setFormData({
       kode_aset: asset.kode_aset || "",
       nama_aset: asset.nama_aset || "",
+      divisi,
       tanggal_perolehan: asset.tanggal_perolehan || "",
       nilai_perolehan: String(asset.nilai_perolehan || ""),
       nilai_residu: String(asset.nilai_residu || "0"),
@@ -228,7 +247,7 @@ export default function AssetManagementPage() {
       coa_asset_id: asset.coa_asset_id || "",
       coa_depr_accumulation_id: asset.coa_depr_accumulation_id || "",
       coa_depr_expense_id: asset.coa_depr_expense_id || "",
-      keterangan: asset.keterangan || "",
+      keterangan: cleanedKeterangan,
       status: asset.status || "active",
     });
     setIsFormModalOpen(true);
@@ -256,6 +275,10 @@ export default function AssetManagementPage() {
     const nilaiResidu = Number(formData.nilai_residu);
     const masaManfaat = Number(formData.masa_manfaat_bulan);
 
+    const storedKeterangan = formData.divisi
+      ? `[DIVISI: ${formData.divisi}] ${formData.keterangan}`
+      : formData.keterangan;
+
     const payload = {
       kode_aset: formData.kode_aset,
       nama_aset: formData.nama_aset,
@@ -267,7 +290,7 @@ export default function AssetManagementPage() {
       coa_asset_id: formData.coa_asset_id,
       coa_depr_accumulation_id: formData.coa_depr_accumulation_id,
       coa_depr_expense_id: formData.coa_depr_expense_id,
-      keterangan: formData.keterangan,
+      keterangan: storedKeterangan,
       status: formData.status,
     };
 
@@ -411,6 +434,42 @@ export default function AssetManagementPage() {
     }
   };
 
+  const handleExportPDF = () => {
+    const filtered = filteredAssets.length > 0 ? filteredAssets : (assets || []);
+    const totalValue = filtered.reduce((s: number, a: TAsset) => s + (a.nilai_perolehan || 0), 0);
+    const activeCount = filtered.filter((a: TAsset) => a.status === "active").length;
+
+    exportToPDF({
+      title: "Laporan Manajamen Aset & Inventaris Perusahaan",
+      headers: ["Kode Aset", "Nama Aset", "Divisi Pengguna", "Tgl Perolehan", "Nilai Aset", "Status Kondisi"],
+      rows: filtered.map((asset: TAsset) => [
+        asset.kode_aset || "-",
+        asset.nama_aset || "-",
+        getDivisi(asset.keterangan),
+        asset.tanggal_perolehan ? formatDate(asset.tanggal_perolehan) : "-",
+        formatRupiah(asset.nilai_perolehan || 0),
+        asset.status === "active" ? "Aktif" : "Disposed",
+      ]),
+      columnStyles: {
+        0: { cellWidth: 28 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 28 },
+        3: { cellWidth: 26 },
+        4: { cellWidth: 36, halign: "right" },
+        5: { cellWidth: 24, halign: "center" },
+      },
+      summary: [
+        { label: "Total Aset Terdaftar", value: `${filtered.length} unit` },
+        { label: "Total Nilai Perolehan", value: formatRupiah(totalValue) },
+        { label: "Aset Aktif", value: `${activeCount} unit` },
+      ],
+      footNotes: [
+        "Dokumen ini digenerate secara otomatis dari sistem.  |  PT Doa Suryo Agong  |  Laporan Manajemen Aset",
+      ],
+      fileName: "Laporan_Manajemen_Aset_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
   // Dynamic Statistics Calculations
   const stats = useMemo(() => {
     if (!assets) return { totalValue: 0, activeCount: 0, totalDepr: 0, netValue: 0 };
@@ -434,13 +493,23 @@ export default function AssetManagementPage() {
             Kelola inventaris, hitung depresiasi secara otomatis, dan buat entri jurnal penyusutan berkala.
           </p>
         </div>
-        <button
-          onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#BC934B]/10 transition-all hover:bg-[#A88444] hover:shadow-[#A88444]/20 active:scale-95"
-        >
-          <PlusCircle size={18} />
-          Registrasi Aset Baru
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportPDF}
+            disabled={!assets || assets.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download size={18} />
+            Cetak PDF
+          </button>
+          <button
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#BC934B]/10 transition-all hover:bg-[#A88444] hover:shadow-[#A88444]/20 active:scale-95"
+          >
+            <PlusCircle size={18} />
+            Registrasi Aset Baru
+          </button>
+        </div>
       </section>
 
       {/* Stats Cards */}
@@ -541,6 +610,7 @@ export default function AssetManagementPage() {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-bold uppercase tracking-wider text-slate-400">
                   <th className="px-6 py-4">Kode / Nama Aset</th>
+                  <th className="px-6 py-4">Divisi</th>
                   <th className="px-6 py-4">Tgl Perolehan</th>
                   <th className="px-6 py-4">Nilai Perolehan</th>
                   <th className="px-6 py-4">Sisa Manfaat</th>
@@ -553,13 +623,13 @@ export default function AssetManagementPage() {
               <tbody className="divide-y divide-slate-100">
                 {assetsLoading ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                    <td colSpan={9} className="py-8 text-center text-slate-400">
                       Memuat data aset...
                     </td>
                   </tr>
                 ) : filteredAssets.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                    <td colSpan={9} className="py-8 text-center text-slate-400">
                       Tidak ada aset terdaftar.
                     </td>
                   </tr>
@@ -569,6 +639,9 @@ export default function AssetManagementPage() {
                       <td className="px-6 py-4">
                         <div className="font-semibold text-slate-800">{asset.nama_aset}</div>
                         <div className="text-xs text-slate-400 font-mono mt-0.5">{asset.kode_aset}</div>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 font-medium">
+                        {getDivisi(asset.keterangan)}
                       </td>
                       <td className="px-6 py-4 text-slate-600 font-medium">
                         {asset.tanggal_perolehan ? formatDate(asset.tanggal_perolehan) : "-"}
@@ -763,6 +836,18 @@ export default function AssetManagementPage() {
                 onChange={e => setFormData({ ...formData, nama_aset: e.target.value })}
                 required
                 placeholder="Contoh: Laptop Macbook Pro"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+              />
+            </div>
+
+            {/* Divisi Pengguna */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Divisi Pengguna</label>
+              <input
+                type="text"
+                value={formData.divisi}
+                onChange={e => setFormData({ ...formData, divisi: e.target.value })}
+                placeholder="Contoh: IT / Keuangan / Produksi"
                 className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
               />
             </div>

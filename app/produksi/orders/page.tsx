@@ -3,11 +3,12 @@ import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
 import * as xlsx from "xlsx";
-import { Edit3, Plus, Search, Trash2, FileSpreadsheet } from "lucide-react";
+import { Edit3, Plus, Search, Trash2, FileSpreadsheet, Download } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { exportToPDF } from "@/lib/utils/export-pdf";
 import { RowActions, EditButton, DeleteButton, DetailButton } from "@/components/ui/RowActions";
 import type {
   MProduk,
@@ -444,6 +445,32 @@ export default function ProductionOrdersPage() {
     }
   };
 
+  const handleExportPDF = () => {
+    exportToPDF({
+      title: "Laporan Pesanan Produksi",
+      headers: ["ID Pesanan", "Produk", "Vendor", "Kuantitas", "Status", "Tanggal Dibuat"],
+      rows: filteredItems.map((item) => [
+        item.produksi_number ?? item.id,
+        productById[item.product_id ?? ""] ?? "-",
+        vendorById[item.vendor_id ?? ""] ?? "-",
+        String(item.quantity ?? 0),
+        statusLabel[item.status ?? "draft"],
+        item.created_at ? formatDate(item.created_at) : "-",
+      ]),
+      columnStyles: {
+        0: { cellWidth: 32 },
+        3: { halign: "center" },
+        4: { halign: "center" },
+      },
+      summary: [
+        { label: "Total Pesanan", value: `${filteredItems.length} order` },
+        { label: "Selesai", value: `${filteredItems.filter((i) => i.status === "done").length} order` },
+        { label: "Sedang Berjalan", value: `${filteredItems.filter((i) => i.status === "ongoing").length} order` },
+      ],
+      fileName: "Laporan_Pesanan_Produksi_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
@@ -480,6 +507,15 @@ export default function ProductionOrdersPage() {
             ref={fileInputRef}
             onChange={handleImportExcel}
           />
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || items.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 disabled:opacity-50 w-full sm:w-auto"
+          >
+            <Download className="h-4 w-4" />
+            Cetak PDF
+          </button>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
