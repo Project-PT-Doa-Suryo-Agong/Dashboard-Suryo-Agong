@@ -12,7 +12,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { data, error } = await getProduksiOrderById(auth.ctx.supabase, id);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data produksi order.", 500, error.message);
   if (!data) return fail(ErrorCode.NOT_FOUND, "Produksi order tidak ditemukan.", 404);
-  return ok({ order: data });
+
+  // Fetch allocated raw materials
+  const { data: materials, error: materialsError } = await (auth.ctx.supabase as any)
+    .schema("production")
+    .from("t_produksi_bahan")
+    .select("*, m_bahan_baku(kode_bahan, nama_bahan, satuan)")
+    .eq("produksi_order_id", id);
+
+  return ok({ order: data, materials: materials ?? [] });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

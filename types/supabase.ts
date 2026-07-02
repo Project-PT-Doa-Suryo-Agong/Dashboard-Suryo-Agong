@@ -855,6 +855,129 @@ export interface Database {
         };
         Relationships: [];
       };
+      m_bahan_baku: {
+        Row: {
+          id: string;
+          kode_bahan: string;
+          nama_bahan: string;
+          kategori: string | null;
+          satuan: string;
+          stok: number;
+          minimum_stok: number;
+          status_aktif: boolean;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          kode_bahan: string;
+          nama_bahan: string;
+          kategori?: string | null;
+          satuan: string;
+          stok?: number;
+          minimum_stok?: number;
+          status_aktif?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          kode_bahan?: string;
+          nama_bahan?: string;
+          kategori?: string | null;
+          satuan?: string;
+          stok?: number;
+          minimum_stok?: number;
+          status_aktif?: boolean;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      t_stok_mutasi: {
+        Row: {
+          id: string;
+          bahan_baku_id: string;
+          produksi_order_id: string | null;
+          tipe: "masuk" | "keluar" | "produksi";
+          jumlah: number;
+          keterangan: string | null;
+          operator: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          bahan_baku_id: string;
+          produksi_order_id?: string | null;
+          tipe: "masuk" | "keluar" | "produksi";
+          jumlah: number;
+          keterangan?: string | null;
+          operator: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          bahan_baku_id?: string;
+          produksi_order_id?: string | null;
+          tipe?: "masuk" | "keluar" | "produksi";
+          jumlah?: number;
+          keterangan?: string | null;
+          operator?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "t_stok_mutasi_bahan_baku_id_fkey";
+            columns: ["bahan_baku_id"];
+            isOneToOne: false;
+            referencedRelation: "m_bahan_baku";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "t_stok_mutasi_produksi_order_id_fkey";
+            columns: ["produksi_order_id"];
+            isOneToOne: false;
+            referencedRelation: "t_produksi_order";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      t_produksi_bahan: {
+        Row: {
+          id: string;
+          produksi_order_id: string;
+          bahan_baku_id: string;
+          jumlah: number;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          produksi_order_id: string;
+          bahan_baku_id: string;
+          jumlah: number;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          produksi_order_id?: string;
+          bahan_baku_id?: string;
+          jumlah?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "t_produksi_bahan_produksi_order_id_fkey";
+            columns: ["produksi_order_id"];
+            isOneToOne: false;
+            referencedRelation: "t_produksi_order";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "t_produksi_bahan_bahan_baku_id_fkey";
+            columns: ["bahan_baku_id"];
+            isOneToOne: false;
+            referencedRelation: "m_bahan_baku";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
@@ -1343,9 +1466,15 @@ export type TAssetDepreciationScheduleInsert = Tables<"finance", "t_asset_deprec
 export type TProduksiOrder = Tables<"production", "t_produksi_order">["Row"];
 export type TQCInbound     = Tables<"production", "t_qc_inbound">["Row"];
 export type TQCOutbound    = Tables<"production", "t_qc_outbound">["Row"];
+export type MBahanBaku     = Tables<"production", "m_bahan_baku">["Row"];
+export type TStokMutasi    = Tables<"production", "t_stok_mutasi">["Row"];
+export type TProduksiBahan = Tables<"production", "t_produksi_bahan">["Row"];
 export type TProduksiOrderInsert = Tables<"production", "t_produksi_order">["Insert"];
 export type TQCInboundInsert = Tables<"production", "t_qc_inbound">["Insert"];
 export type TQCOutboundInsert = Tables<"production", "t_qc_outbound">["Insert"];
+export type MBahanBakuInsert = Tables<"production", "m_bahan_baku">["Insert"];
+export type TStokMutasiInsert = Tables<"production", "t_stok_mutasi">["Insert"];
+export type TProduksiBahanInsert = Tables<"production", "t_produksi_bahan">["Insert"];
 
 // logistics
 export type TLogistikManifest = Tables<"logistics", "t_logistik_manifest">["Row"];

@@ -16,6 +16,7 @@ import type {
   ProductionStatus,
   TProduksiOrder,
 } from "@/types/supabase";
+import { useBahanBaku } from "@/lib/supabase/hooks/use-bahan-baku";
 
 type OrdersListPayload = {
   orders: TProduksiOrder[];
@@ -129,16 +130,22 @@ export default function ProductionOrdersPage() {
   const [detailItem, setDetailItem] = useState<TProduksiOrder | null>(null);
   const [produksiNumber, setProduksiNumber] = useState("");
 
+  const { data: bahanBakuList } = useBahanBaku({ limit: 500, statusAktif: true });
+  const [allocatedMaterials, setAllocatedMaterials] = useState<any[]>([]);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
   const [formData, setFormData] = useState<{
     product_id: string;
     vendor_id: string;
     quantity: string;
     status: ProductionStatus;
+    materials: Array<{ bahan_baku_id: string; jumlah: string }>;
   }>({
     product_id: "",
     vendor_id: "",
     quantity: "",
     status: "draft",
+    materials: [],
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -335,8 +342,28 @@ export default function ProductionOrdersPage() {
       vendor_id: vendorList[0]?.id ?? "",
       quantity: "",
       status: "draft",
+      materials: [],
     });
     setEditData(null);
+  };
+
+  const handleOpenDetail = async (item: TProduksiOrder) => {
+    setDetailItem(item);
+    setAllocatedMaterials([]);
+    setIsLoadingDetails(true);
+    try {
+      const response = await apiFetch(`/api/production/orders/${item.id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<{ order: TProduksiOrder; materials: any[] }>(response);
+      setAllocatedMaterials(payload.data.materials ?? []);
+    } catch (err) {
+      console.error("Gagal mengambil detail alokasi bahan baku:", err);
+    } finally {
+      setIsLoadingDetails(false);
+    }
   };
 
   const openAddModal = () => {
@@ -353,6 +380,7 @@ export default function ProductionOrdersPage() {
       vendor_id: order.vendor_id ?? "",
       quantity: String(order.quantity ?? ""),
       status: order.status ?? "draft",
+      materials: [],
     });
     setIsFormModalOpen(true);
   };
@@ -393,7 +421,15 @@ export default function ProductionOrdersPage() {
         vendor_id: formData.vendor_id,
         quantity: parsedQty,
         status: formData.status,
-        ...(editData ? {} : { produksi_number: produksiNumber || undefined }),
+        ...(editData ? {} : { 
+          produksi_number: produksiNumber || undefined,
+          materials: formData.materials
+            .filter((m) => m.bahan_baku_id !== "" && m.jumlah !== "")
+            .map((m) => ({
+              bahan_baku_id: m.bahan_baku_id,
+              jumlah: Number(m.jumlah),
+            })),
+        }),
       };
 
       if (editData) {
@@ -576,7 +612,7 @@ export default function ProductionOrdersPage() {
                     </td>
                     <td className="px-4 md:px-6 py-3">
                       <RowActions>
-                        <DetailButton onClick={() => setDetailItem(item)} />
+                        <DetailButton onClick={() => handleOpenDetail(item)} />
                         <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
                         <DeleteButton onClick={() => openDeleteModal(item.id)} disabled={isSubmitting} />
                       </RowActions>
@@ -663,6 +699,78 @@ export default function ProductionOrdersPage() {
             </select>
           </div>
 
+          {!editData && (
+            <div className="space-y-3 border-t border-slate-100 pt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Alokasi Bahan Baku</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      materials: [...prev.materials, { bahan_baku_id: "", jumlah: "" }],
+                    }))
+                  }
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Tambah Bahan
+                </button>
+              </div>
+
+              {formData.materials.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">Belum ada bahan baku yang dialokasikan.</p>
+              ) : (
+                <div className="space-y-2">
+                  {formData.materials.map((mat, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <select
+                        required
+                        value={mat.bahan_baku_id}
+                        onChange={(e) => {
+                          const updated = [...formData.materials];
+                          updated[index].bahan_baku_id = e.target.value;
+                          setFormData((prev) => ({ ...prev, materials: updated }));
+                        }}
+                        className="flex-1 rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs text-slate-800 outline-none transition focus:border-slate-400"
+                      >
+                        <option value="" disabled>Pilih bahan baku...</option>
+                        {bahanBakuList.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.nama_bahan} ({item.kode_bahan}) - Stok: {item.stok} {item.satuan}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        required
+                        type="number"
+                        step="any"
+                        min={0.0001}
+                        placeholder="Qty"
+                        value={mat.jumlah}
+                        onChange={(e) => {
+                          const updated = [...formData.materials];
+                          updated[index].jumlah = e.target.value;
+                          setFormData((prev) => ({ ...prev, materials: updated }));
+                        }}
+                        className="w-20 rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs text-slate-800 outline-none transition focus:border-slate-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = formData.materials.filter((_, idx) => idx !== index);
+                          setFormData((prev) => ({ ...prev, materials: updated }));
+                        }}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button
               type="button"
@@ -729,6 +837,25 @@ export default function ProductionOrdersPage() {
                 <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass[detailItem.status ?? "draft"]}`}>
                   {statusLabel[detailItem.status ?? "draft"]}
                 </span>
+              </dd>
+            </div>
+            <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 mt-3">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Alokasi Bahan Baku</dt>
+              <dd className="mt-1">
+                {isLoadingDetails ? (
+                  <p className="text-xs text-slate-500">Memuat alokasi bahan baku...</p>
+                ) : allocatedMaterials.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">Tidak ada alokasi bahan baku.</p>
+                ) : (
+                  <ul className="space-y-1.5 text-xs text-slate-750">
+                    {allocatedMaterials.map((mat) => (
+                      <li key={mat.id} className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>{mat.m_bahan_baku?.nama_bahan} ({mat.m_bahan_baku?.kode_bahan})</span>
+                        <span className="font-semibold text-slate-900">{mat.jumlah} {mat.m_bahan_baku?.satuan}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </dd>
             </div>
           </dl>

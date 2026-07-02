@@ -71,6 +71,9 @@ const navItems = [
       { label: 'Orders', href: '/produksi/orders', icon: 'ClipboardList' },
       { label: 'QC Inbound', href: '/produksi/qc/inbound', icon: 'ShieldCheck' },
       { label: 'QC Outbound', href: '/produksi/qc/outbound', icon: 'CheckSquare' },
+      { label: 'Master Bahan Baku', href: '/produksi/bahan-baku', icon: 'Package' },
+      { label: 'Mutasi Stok', href: '/produksi/mutasi', icon: 'ArrowLeftRight' },
+      { label: 'Pelacakan Penggunaan', href: '/produksi/tracking', icon: 'Activity' },
     ]
   },
   {

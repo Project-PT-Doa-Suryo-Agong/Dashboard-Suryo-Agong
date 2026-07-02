@@ -17,7 +17,17 @@ const navItems = [
       { label: 'QC Outbound', href: '/produksi/qc/outbound', icon: 'CheckSquare' },
     ],
   },
-   { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
+  {
+    label: 'Bahan Baku',
+    href: '/produksi/bahan-baku',
+    icon: 'Package',
+    children: [
+      { label: 'Master Bahan Baku', href: '/produksi/bahan-baku', icon: 'Package' },
+      { label: 'Mutasi Stok', href: '/produksi/mutasi', icon: 'ArrowLeftRight' },
+      { label: 'Pelacakan Penggunaan', href: '/produksi/tracking', icon: 'Activity' },
+    ],
+  },
+  { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
   { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
 ];
 

@@ -5,6 +5,7 @@ import { requireNumber, requireString, requireUUID } from "@/lib/validation/body
 import type { TProduksiOrderInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getProfileById } from "@/lib/services/profile.service";
 
 export async function GET(request: Request) {
   const auth = await requireLevel("strategic", "managerial", "operational");
@@ -69,6 +70,107 @@ export async function POST(request: Request) {
       return fail(ErrorCode.DB_ERROR, "Gagal membuat nomor produksi.", 500, generated.error.message);
     }
     finalProduksiNumber = generated.number;
+  }
+
+  // Get active operator name
+  const { data: profile } = await getProfileById(auth.ctx.supabase, auth.ctx.userId);
+  const operatorName = profile?.nama || "Operator Produksi";
+
+  // Check if materials are supplied
+  const materials = input.materials;
+
+  if (Array.isArray(materials) && materials.length > 0) {
+    for (const item of materials) {
+      if (!item.bahan_baku_id || typeof item.bahan_baku_id !== "string" || !item.jumlah || isNaN(Number(item.jumlah)) || Number(item.jumlah) <= 0) {
+        return fail(ErrorCode.VALIDATION_ERROR, "Format data alokasi bahan baku tidak valid.", 400);
+      }
+    }
+
+    // 1. Create the production order (retry once if duplicate produksi_number)
+    let createdOrder: any;
+    const sb = auth.ctx.supabase as any;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const { data: order, error: orderError } = await sb
+        .schema("production")
+        .from("t_produksi_order")
+        .insert({
+          vendor_id: vendorId.data,
+          product_id: productId.data,
+          quantity: quantity.data,
+          status: status.data ?? "draft",
+          produksi_number: finalProduksiNumber,
+        })
+        .select("*")
+        .single();
+
+      if (order && !orderError) {
+        createdOrder = order;
+        break;
+      }
+
+      if (orderError?.message?.includes("duplicate key") || orderError?.code === "23505") {
+        finalProduksiNumber = await generateProduksiNumber().then(r => r.ok ? r.number : `PRD-${Date.now()}`);
+      } else {
+        return fail(ErrorCode.DB_ERROR, "Gagal membuat produksi order.", 500, orderError?.message);
+      }
+    }
+
+    if (!createdOrder) {
+      return fail(ErrorCode.DB_ERROR, "Gagal membuat produksi order setelah percobaan ulang.", 500);
+    }
+
+    // 2. Process each material allocation
+    for (const item of materials) {
+      const bahanId = item.bahan_baku_id as string;
+      const jumlah = Number(item.jumlah);
+
+      // Validate stock availability
+      const { data: bahan, error: bahanErr } = await sb
+        .schema("production")
+        .from("m_bahan_baku")
+        .select("stok, nama_bahan, satuan")
+        .eq("id", bahanId)
+        .single();
+
+      if (bahanErr || !bahan) {
+        return fail(ErrorCode.DB_ERROR, "Bahan baku tidak ditemukan.", 500, bahanErr?.message);
+      }
+
+      if (bahan.stok < jumlah) {
+        // Cleanup: delete the created order if allocation fails
+        await sb.schema("production").from("t_produksi_order").delete().eq("id", createdOrder.id);
+        return fail(ErrorCode.VALIDATION_ERROR, `Stok ${bahan.nama_bahan} tidak mencukupi. Stok tersedia: ${bahan.stok} ${bahan.satuan}.`, 400);
+      }
+
+      // Insert allocation detail
+      const { error: alokasiErr } = await sb
+        .schema("production")
+        .from("t_produksi_bahan")
+        .insert({ produksi_order_id: createdOrder.id, bahan_baku_id: bahanId, jumlah });
+
+      if (alokasiErr) {
+        return fail(ErrorCode.DB_ERROR, "Gagal menyimpan alokasi bahan baku.", 500, alokasiErr.message);
+      }
+
+      // Log mutasi stok (trigger tr_stok_mutasi_after_insert will auto-update m_bahan_baku.stok)
+      const { error: mutasiErr } = await sb
+        .schema("production")
+        .from("t_stok_mutasi")
+        .insert({
+          bahan_baku_id: bahanId,
+          produksi_order_id: createdOrder.id,
+          tipe: "produksi",
+          jumlah,
+          keterangan: `Alokasi Produksi ${finalProduksiNumber}`,
+          operator: operatorName,
+        });
+
+      if (mutasiErr) {
+        return fail(ErrorCode.DB_ERROR, "Gagal mencatat mutasi stok.", 500, mutasiErr.message);
+      }
+    }
+
+    return ok({ order: createdOrder }, "Produksi order berhasil dibuat dengan alokasi bahan baku.", 201);
   }
 
   // Setidaknya validasi ini memastikan payload bersih dari extraneous keys.

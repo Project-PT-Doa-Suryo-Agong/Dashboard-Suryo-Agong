@@ -37,3 +37,7 @@ export { useMembership, useInsertMembership, useUpdateMembership, useDeleteMembe
 
 // ── Buku Tamu ──
 export { useBukuTamu, useInsertBukuTamu, useUpdateBukuTamu, useDeleteBukuTamu } from "./use-buku-tamu";
+
+// ── Bahan Baku (Production) ──
+export { useBahanBaku, useInsertBahanBaku, useUpdateBahanBaku, useDeleteBahanBaku, useMutasiStok, useInsertMutasiStok, useTrackingBahanBaku } from "./use-bahan-baku";
+
