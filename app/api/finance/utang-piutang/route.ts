@@ -14,8 +14,9 @@ export async function GET(request: Request) {
   const page = Math.max(Number(url.searchParams.get("page")) || 1, 1);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 100, 1), 500);
   const tipe = url.searchParams.get("tipe") as "utang" | "piutang" | "kasbon" | null;
+  const employeeId = url.searchParams.get("employee_id") ?? undefined;
 
-  const { data, error, meta } = await listUtangPiutang(auth.ctx.supabase, page, limit, tipe ?? undefined);
+  const { data, error, meta } = await listUtangPiutang(auth.ctx.supabase, page, limit, tipe ?? undefined, employeeId);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data utang/piutang.", 500, error.message);
 
   // Map 'kas tunai' in database to 'ya' for API response
@@ -58,6 +59,9 @@ export async function POST(request: Request) {
   const coa = requireUUID(input, "coa", { optional: true });
   if (!coa.ok) return fail(ErrorCode.VALIDATION_ERROR, coa.message, 400);
 
+  const employeeId = requireUUID(input, "employee_id", { optional: true });
+  if (!employeeId.ok) return fail(ErrorCode.VALIDATION_ERROR, employeeId.message, 400);
+
   const tipe = requireString(input, "tipe", { optional: true });
   if (!tipe.ok) return fail(ErrorCode.VALIDATION_ERROR, tipe.message, 400);
   if (tipe.data && tipe.data !== "utang" && tipe.data !== "piutang" && tipe.data !== "kasbon") return fail(ErrorCode.VALIDATION_ERROR, "tipe harus 'utang', 'piutang', atau 'kasbon'.", 400);
@@ -66,6 +70,7 @@ export async function POST(request: Request) {
 
   const payload = {
     klien: klien.data as string,
+    employee_id: employeeId.data,
     deskripsi: deskripsi.data,
     nominal: nominal.data as number,
     tanggal_awal: tanggal_awal.data,

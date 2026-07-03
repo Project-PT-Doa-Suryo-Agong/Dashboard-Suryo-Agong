@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
-import { listPayroll, createPayroll } from "@/lib/services/finance.service";
+import { listPayroll, createPayroll, listKasbonByEmployee, updateUtangPiutang } from "@/lib/services/finance.service";
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import type { TPayrollHistoryInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
@@ -75,6 +75,18 @@ export async function POST(request: Request) {
       }
   }
 
+  // Cari kasbon aktif milik karyawan ini untuk potongan otomatis
+  const { data: kasbonList } = await listKasbonByEmployee(auth.ctx.supabase, employeeId.data!);
+  let potonganKasbon = 0;
+  if (kasbonList && kasbonList.length > 0) {
+    potonganKasbon = kasbonList.reduce((sum, k) => sum + Number(k.nominal), 0);
+    // Pastikan potongan tidak melebihi total gaji
+    if (potonganKasbon > finalTotal) {
+      potonganKasbon = finalTotal;
+    }
+    finalTotal = finalTotal - potonganKasbon;
+  }
+
   const payload: TPayrollHistoryInsert = {
     employee_id: employeeId.data,
     bulan: normalizedBulan,
@@ -84,5 +96,13 @@ export async function POST(request: Request) {
 
   const { data, error } = await createPayroll(auth.ctx.supabase, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal membuat data payroll.", 500, error.message);
+
+  // Jika ada potongan kasbon, tandai kasbon sebagai lunas
+  if (data && potonganKasbon > 0 && kasbonList) {
+    for (const kasbon of kasbonList) {
+      await updateUtangPiutang(auth.ctx.supabase, kasbon.id, { kas: "kas tunai" } as any);
+    }
+  }
+
   return ok({ payroll: data }, "Data payroll berhasil dibuat.", 201);
 }

@@ -16,6 +16,7 @@ import type {
   FinanceUtangPiutangTipe,
   TUtangPiutang,
   MCoa,
+  MKaryawan,
 } from "@/types/supabase";
 import type { ApiSuccess } from "@/types/api";
 
@@ -83,6 +84,7 @@ function getOverdueStatus(tanggalJatuhTempo: string, lunas: string): {
 export default function FinanceKasbonPage() {
   const [items, setItems] = useState<TUtangPiutangWithCoa[]>([]);
   const [coas, setCoas] = useState<MCoa[]>([]);
+  const [employees, setEmployees] = useState<MKaryawan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -92,6 +94,7 @@ export default function FinanceKasbonPage() {
 
   const [formData, setFormData] = useState({
     klien: "",
+    employee_id: "",
     deskripsi: "",
     nominal: "0",
     tanggal_awal: new Date().toISOString().split("T")[0],
@@ -106,15 +109,18 @@ export default function FinanceKasbonPage() {
     try {
       // Query specifically with type parameter 'kasbon'
       const url = `/api/finance/utang-piutang?page=1&limit=500&tipe=kasbon`;
-      const [res, coaRes] = await Promise.all([
+      const [res, coaRes, empRes] = await Promise.all([
         apiFetch(url),
         apiFetch(`/api/finance/coa?page=1&limit=500`),
+        apiFetch(`/api/hr/employees?page=1&limit=200`),
       ]);
       const payload = (await res.json()) as ApiSuccess<UtangPiutangListPayload>;
       const coaPayload = (await coaRes.json()) as ApiSuccess<{ coa: MCoa[] }>;
+      const empPayload = (await empRes.json()) as ApiSuccess<{ karyawan: MKaryawan[] }>;
 
       if (payload.success) setItems(payload.data.utang_piutang ?? []);
       if (coaPayload.success) setCoas(coaPayload.data.coa ?? []);
+      if (empPayload.success) setEmployees(empPayload.data.karyawan ?? []);
     } catch (err) {
       alert("Gagal memuat data kasbon.");
     } finally {
@@ -144,6 +150,7 @@ export default function FinanceKasbonPage() {
   const resetForm = () => {
     setFormData({
       klien: "",
+      employee_id: "",
       deskripsi: "",
       nominal: "0",
       tanggal_awal: new Date().toISOString().split("T")[0],
@@ -164,6 +171,7 @@ export default function FinanceKasbonPage() {
     setEditData(item);
     setFormData({
       klien: item.klien,
+      employee_id: "",
       deskripsi: item.deskripsi ?? "",
       nominal: String(item.nominal),
       tanggal_awal: item.tanggal_awal,
@@ -173,6 +181,15 @@ export default function FinanceKasbonPage() {
       coa: item.coa?.id ?? "",
     });
     setIsFormModalOpen(true);
+  };
+
+  const handleEmployeeChange = (employeeId: string) => {
+    const employee = employees.find((e) => e.id === employeeId);
+    setFormData((prev) => ({
+      ...prev,
+      employee_id: employeeId,
+      klien: employee?.nama ?? "",
+    }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -185,6 +202,7 @@ export default function FinanceKasbonPage() {
         tipe: "kasbon", // Force 'kasbon' on submission
         nominal: Number(formData.nominal),
         coa: formData.coa || null,
+        employee_id: editData ? null : formData.employee_id || null,
       };
 
       const url = editData
@@ -383,15 +401,29 @@ export default function FinanceKasbonPage() {
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Nama Karyawan
               </label>
-              <input
-                required
-                placeholder="Nama karyawan peminjam"
-                value={formData.klien}
-                onChange={(e) =>
-                  setFormData((f) => ({ ...f, klien: e.target.value }))
-                }
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
-              />
+              {editData ? (
+                <input
+                  readOnly
+                  value={formData.klien}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 cursor-not-allowed"
+                />
+              ) : (
+                <select
+                  required
+                  value={formData.employee_id}
+                  onChange={(e) => handleEmployeeChange(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                >
+                  <option value="" disabled>
+                    Pilih karyawan
+                  </option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.nama}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">

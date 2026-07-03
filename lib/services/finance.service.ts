@@ -259,7 +259,7 @@ export async function deleteInvoiceItem(client: DbClient, id_invoice: string, id
 
 // t_utang_piutang
 
-export async function listUtangPiutang(client: DbClient, page = 1, limit = 100, tipe?: "utang" | "piutang" | "kasbon") {
+export async function listUtangPiutang(client: DbClient, page = 1, limit = 100, tipe?: "utang" | "piutang" | "kasbon", employeeId?: string) {
   const from = (page - 1) * limit;
   let query = db(client)
     .from("t_utang_piutang")
@@ -268,6 +268,7 @@ export async function listUtangPiutang(client: DbClient, page = 1, limit = 100, 
     .range(from, from + limit - 1);
   
   if (tipe) query = query.eq("tipe", tipe);
+  if (employeeId) query = query.eq("employee_id", employeeId);
     
   const { data, error, count } = await query;
   if (error) console.error("SUPABASE ERROR UTANG_PIUTang:", error);
@@ -287,5 +288,15 @@ export async function updateUtangPiutang(client: DbClient, id: string, input: Re
 export async function deleteUtangPiutang(client: DbClient, id: string) {
   const { error, count } = await db(client).from("t_utang_piutang").delete({ count: "exact" }).eq("id", id);
   return { error, deleted: (count ?? 0) > 0 };
+}
+
+export async function listKasbonByEmployee(client: DbClient, employeeId: string) {
+  const { data, error } = await db(client)
+    .from("t_utang_piutang")
+    .select("id, nominal")
+    .eq("tipe", "kasbon")
+    .eq("employee_id", employeeId)
+    .eq("kas", "tidak");
+  return { data: (data ?? []) as { id: string; nominal: number }[], error };
 }
 

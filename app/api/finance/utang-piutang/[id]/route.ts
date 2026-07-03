@@ -38,6 +38,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     payload.tipe = v.data;
   }
   if ("coa" in input) { const v = requireUUID(input, "coa", { optional: true }); if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400); payload.coa = v.data; }
+  if ("employee_id" in input) { const v = requireUUID(input, "employee_id", { optional: true }); if (!v.ok) return fail(ErrorCode.VALIDATION_ERROR, v.message, 400); payload.employee_id = v.data; }
 
   const { data, error } = await updateUtangPiutang(supabaseAdmin as any, id, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update utang/piutang.", 500, error.message);

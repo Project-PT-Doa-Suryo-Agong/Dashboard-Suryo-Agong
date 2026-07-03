@@ -7,17 +7,21 @@ import { exportToPDF } from "@/lib/utils/export-pdf";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { MCOA, MKaryawan, TPayrollHistory } from "@/types/supabase";
+import type { MCOA, MKaryawan, TPayrollHistory, TUtangPiutang } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { jsPDF } from "jspdf";
 
 type TPayrollHistoryWithCoa = TPayrollHistory & {
   m_coa?: { kode_akun: string; nama_akun: string } | null;
 };
-import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { RowActions, EditButton, DetailButton, DeleteButton, DownloadButton } from "@/components/ui/RowActions";
 
 type EmployeeOption = {
   id: string;
   nama: string;
+  nip: string | null;
+  posisi: string | null;
+  divisi: string | null;
   gaji_pokok: number | null;
 };
 
@@ -161,6 +165,9 @@ export default function FinancePayrollPage() {
       const options = (payload.data.karyawan ?? []).map((employee) => ({
         id: employee.id,
         nama: employee.nama,
+        nip: employee.nip,
+        posisi: employee.posisi,
+        divisi: employee.divisi,
         gaji_pokok: employee.gaji_pokok,
       }));
       setEmployees(options);
@@ -205,6 +212,32 @@ export default function FinancePayrollPage() {
     [employees],
   );
 
+  const employeeDataById = useMemo(
+    () => Object.fromEntries(employees.map((e) => [e.id, e])) as Record<string, EmployeeOption>,
+    [employees],
+  );
+
+  const [kasbonInfo, setKasbonInfo] = useState<{ totalKasbon: number; count: number } | null>(null);
+
+  const fetchKasbonByEmployee = async (employeeId: string) => {
+    try {
+      const response = await apiFetch(`/api/finance/utang-piutang?page=1&limit=50&tipe=kasbon&employee_id=${employeeId}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      const payload = await parseJsonResponse<{ utang_piutang: TUtangPiutang[] }>(response);
+      const kasbonList = payload.data.utang_piutang ?? [];
+      if (kasbonList.length > 0) {
+        const total = kasbonList.reduce((sum, k) => sum + Number(k.nominal), 0);
+        setKasbonInfo({ totalKasbon: total, count: kasbonList.length });
+      } else {
+        setKasbonInfo(null);
+      }
+    } catch {
+      setKasbonInfo(null);
+    }
+  };
+
   const handleEmployeeChange = (employeeId: string) => {
     const baseSalary = employeeSalaryById[employeeId];
 
@@ -213,6 +246,11 @@ export default function FinancePayrollPage() {
       employee_id: employeeId,
       total: baseSalary != null && baseSalary > 0 ? String(baseSalary) : "",
     }));
+
+    setKasbonInfo(null);
+    if (employeeId) {
+      void fetchKasbonByEmployee(employeeId);
+    }
   };
 
   const totalPayroll = useMemo(
@@ -367,6 +405,170 @@ export default function FinancePayrollPage() {
     });
   };
 
+  const handleExportSlipGaji = (item: TPayrollHistoryWithCoa) => {
+    const employee = employeeDataById[item.employee_id ?? ""];
+    const employeeName = employee?.nama ?? "Karyawan";
+    const gajiPokok = employeeSalaryById[item.employee_id ?? ""] ?? 0;
+    const totalDibayar = item.total ?? 0;
+    const potongan = Math.max(gajiPokok - totalDibayar, 0);
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageW = 210;
+    const mx = 20;
+    const contentW = pageW - mx * 2;
+
+    // ── Header ──
+    doc.setFillColor(27, 54, 93);
+    doc.rect(0, 0, pageW, 38, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("PT DOA SURYO AGONG", pageW / 2, 15, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Jl. Nglinggo, Gobang, Kec. Gondang, Kabupaten Nganjuk, Jawa Timur 64451", pageW / 2, 23, { align: "center" });
+    doc.text("Email: ptdoasuryoagong@gmail.com", pageW / 2, 33, { align: "center" });
+
+    // ── Title ──
+    doc.setTextColor(27, 54, 93);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("SLIP GAJI KARYAWAN", pageW / 2, 50, { align: "center" });
+
+    // ── Separator ──
+    doc.setDrawColor(27, 54, 93);
+    doc.setLineWidth(0.6);
+    doc.line(mx, 54, pageW - mx, 54);
+
+    // ── Employee Info ──
+    const info: [string, string][] = [
+      ["NIP", employee?.nip ?? "-"],
+      ["Nama Karyawan", employeeName],
+      ["Jabatan", employee?.posisi ?? "-"],
+      ["Divisi", employee?.divisi ?? "-"],
+      ["Periode", item.bulan ? formatPeriod(item.bulan) : "-"],
+      ["Tanggal Cetak", formatDate(new Date().toISOString())],
+    ];
+
+    doc.setFontSize(9);
+    let iy = 63;
+    for (const [label, value] of info) {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(80, 80, 80);
+      doc.text(label, mx, iy);
+      doc.text(":", mx + 40, iy);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30, 30, 30);
+      doc.text(value, mx + 45, iy);
+      iy += 6;
+    }
+
+    // ── Pendapatan Table ──
+    iy += 4;
+    const rowH = 7;
+    doc.setFillColor(27, 54, 93);
+    doc.rect(mx, iy, contentW, rowH, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("PENDAPATAN", mx + 4, iy + 5);
+    doc.text("JUMLAH", pageW - mx - 4, iy + 5, { align: "right" });
+    iy += rowH;
+
+    doc.setFillColor(248, 248, 248);
+    doc.rect(mx, iy, contentW, rowH, "F");
+    doc.setTextColor(50, 50, 50);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Gaji Pokok", mx + 4, iy + 5);
+    doc.text(formatRupiah(gajiPokok), pageW - mx - 4, iy + 5, { align: "right" });
+    iy += rowH;
+
+    doc.setFillColor(235, 242, 255);
+    doc.rect(mx, iy, contentW, rowH, "F");
+    doc.setTextColor(27, 54, 93);
+    doc.setFont("helvetica", "bold");
+    doc.text("Total Pendapatan", mx + 4, iy + 5);
+    doc.text(formatRupiah(gajiPokok), pageW - mx - 4, iy + 5, { align: "right" });
+    iy += rowH + 3;
+
+    // ── Potongan Table ──
+    doc.setFillColor(27, 54, 93);
+    doc.rect(mx, iy, contentW, rowH, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("POTONGAN", mx + 4, iy + 5);
+    doc.text("JUMLAH", pageW - mx - 4, iy + 5, { align: "right" });
+    iy += rowH;
+
+    if (potongan > 0) {
+      doc.setFillColor(255, 242, 242);
+      doc.rect(mx, iy, contentW, rowH, "F");
+      doc.setTextColor(50, 50, 50);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text("Potongan Kasbon", mx + 4, iy + 5);
+      doc.text(formatRupiah(potongan), pageW - mx - 4, iy + 5, { align: "right" });
+      iy += rowH;
+    } else {
+      doc.setFillColor(248, 248, 248);
+      doc.rect(mx, iy, contentW, rowH, "F");
+      doc.setTextColor(150, 150, 150);
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8);
+      doc.text("Tidak ada potongan", mx + 4, iy + 5);
+      iy += rowH;
+    }
+
+    doc.setFillColor(255, 235, 235);
+    doc.rect(mx, iy, contentW, rowH, "F");
+    doc.setTextColor(180, 40, 40);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("Total Potongan", mx + 4, iy + 5);
+    doc.text(formatRupiah(potongan), pageW - mx - 4, iy + 5, { align: "right" });
+    iy += rowH + 3;
+
+    // ── Grand Total ──
+    doc.setFillColor(230, 240, 255);
+    doc.rect(mx, iy, contentW, rowH + 2, "F");
+    doc.setDrawColor(27, 54, 93);
+    doc.setLineWidth(0.5);
+    doc.line(mx, iy, pageW - mx, iy);
+    doc.setTextColor(27, 54, 93);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("TOTAL DITERIMA", mx + 4, iy + 6);
+    doc.text(formatRupiah(totalDibayar), pageW - mx - 4, iy + 6, { align: "right" });
+    iy += rowH + 6;
+
+    // ── Tanda Tangan ──
+    const ttdY = Math.max(iy + 8, 210);
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.line(mx, ttdY, pageW - mx, ttdY);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Nganjuk, " + formatDate(new Date().toISOString()), pageW - mx - 4, ttdY + 6, { align: "right" });
+    doc.text("Finance & Administration", pageW - mx - 4, ttdY + 12, { align: "right" });
+    doc.text("( _______________________ )", pageW - mx - 4, ttdY + 24, { align: "right" });
+
+    // ── Footer ──
+    const ftY = 278;
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.line(mx, ftY, pageW - mx, ftY);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7);
+    doc.setTextColor(160, 160, 160);
+    doc.text("Slip gaji ini sah dan diterbitkan oleh sistem perusahaan. Data bersifat rahasia dan hanya untuk kepentingan internal.", pageW / 2, ftY + 5, { align: "center" });
+
+    doc.save(`Slip_Gaji_${employeeName.replace(/\s+/g, "_")}_${(item.bulan ?? "unknown").substring(0, 7)}.pdf`);
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1 md:space-y-2">
@@ -448,6 +650,7 @@ export default function FinancePayrollPage() {
                       <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                       <td className="px-4 md:px-6 py-3 text-right whitespace-nowrap">
                         <RowActions>
+                          <DownloadButton onClick={() => handleExportSlipGaji(item)} label="Slip" />
                           <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
                           <DeleteButton onClick={() => openDeleteModal(`${item.employee_id}_${toDateInput(item.bulan)}`)} disabled={isSubmitting} />
                         </RowActions>
@@ -526,6 +729,18 @@ export default function FinancePayrollPage() {
               placeholder="Terisi otomatis dari data karyawan"
             />
           </div>
+
+          {kasbonInfo && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Potongan Kasbon Aktif</p>
+              <p className="text-sm text-amber-800">
+                {kasbonInfo.count} kasbon aktif — Total: {formatRupiah(kasbonInfo.totalKasbon)}
+              </p>
+              <p className="text-xs text-amber-600">
+                Gaji setelah potongan: {formatRupiah(Math.max(Number(formData.total) - kasbonInfo.totalKasbon, 0))}
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
             <button

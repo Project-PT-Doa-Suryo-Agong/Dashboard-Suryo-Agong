@@ -595,6 +595,7 @@ export interface Database {
           jatuh_tempo: string;
           nominal: number;
           klien: string;
+          employee_id: string | null;
           deskripsi: string | null;
           kas: FinanceTipeKas;
           tipe: FinanceUtangPiutangTipe;
@@ -606,6 +607,7 @@ export interface Database {
           jatuh_tempo: string;
           nominal: number;
           klien: string;
+          employee_id?: string | null;
           deskripsi?: string | null;
           kas?: FinanceTipeKas;
           tipe?: FinanceUtangPiutangTipe;
@@ -617,6 +619,7 @@ export interface Database {
           jatuh_tempo?: string;
           nominal?: number;
           klien?: string;
+          employee_id?: string | null;
           deskripsi?: string | null;
           kas?: FinanceTipeKas;
           tipe?: FinanceUtangPiutangTipe;
