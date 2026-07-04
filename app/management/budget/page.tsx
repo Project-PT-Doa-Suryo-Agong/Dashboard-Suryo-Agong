@@ -1,13 +1,13 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Edit, Eye, PlusCircle, Trash2, Download } from "lucide-react";
+import { Edit, Eye, PlusCircle, Settings, Trash2, Download, TriangleAlert } from "lucide-react";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { MCOA, ManagementBudgetStatus, TBudgetRequest } from "@/types/supabase";
+import type { MCOA, ManagementBudgetStatus, TMaxBudget, TBudgetRequest } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton, ExcelButton } from "@/components/ui/RowActions";
 import { SearchBar } from "@/components/ui/search-bar";
@@ -29,6 +29,11 @@ type BudgetListPayload = {
 
 type BudgetPayload = {
   budget_request: TBudgetRequest | null;
+  warning?: string;
+};
+
+type MaxBudgetPayload = {
+  max_budget: TMaxBudget | null;
 };
 
 type CoaListPayload = {
@@ -119,6 +124,10 @@ export default function ManagementBudgetPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [budgetNumber, setBudgetNumber] = useState("");
 
+  const [maxBudget, setMaxBudget] = useState<TMaxBudget | null>(null);
+  const [isMaxBudgetModalOpen, setIsMaxBudgetModalOpen] = useState(false);
+  const [maxBudgetInput, setMaxBudgetInput] = useState("");
+
   const fetchBudgetRequests = async () => {
     setIsLoading(true);
     try {
@@ -171,8 +180,22 @@ export default function ManagementBudgetPage() {
     }
   };
 
+  const fetchMaxBudget = async () => {
+    try {
+      const response = await apiFetch("/api/management/max-budget", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const payload = await parseJsonResponse<MaxBudgetPayload>(response);
+      setMaxBudget(payload.data.max_budget);
+    } catch {
+      setMaxBudget(null);
+    }
+  };
+
   useEffect(() => {
-    void Promise.all([fetchBudgetRequests(), fetchCoa(), fetchDefaultBudgetNumber()]);
+    void Promise.all([fetchBudgetRequests(), fetchCoa(), fetchDefaultBudgetNumber(), fetchMaxBudget()]);
   }, []);
 
   const filteredItems = useMemo(() => {
@@ -228,6 +251,10 @@ export default function ManagementBudgetPage() {
       alert("Nominal harus berupa angka lebih dari 0.");
       return;
     }
+    if (maxBudget && parsedAmount > maxBudget.max_amount) {
+      alert(`Nominal melebihi Max Budget Perusahaan (${formatRupiah(maxBudget.max_amount)}).`);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -239,20 +266,22 @@ export default function ManagementBudgetPage() {
         ...(editData ? {} : { budget_number: budgetNumber || undefined }),
       };
 
+      let responsePayload: ApiSuccess<BudgetPayload>;
+
       if (editData) {
         const response = await apiFetch(`/api/management/budget/${editData.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        await parseJsonResponse<BudgetPayload>(response);
+        responsePayload = await parseJsonResponse<BudgetPayload>(response);
       } else {
         const response = await apiFetch("/api/management/budget", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        await parseJsonResponse<BudgetPayload>(response);
+        responsePayload = await parseJsonResponse<BudgetPayload>(response);
       }
 
       await fetchBudgetRequests();
@@ -455,6 +484,43 @@ export default function ManagementBudgetPage() {
         <p className="text-sm md:text-base text-slate-200">Tinjau dan kelola pengajuan dana operasional dari setiap divisi.</p>
       </div>
 
+      {maxBudget && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-amber-800">
+            <span className="font-semibold">Max Budget Perusahaan:</span>
+            <span className="font-bold">{formatRupiah(maxBudget.max_amount)}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setMaxBudgetInput(String(maxBudget.max_amount));
+              setIsMaxBudgetModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition"
+          >
+            <Settings size={14} />
+            Atur Max Budget
+          </button>
+        </div>
+      )}
+
+      {!maxBudget && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-sm text-slate-500">Max Budget perusahaan belum ditentukan.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setMaxBudgetInput("");
+              setIsMaxBudgetModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+          >
+            <Settings size={14} />
+            Atur Max Budget
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:max-w-3xl">
           <SearchBar
@@ -617,6 +683,25 @@ export default function ManagementBudgetPage() {
             <option value="rejected">rejected</option>
           </select>
 
+          {(() => {
+            const parsed = Number(formData.amount);
+            const exceeds = maxBudget && !Number.isNaN(parsed) && parsed > maxBudget.max_amount;
+            return exceeds ? (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <TriangleAlert className="h-5 w-5 text-amber-600 shrink-0" />
+                  <p className="text-sm font-semibold text-amber-800">Budget Melebihi Max Budget Perusahaan</p>
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-sm">
+                  <span className="text-amber-700">Max Budget</span>
+                  <span className="font-semibold text-amber-900 text-right">{formatRupiah(maxBudget!.max_amount)}</span>
+                  <span className="text-amber-700">Nominal Pengajuan</span>
+                  <span className="font-semibold text-amber-900 text-right">{formatRupiah(parsed)}</span>
+                </div>
+              </div>
+            ) : null;
+          })()}
+
           <div className="flex justify-end gap-2">
             <button type="button" onClick={closeFormModal} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">
               Batal
@@ -680,6 +765,67 @@ export default function ManagementBudgetPage() {
         cancelText="Batal"
         variant="danger"
       />
+
+      <Modal isOpen={isMaxBudgetModalOpen} onClose={() => setIsMaxBudgetModalOpen(false)} title="Atur Max Budget Perusahaan" maxWidth="max-w-sm">
+        <form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const parsed = Number(maxBudgetInput);
+            if (Number.isNaN(parsed) || parsed <= 0) {
+              alert("Max Budget harus berupa angka lebih dari 0.");
+              return;
+            }
+            setIsSubmitting(true);
+            try {
+              const response = await apiFetch("/api/management/max-budget", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ max_amount: parsed }),
+              });
+              const payload = await parseJsonResponse<MaxBudgetPayload>(response);
+              setMaxBudget(payload.data.max_budget);
+              setIsMaxBudgetModalOpen(false);
+            } catch (error) {
+              const message = error instanceof Error ? error.message : "Gagal menyimpan max budget.";
+              alert(message);
+            } finally {
+              setIsSubmitting(false);
+            }
+          }}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Max Budget (Rp)</label>
+            <input
+              required
+              type="number"
+              min={1}
+              value={maxBudgetInput}
+              onChange={(event) => setMaxBudgetInput(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
+              placeholder="Masukkan nominal maksimal"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsMaxBudgetModalOpen(false)}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+            >
+              {isSubmitting ? "Menyimpan..." : "Simpan"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { requireLevel } from "@/lib/guards/auth.guard";
 import { updateBudgetRequest, deleteBudgetRequest } from "@/lib/services/management.service";
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import { ErrorCode } from "@/lib/http/error-codes";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireLevel("strategic", "managerial");
@@ -21,6 +22,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (Object.keys(input).length === 0) {
     return fail(ErrorCode.VALIDATION_ERROR, "Tidak ada field yang diupdate.", 400);
   }
+
+  let warning: string | undefined;
+
   if ("divisi" in input) {
     const divisi = requireString(input, "divisi", { maxLen: 120 });
     if (!divisi.ok) return fail(ErrorCode.VALIDATION_ERROR, divisi.message, 400);
@@ -28,6 +32,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if ("amount" in input) {
     const amount = requireNumber(input, "amount", { min: 0 });
     if (!amount.ok) return fail(ErrorCode.VALIDATION_ERROR, amount.message, 400);
+
+    const { data: maxBudgetData } = await supabaseAdmin
+      .schema("management")
+      .from("t_max_budget")
+      .select("max_amount")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (maxBudgetData && amount.data! > maxBudgetData.max_amount) {
+      const maxStr = new Intl.NumberFormat("id-ID").format(maxBudgetData.max_amount);
+      warning = `Nominal melebihi Max Budget Perusahaan (Rp ${maxStr}).`;
+    }
   }
   if ("status" in input) {
     const status = requireString(input, "status", { optional: true });
@@ -44,7 +62,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { data, error } = await updateBudgetRequest(auth.ctx.supabase, id, input);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal update budget request.", 500, error.message);
   if (!data) return fail(ErrorCode.NOT_FOUND, "Data budget request tidak ditemukan.", 404);
-  return ok({ budget_request: data });
+  return ok({ budget_request: data, warning });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {

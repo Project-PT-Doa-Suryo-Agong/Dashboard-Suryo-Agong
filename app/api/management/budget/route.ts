@@ -43,6 +43,21 @@ export async function POST(request: Request) {
   const budgetNumber = requireString(input, "budget_number", { optional: true });
   if (!budgetNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, budgetNumber.message, 400);
 
+  let warning: string | undefined;
+  const { data: maxBudgetData } = await supabaseAdmin
+    .schema("management")
+    .from("t_max_budget")
+    .select("max_amount")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (maxBudgetData && amount.data! > maxBudgetData.max_amount) {
+    const maxStr = new Intl.NumberFormat("id-ID").format(maxBudgetData.max_amount);
+    warning = `Nominal melebihi Max Budget Perusahaan (Rp ${maxStr}).`;
+  }
+
   const generateBudgetNumber = async () => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -83,5 +98,5 @@ export async function POST(request: Request) {
 
   const { data, error } = await createBudgetRequest(auth.ctx.supabase, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengajukan budget request.", 500, error.message);
-  return ok({ budget_request: data }, "Budget request berhasil diajukan.", 201);
+  return ok({ budget_request: data, warning }, "Budget request berhasil diajukan.", 201);
 }

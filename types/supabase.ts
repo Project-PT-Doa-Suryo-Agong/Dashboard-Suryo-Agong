@@ -1324,6 +1324,29 @@ export interface Database {
         };
         Relationships: [];
       };
+      t_max_budget: {
+        Row: {
+          id: string;
+          max_amount: number;
+          is_active: boolean | null;
+          created_at: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          max_amount: number;
+          is_active?: boolean | null;
+          created_at?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          max_amount?: number;
+          is_active?: boolean | null;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
       t_kpi_weekly: {
         Row: {
           id: string;
@@ -1505,6 +1528,7 @@ export type TMembershipInsert = Tables<"sales", "t_membership">["Insert"];
 
 // management
 export type TBudgetRequest = Tables<"management", "t_budget_request">["Row"];
+export type TMaxBudget     = Tables<"management", "t_max_budget">["Row"];
 export type TKPIWeekly     = Tables<"management", "t_kpi_weekly">["Row"];
 export type TBudgetRequestInsert = Tables<"management", "t_budget_request">["Insert"];
 export type TKPIWeeklyInsert = Tables<"management", "t_kpi_weekly">["Insert"];
