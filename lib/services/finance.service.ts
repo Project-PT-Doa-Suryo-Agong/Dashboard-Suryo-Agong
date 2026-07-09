@@ -149,11 +149,21 @@ export async function deleteCoa(client: DbClient, id: string) {
 
 // t_journal
 
-export async function listJurnal(client: DbClient, page = 1, limit = 100) {
+export async function listJurnal(client: DbClient, page = 1, limit = 100, startDate?: string, endDate?: string, coaId?: string) {
   const from = (page - 1) * limit;
-  const { data, error, count } = await db(client)
+
+  let selectStr = "*, t_journal_item(id)";
+  if (coaId) selectStr = "*, t_journal_item!inner(id)";
+
+  let query = db(client)
     .from("t_journal")
-    .select("*, t_journal_item(id)", { count: "exact" })
+    .select(selectStr, { count: "exact" });
+
+  if (startDate) query = query.gte("tanggal", startDate);
+  if (endDate) query = query.lte("tanggal", endDate);
+  if (coaId) query = query.eq("t_journal_item.coa_id", coaId);
+
+  const { data, error, count } = await query
     .order("tanggal", { ascending: false })
     .range(from, from + limit - 1);
   return { data: (data ?? []) as TJournal[], error, meta: { page, limit, total: count ?? 0 } };

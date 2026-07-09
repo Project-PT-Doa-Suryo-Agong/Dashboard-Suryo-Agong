@@ -36,6 +36,7 @@ const navItems = [
     icon: 'Wallet',
     children: [
       { label: 'Overview', href: '/finance', icon: 'LayoutDashboard' },
+      { label: 'Laporan Keuangan', href: '/finance/laporan-keuangan', icon: 'FileSpreadsheet' },
       { label: 'Cashflow', href: '/finance/cashflow', icon: 'ChartCandlestick' },
       { label: 'Payroll', href: '/finance/payroll', icon: 'Banknote' },
       { label: 'Reimburse', href: '/finance/reimburse', icon: 'ReceiptText' },

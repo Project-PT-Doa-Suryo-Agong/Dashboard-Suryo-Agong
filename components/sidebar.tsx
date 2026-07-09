@@ -58,6 +58,7 @@ import {
   Boxes,
   ArrowLeftRight,
   Activity,
+  FileSpreadsheet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -112,6 +113,7 @@ const ICONS: Record<string, LucideIcon> = {
   Boxes,
   ArrowLeftRight,
   Activity,
+  FileSpreadsheet,
 };
 
 export interface NavItem {

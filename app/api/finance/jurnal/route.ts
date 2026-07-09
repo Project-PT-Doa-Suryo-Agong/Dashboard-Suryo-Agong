@@ -11,8 +11,11 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const page = Math.max(Number(url.searchParams.get("page")) || 1, 1);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 100, 1), 500);
+  const startDate = url.searchParams.get("start_date") || undefined;
+  const endDate = url.searchParams.get("end_date") || undefined;
+  const coaId = url.searchParams.get("coa_id") || undefined;
 
-  const { data, error, meta } = await listJurnal(auth.ctx.supabase, page, limit);
+  const { data, error, meta } = await listJurnal(auth.ctx.supabase, page, limit, startDate, endDate, coaId);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal mengambil data jurnal.", 500, error.message);
   return ok({ jurnal: data, meta });
 }

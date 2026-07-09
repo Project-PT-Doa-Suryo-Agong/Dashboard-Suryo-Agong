@@ -177,12 +177,12 @@ export default function FinanceJournalPage() {
     return journals.filter((journal) => journal.no_bukti?.toLowerCase().includes(keyword));
   }, [journals, searchTerm]);
 
-  const openAddModal = () => {
+  const openAddModal = async () => {
     setEditData(null);
     setJournalItems([initialItemRow]);
     setOriginalItems([]);
     setFormData({ no_bukti: "", tanggal: "", keterangan: "" });
-    void fetchDefaultJournalNumber();
+    await fetchDefaultJournalNumber();
     setIsFormModalOpen(true);
   };
 
@@ -428,6 +428,7 @@ export default function FinanceJournalPage() {
       }
 
       await fetchJournals();
+      await fetchDefaultJournalNumber();
       closeFormModal();
     } catch (error) {
       alert(error instanceof Error ? error.message : "Gagal menyimpan jurnal.");
