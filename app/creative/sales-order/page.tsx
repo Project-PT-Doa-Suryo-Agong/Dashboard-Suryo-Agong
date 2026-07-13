@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Edit, Plus, ShoppingBag, Trash2, Download, Upload, FileSpreadsheet, X, CheckCircle, AlertCircle } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { Edit, Plus, ShoppingBag, Trash2, Download, Upload, FileSpreadsheet, X, CheckCircle, AlertCircle, Printer } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import { jsPDF } from "jspdf";
@@ -338,6 +338,8 @@ export default function SalesOrderPage() {
     () => new Map<string, MCOA>(coaOptions.map((item) => [item.id, item])),
     [coaOptions],
   );
+
+  const printRef = useRef<HTMLDivElement>(null);
 
   const bankOptionsMeta = useMemo(() => {
     const cashParent = findCoaByExactName(coaOptions, "Kas Penjualan");
@@ -712,6 +714,31 @@ export default function SalesOrderPage() {
     doc.text("Bagian Penjualan", 140, footerY + 22);
     
     doc.save(`Sales_Order_${getOrderDisplayCode(order)}.pdf`);
+  };
+
+  const handlePrint = () => {
+    const el = printRef.current;
+    if (!el) return;
+
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('.no-print').forEach(n => n.remove());
+    clone.querySelectorAll('*').forEach(child => {
+      (child as HTMLElement).style.maxHeight = 'none';
+      (child as HTMLElement).style.overflow = 'visible';
+    });
+
+    const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
+    const stylesHTML = Array.from(styles).map(s => s.outerHTML).join('');
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    win.document.open();
+    win.document.write(`<!DOCTYPE html><html><head><title>Print - Sales Order</title>${stylesHTML}<style>body{padding:40px}@page{margin:15mm}</style></head><body>${clone.outerHTML}</body></html>`);
+    win.document.close();
+
+    win.onload = () => { win.focus(); win.print(); };
+    win.onafterprint = () => win.close();
   };
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
@@ -1814,13 +1841,13 @@ export default function SalesOrderPage() {
           onClose={closeDetailModal}
           maxWidth="max-w-xl"
           title={
-            <div>
+            <div className="no-print">
               <h3 className="text-lg font-bold text-slate-900">Detail Sales Order</h3>
               <p className="mt-1 text-sm text-slate-500">Informasi lengkap pesanan afiliasi.</p>
             </div>
           }
         >
-          <div className="space-y-4 font-sans">
+          <div ref={printRef} className="space-y-4 font-sans">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500">Order Code</label>
               <p className="mt-1 text-sm text-slate-800 font-medium font-mono">{getOrderDisplayCode(detailData)}</p>
@@ -1942,7 +1969,15 @@ export default function SalesOrderPage() {
                 {formatDate(detailData.created_at)}
               </p>
             </div>
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-2 pt-4 no-print">
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700"
+              >
+                <Printer className="w-4 h-4" />
+                Print
+              </button>
               <button
                 type="button"
                 onClick={() => handleGeneratePDF(detailData)}

@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { SearchBar } from "@/components/ui/search-bar";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { RowActions, DetailButton, DeleteButton } from "@/components/ui/RowActions";
-import { FileText, PlusCircle } from "lucide-react";
+import { FileText, PlusCircle, Printer } from "lucide-react";
 import type { TPKWT } from "@/types/supabase";
 import { jsPDF } from "jspdf";
 
@@ -319,6 +319,7 @@ export default function PKWTPage() {
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const [history, setHistory] = useState<TPKWT[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -783,6 +784,31 @@ export default function PKWTPage() {
     doc.save(`${safeName}-${templateType}.pdf`);
   };
 
+  const handlePrint = () => {
+    const el = printRef.current;
+    if (!el) return;
+
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('.no-print').forEach(n => n.remove());
+    clone.querySelectorAll('*').forEach(child => {
+      (child as HTMLElement).style.maxHeight = 'none';
+      (child as HTMLElement).style.overflow = 'visible';
+    });
+
+    const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
+    const stylesHTML = Array.from(styles).map(s => s.outerHTML).join('');
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    win.document.open();
+    win.document.write(`<!DOCTYPE html><html><head><title>Print - ${templateType.toUpperCase()}</title>${stylesHTML}<style>body{padding:40px;font-family:serif}@page{margin:15mm}</style></head><body>${clone.outerHTML}</body></html>`);
+    win.document.close();
+
+    win.onload = () => { win.focus(); win.print(); };
+    win.onafterprint = () => win.close();
+  };
+
   const openDelete = (id: string) => { setDeleteId(id); setIsDeleteOpen(true); };
   const closeDelete = () => { setDeleteId(null); setIsDeleteOpen(false); };
 
@@ -954,11 +980,12 @@ export default function PKWTPage() {
       )}
 
       <Modal isOpen={previewOpen} onClose={() => setPreviewOpen(false)} title={"Preview Kontrak"} maxWidth="max-w-4xl">
-        <div className="space-y-4">
+        <div ref={printRef} className="space-y-4">
           <div className="max-h-[70vh] overflow-y-auto bg-slate-100 p-4 rounded-xl border border-slate-200">
             <ContractDocument content={previewContent} />
           </div>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 no-print">
+            <button onClick={handlePrint} className="rounded-xl bg-teal-600 hover:bg-teal-700 transition-colors text-white px-4 py-2 font-medium">Print</button>
             <button onClick={handleDownloadPdf} className="rounded-xl bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 font-medium">Download PDF</button>
           </div>
         </div>
