@@ -9,11 +9,17 @@ import autoTable from "jspdf-autotable";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MCOA, MVarian, TSalesOrder, TMembership } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { SearchBar } from "@/components/ui/search-bar";
 
 type TSalesOrderWithCoa = TSalesOrder & {
   m_coa?: { kode_akun: string; nama_akun: string } | null;
 };
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+
+const NAMA_BULAN = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
 
 type SalesOrderListPayload = {
   orders: TSalesOrder[];
@@ -176,6 +182,9 @@ export default function SalesOrderPage() {
   const [variants, setVariants] = useState<MVarian[]>([]);
   const [coaOptions, setCoaOptions] = useState<MCOA[]>([]);
   const [memberships, setMemberships] = useState<TMembership[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterMonth, setFilterMonth] = useState("");
+  const [filterYear, setFilterYear] = useState("");
   const [formData, setFormData] = useState<FormState>(initialFormState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -200,6 +209,38 @@ export default function SalesOrderPage() {
     () => new Map<string, MVarian>(variants.map((item) => [item.id, item])),
     [variants],
   );
+
+  const filteredOrders = useMemo(() => {
+    const keyword = searchQuery.trim().toLowerCase();
+    return orders.filter((order) => {
+      const matchesSearch = !keyword
+        ? true
+        : (order.nama_pelanggan ?? "").toLowerCase().includes(keyword) ||
+          (order.nomor_telepon ?? "").toLowerCase().includes(keyword);
+
+      if (!matchesSearch) return false;
+
+      const date = order.created_at ? new Date(order.created_at) : null;
+      if (filterMonth && date) {
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        if (m !== filterMonth) return false;
+      }
+      if (filterYear && date) {
+        const y = String(date.getFullYear());
+        if (y !== filterYear) return false;
+      }
+
+      return true;
+    });
+  }, [orders, searchQuery, filterMonth, filterYear]);
+
+  const yearOptions = useMemo(() => {
+    const years = new Set<string>();
+    orders.forEach((o) => {
+      if (o.created_at) years.add(new Date(o.created_at).getFullYear().toString());
+    });
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+  }, [orders]);
 
   const resolveCalculatedTotal = useCallback(
     (variantId: string, quantity: string, customPrice?: string) => {
@@ -1456,6 +1497,35 @@ export default function SalesOrderPage() {
           <h3 className="text-slate-800 font-bold">Sales Order History</h3>
         </div>
 
+        <div className="px-6 pb-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-slate-100">
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Cari nama pelanggan atau nomor telepon..."
+            className="w-full sm:w-72"
+          />
+          <select
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
+            className="w-full sm:w-40 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
+          >
+            <option value="">Semua Bulan</option>
+            {NAMA_BULAN.map((nama, idx) => (
+              <option key={idx} value={String(idx + 1).padStart(2, "0")}>{nama}</option>
+            ))}
+          </select>
+          <select
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+            className="w-full sm:w-36 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
+          >
+            <option value="">Semua Tahun</option>
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -1475,14 +1545,14 @@ export default function SalesOrderPage() {
                     Memuat data...
                   </td>
                 </tr>
-              ) : orders.length === 0 ? (
+              ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-sm text-slate-500">
                     Belum ada sales order.
                   </td>
                 </tr>
               ) : (
-                orders.map((item) => {
+                filteredOrders.map((item) => {
                   const orderItems = (item as any).items || [];
 
                   return (
