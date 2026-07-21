@@ -50,6 +50,13 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+const NAMA_BULAN = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+type PeriodType = "all" | "daily" | "monthly" | "yearly";
+
 export default function FinanceCashflowPage() {
   const [items, setItems] = useState<TCashflow[]>([]);
   const [activeTab, setActiveTab] = useState<"besar" | "kecil">("besar");
@@ -63,6 +70,10 @@ export default function FinanceCashflowPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [cashflowNumber, setCashflowNumber] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [periodType, setPeriodType] = useState<PeriodType>("all");
+  const [filterDate, setFilterDate] = useState("");
+  const [filterMonth, setFilterMonth] = useState("");
+  const [filterYear, setFilterYear] = useState("");
 
   const [formData, setFormData] = useState<{
     tipe: FinanceCashflowType;
@@ -113,6 +124,21 @@ export default function FinanceCashflowPage() {
     }
   };
 
+  const yearOptions = useMemo(() => {
+    const years = new Set<string>();
+    items.forEach((item) => {
+      if (item.created_at) years.add(new Date(item.created_at).getFullYear().toString());
+    });
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+  }, [items]);
+
+  const handlePeriodTypeChange = (type: PeriodType) => {
+    setPeriodType(type);
+    if (type !== "daily") setFilterDate("");
+    if (type !== "monthly") setFilterMonth("");
+    if (type !== "yearly") setFilterYear("");
+  };
+
   useEffect(() => {
     void Promise.all([fetchCashflow(), fetchDefaultCashflowNumber()]);
   }, []);
@@ -147,36 +173,48 @@ export default function FinanceCashflowPage() {
 
   const filteredItems = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-    
-    // 1. Filter by Active Tab
-    let tabFiltered = items;
-    if (activeTab === "besar") {
-      tabFiltered = items.filter(
-        (item) => item.tipe === "income" || (item.tipe === "expense" && (item.amount ?? 0) > 1000000)
-      );
-    } else {
-      tabFiltered = items.filter(
-        (item) => item.tipe === "expense" && (item.amount ?? 0) <= 1000000
-      );
-    }
 
-    // 2. Filter by Sub-filter
-    let subFiltered = tabFiltered;
-    if (filter !== "all") {
-      subFiltered = tabFiltered.filter((item) => item.tipe === filter);
-    }
+    return items.filter((item) => {
+      // 1. Filter by Active Tab (Kas Besar / Kas Kecil)
+      if (activeTab === "besar") {
+        if (!(item.tipe === "income" || (item.tipe === "expense" && (item.amount ?? 0) > 1000000)))
+          return false;
+      } else {
+        if (!(item.tipe === "expense" && (item.amount ?? 0) <= 1000000))
+          return false;
+      }
 
-    // 3. Filter by Search Term
-    if (!keyword) return subFiltered;
-    return subFiltered.filter((item) => {
-      const number = item.cashflow_number ?? "";
-      const note = item.keterangan ?? "";
-      return (
-        number.toLowerCase().includes(keyword) ||
-        note.toLowerCase().includes(keyword)
-      );
+      // 2. Filter by Type (Semua / Pemasukan / Pengeluaran)
+      if (filter !== "all" && item.tipe !== filter) return false;
+
+      // 3. Filter by Period (Harian / Bulanan / Tahunan)
+      if (periodType !== "all" && item.created_at) {
+        const date = new Date(item.created_at);
+        if (periodType === "daily" && filterDate) {
+          if (date.toISOString().slice(0, 10) !== filterDate) return false;
+        }
+        if (periodType === "monthly") {
+          const m = String(date.getMonth() + 1).padStart(2, "0");
+          const y = String(date.getFullYear());
+          if (filterMonth && m !== filterMonth) return false;
+          if (filterYear && y !== filterYear) return false;
+        }
+        if (periodType === "yearly" && filterYear) {
+          if (String(date.getFullYear()) !== filterYear) return false;
+        }
+      }
+
+      // 4. Filter by Search Term
+      if (keyword) {
+        const number = item.cashflow_number ?? "";
+        const note = item.keterangan ?? "";
+        if (!number.toLowerCase().includes(keyword) && !note.toLowerCase().includes(keyword))
+          return false;
+      }
+
+      return true;
     });
-  }, [items, activeTab, filter, searchTerm]);
+  }, [items, activeTab, filter, periodType, filterDate, filterMonth, filterYear, searchTerm]);
 
   const resetForm = () => {
     setFormData({ tipe: "income", amount: "", keterangan: "" });
@@ -505,6 +543,67 @@ export default function FinanceCashflowPage() {
               </span>
             )}
           </div>
+        </div>
+
+        <div className="px-4 md:px-6 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500">Periode:</span>
+          <select
+            value={periodType}
+            onChange={(e) => handlePeriodTypeChange(e.target.value as PeriodType)}
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+          >
+            <option value="all">Semua</option>
+            <option value="daily">Harian</option>
+            <option value="monthly">Bulanan</option>
+            <option value="yearly">Tahunan</option>
+          </select>
+
+          {periodType === "daily" && (
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+            />
+          )}
+
+          {periodType === "monthly" && (
+            <>
+              <select
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+              >
+                <option value="">Bulan</option>
+                {NAMA_BULAN.map((nama, idx) => (
+                  <option key={idx} value={String(idx + 1).padStart(2, "0")}>{nama}</option>
+                ))}
+              </select>
+              <select
+                value={filterYear}
+                onChange={(e) => setFilterYear(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+              >
+                <option value="">Tahun</option>
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {periodType === "yearly" && (
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+            >
+              <option value="">Pilih Tahun</option>
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="px-4 md:px-6 py-4 border-b border-slate-100">
