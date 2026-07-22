@@ -37,6 +37,7 @@ const EMPTY_PHOTO_FILES: EmployeePhotoFiles = {
 };
 
 const FALLBACK_DIVISI_OPTIONS = [
+  "Developer",
   "Management & Strategy",
   "Finance & Administration",
   "HR & Operation Manager",
@@ -46,13 +47,6 @@ const FALLBACK_DIVISI_OPTIONS = [
   "Office Support",
   "Super Admin",
   "Admin",
-  "CEO",
-  "Finance",
-  "HR",
-  "Produksi",
-  "Logistik",
-  "Creative",
-  "Office",
 ];
 
 const rupiahFormatter = new Intl.NumberFormat("id-ID", {
@@ -162,9 +156,9 @@ export default function KaryawanPage() {
 
   // ── Supabase Direct ──
   const { data: rawKaryawan, loading: isLoading, refresh } = useKaryawan();
-  const { insert } = useInsertKaryawan();
-  const { update } = useUpdateKaryawan();
-  const { remove } = useDeleteKaryawan();
+  const { insert, error: insertError } = useInsertKaryawan();
+  const { update, error: updateError } = useUpdateKaryawan();
+  const { remove, error: deleteError } = useDeleteKaryawan();
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -436,7 +430,7 @@ export default function KaryawanPage() {
           motivasi_kerja: formData.motivasi_kerja || null,
         };
         const result = await update(editData.id, payload);
-        if (!result) throw new Error("Gagal update karyawan.");
+        if (!result) throw new Error(updateError || "Gagal update karyawan.");
         targetEmployeeId = result.id;
       } else {
         if (!formData.email.trim()) {
@@ -473,7 +467,7 @@ export default function KaryawanPage() {
           motivasi_kerja: formData.motivasi_kerja || null,
         };
         const result = await insert(payload);
-        if (!result) throw new Error("Gagal menambah karyawan.");
+        if (!result) throw new Error(insertError || "Gagal menambah karyawan.");
         targetEmployeeId = result.id;
       }
 

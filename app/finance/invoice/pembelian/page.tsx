@@ -67,9 +67,9 @@ export default function FinancePurchaseInvoicePage() {
         apiFetch("/api/core/vendors?page=1&limit=500")
       ]);
       const invPayload = await invRes.json() as ApiSuccess<InvoiceListPayload>;
-      const venPayload = await venRes.json() as ApiSuccess<{ vendors: TVendor[] }>;
+      const venPayload = await venRes.json() as ApiSuccess<{ vendor: TVendor[] }>;
       if (invPayload.success) setItems(invPayload.data.invoices ?? []);
-      if (venPayload.success) setVendors(venPayload.data.vendors ?? []);
+      if (venPayload.success) setVendors(venPayload.data.vendor ?? []);
     } catch (err) {
       alert("Gagal memuat data dependensi.");
     } finally {
@@ -470,9 +470,12 @@ export default function FinancePurchaseInvoicePage() {
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Nominal</label>
               <input
                 type="text"
-                readOnly
-                value={formatRupiah(Number(formData.total_amount))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-700 font-bold text-slate-800"
+                value={formatRupiah(Number(formData.total_amount) || 0)}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9]/g, "");
+                  setFormData(f => ({ ...f, total_amount: raw || "0" }));
+                }}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 font-bold focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               />
             </div>
 

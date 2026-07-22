@@ -40,8 +40,7 @@ export const SYSTEM_ROLE_TO_CORE_ROLE: Record<SystemRoleKey, CoreUserRole> = {
 };
 
 export const VALID_CORE_ROLES: CoreUserRole[] = [
-  "Super Admin",
-  "Admin",
+  "Developer",
   "Management & Strategy",
   "Finance & Administration",
   "HR & Operation Manager",
@@ -49,13 +48,8 @@ export const VALID_CORE_ROLES: CoreUserRole[] = [
   "Logistics & Packing",
   "Creative & Sales",
   "Office Support",
-  "CEO",
-  "Finance",
-  "HR",
-  "Produksi",
-  "Logistik",
-  "Creative",
-  "Office",
+  "Super Admin",
+  "Admin",
 ];
 
 export function isValidCoreRole(value: string): value is CoreUserRole {

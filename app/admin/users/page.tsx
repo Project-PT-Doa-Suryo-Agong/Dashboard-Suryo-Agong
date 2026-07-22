@@ -19,7 +19,8 @@ type SystemRoleKey =
   | "logistik"
   | "creative"
   | "office"
-  | "Super Admin";
+  | "Super Admin"
+  | "Developer";
 
 
 type ProfilesListPayload = {
@@ -38,6 +39,7 @@ type ProfilePayload = {
 const ROLE_OPTIONS: Array<{ key: SystemRoleKey; label: UserRole }> = [
   { key: "Super Admin", label: "Super Admin" },
   { key: "Admin", label: "Admin" },
+  { key: "Developer", label: "Developer" },
   { key: "management", label: "Management & Strategy" },
   { key: "finance", label: "Finance & Administration" },
   { key: "hr", label: "HR & Operation Manager" },
@@ -52,6 +54,7 @@ const LABEL_TO_ROLE_KEY = new Map<UserRole, SystemRoleKey>(ROLE_OPTIONS.map((ite
 const ROLE_BADGE_MAP: Record<UserRole, string> = {
   "Super Admin": "bg-purple-500 text-white border-purple-500",
   Admin: "bg-purple-400 text-white border-purple-400",
+  Developer: "bg-cyan-500 text-white border-cyan-500",
   "Management & Strategy": "bg-slate-500 text-white border-slate-500",
   "Finance & Administration": "bg-emerald-500 text-white border-emerald-500",
   "HR & Operation Manager": "bg-sky-500 text-white border-sky-500",
@@ -59,13 +62,6 @@ const ROLE_BADGE_MAP: Record<UserRole, string> = {
   "Logistics & Packing": "bg-orange-500 text-white border-orange-500",
   "Creative & Sales": "bg-pink-500 text-white border-pink-500",
   "Office Support": "bg-indigo-500 text-white border-indigo-500",
-  CEO: "bg-slate-800 text-white border-slate-800",
-  Finance: "bg-emerald-50 text-emerald-600 border-emerald-100",
-  HR: "bg-sky-50 text-sky-600 border-sky-100",
-  Produksi: "bg-amber-50 text-amber-600 border-amber-100",
-  Logistik: "bg-orange-50 text-orange-600 border-orange-100",
-  Creative: "bg-pink-50 text-pink-600 border-pink-100",
-  Office: "bg-indigo-50 text-indigo-600 border-indigo-100",
 };
 
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {

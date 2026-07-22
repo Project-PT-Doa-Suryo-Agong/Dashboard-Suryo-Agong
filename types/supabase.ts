@@ -12,8 +12,7 @@ type Tables<S extends keyof Database, T extends keyof Database[S]["Tables"]> =
   Database[S]["Tables"][T];
 
 export type CoreUserRole =
-  | "Super Admin"
-  | "Admin"
+  | "Developer"
   | "Management & Strategy"
   | "Finance & Administration"
   | "HR & Operation Manager"
@@ -21,13 +20,8 @@ export type CoreUserRole =
   | "Logistics & Packing"
   | "Creative & Sales"
   | "Office Support"
-  | "CEO"
-  | "Finance"
-  | "HR"
-  | "Produksi"
-  | "Logistik"
-  | "Creative"
-  | "Office";
+  | "Super Admin"
+  | "Admin";
 
 export type HrEmployeeStatus = "aktif" | "nonaktif";
 export type HrAttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";

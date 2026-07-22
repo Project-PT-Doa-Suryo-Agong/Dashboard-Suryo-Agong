@@ -15,6 +15,7 @@ import { RowActions, EditButton, DeleteButton, DetailButton } from "@/components
 import type { CoreUserRole } from "@/types/supabase";
 
 const FALLBACK_DIVISI_OPTIONS: CoreUserRole[] = [
+  "Developer",
   "Management & Strategy",
   "Finance & Administration",
   "HR & Operation Manager",
@@ -23,7 +24,7 @@ const FALLBACK_DIVISI_OPTIONS: CoreUserRole[] = [
   "Creative & Sales",
   "Office Support",
   "Super Admin",
-  "CEO",
+  "Admin",
 ];
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
