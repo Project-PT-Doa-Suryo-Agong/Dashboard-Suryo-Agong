@@ -5,6 +5,8 @@ import { requireNumber, requireString, requireUUID } from "@/lib/validation/body
 import type { TPayrollHistoryInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 
+const DEFAULT_PAYROLL_COA_KODE_AKUN = "5101";
+
 function normalizePayrollMonth(value: string): string | null {
   const trimmed = value.trim();
 
@@ -87,11 +89,37 @@ export async function POST(request: Request) {
     finalTotal = finalTotal - potonganKasbon;
   }
 
+  // Cek duplikasi: employee_id + bulan sudah ada?
+  const { data: existing } = await auth.ctx.supabase
+    .schema("finance")
+    .from("t_payroll_history")
+    .select("employee_id")
+    .eq("employee_id", employeeId.data!)
+    .eq("bulan", normalizedBulan)
+    .maybeSingle();
+  if (existing) {
+    return fail(ErrorCode.ALREADY_EXISTS, "Payroll untuk karyawan dan periode ini sudah ada.", 409);
+  }
+
+  // Resolve COA: jika tidak diinput, cari default dari m_coa
+  let resolvedCoaId: string | null = coaId.data ?? null;
+  if (!resolvedCoaId) {
+    const { data: defaultCoa } = await auth.ctx.supabase
+      .schema("finance")
+      .from("m_coa")
+      .select("id")
+      .eq("kode_akun", DEFAULT_PAYROLL_COA_KODE_AKUN)
+      .maybeSingle();
+    if (defaultCoa) {
+      resolvedCoaId = defaultCoa.id;
+    }
+  }
+
   const payload: TPayrollHistoryInsert = {
     employee_id: employeeId.data,
     bulan: normalizedBulan,
     total: finalTotal,
-    coa_id: coaId.data || "654d8b38-ac1e-4db9-bcba-93fe87a6efa4",
+    coa_id: resolvedCoaId,
   };
 
   const { data, error } = await createPayroll(auth.ctx.supabase, payload);

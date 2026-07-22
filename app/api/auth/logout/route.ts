@@ -42,7 +42,14 @@ export async function POST(request: Request) {
     // ignore signout errors
   }
 
-  const projectRef = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF;
+  let projectRef = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF;
+  if (!projectRef) {
+    try {
+      projectRef = new URL(env.supabaseUrl).hostname.split(".")[0];
+    } catch {
+      projectRef = undefined;
+    }
+  }
   const authCookieBase = projectRef
     ? `sb-${projectRef}-auth-token`
     : "sb-mhfdzprxauqfczmtyizg-auth-token";
