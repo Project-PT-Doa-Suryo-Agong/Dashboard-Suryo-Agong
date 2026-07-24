@@ -417,7 +417,7 @@ export default function FinancePayrollPage() {
   const handleExportPDF = () => {
     exportToPDF({
       title: REPORT_CONFIG.title,
-      headers: REPORT_CONFIG.headers,
+      headers: [...REPORT_CONFIG.headers],
       rows: reportRows,
       fileName: "Slip_Gaji_PT_Doa_Suryo_Agong.pdf",
     });

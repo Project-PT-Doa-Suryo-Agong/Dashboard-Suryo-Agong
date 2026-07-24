@@ -166,7 +166,7 @@ export async function listJurnal(client: DbClient, page = 1, limit = 100, startD
   const { data, error, count } = await query
     .order("tanggal", { ascending: false })
     .range(from, from + limit - 1);
-  return { data: (data ?? []) as TJournal[], error, meta: { page, limit, total: count ?? 0 } };
+  return { data: (data ?? []) as unknown as TJournal[], error, meta: { page, limit, total: count ?? 0 } };
 }
 
 export async function createJurnal(client: DbClient, input: Record<string, unknown>) {
