@@ -1,8 +1,8 @@
 "use client";
 import { SearchBar } from "@/components/ui/search-bar";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Edit, PlusCircle, Search, Trash2 } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
+import { Edit, PlusCircle, Search, Trash2, FileSpreadsheet, FileText, Eye, Printer, Send, ChevronDown } from "lucide-react";
 import { exportToPDF } from "@/lib/utils/export-pdf";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -10,6 +10,9 @@ import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MCOA, MKaryawan, TPayrollHistory, TUtangPiutang } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { jsPDF } from "jspdf";
+import DropdownMenu from "@/components/ui/DropdownMenu";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 type TPayrollHistoryWithCoa = TPayrollHistory & {
   m_coa?: { kode_akun: string; nama_akun: string } | null;
@@ -98,6 +101,24 @@ function toDateInput(value: string | null): string {
   return `${year}-${month}-${day}`;
 }
 
+const REPORT_CONFIG = {
+  companyName: "PT Doa Suryo Agong",
+  title: "Slip Gaji - PT Doa Suryo Agong",
+  headers: ["Periode", "Nama Karyawan", "Total Gaji", "Tanggal Eksekusi"],
+} as const;
+
+function prepareReportRows(
+  data: TPayrollHistoryWithCoa[],
+  employeeLookup: Record<string, string>,
+): string[][] {
+  return data.map((item) => [
+    item.bulan ? formatPeriod(item.bulan) : "-",
+    employeeLookup[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan",
+    formatRupiah(item.total ?? 0),
+    item.created_at ? formatDate(item.created_at) : "-",
+  ]);
+}
+
 export default function FinancePayrollPage() {
   const [items, setItems] = useState<TPayrollHistoryWithCoa[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
@@ -111,6 +132,8 @@ export default function FinancePayrollPage() {
   const [editData, setEditData] = useState<TPayrollHistory | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<{
     employee_id: string;
@@ -267,6 +290,11 @@ export default function FinancePayrollPage() {
     );
   }, [items, searchTerm, employeeById]);
 
+  const reportRows = useMemo(
+    () => prepareReportRows(filteredPayroll, employeeById),
+    [filteredPayroll, employeeById],
+  );
+
   const resetForm = () => {
     const defaultEmployee = employees[0];
     setFormData({
@@ -387,22 +415,126 @@ export default function FinancePayrollPage() {
   };
 
   const handleExportPDF = () => {
-    const exportRows = filteredPayroll.map((item) => {
-      const employeeName = employeeById[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan";
-      return [
-        item.bulan ? formatPeriod(item.bulan) : "-",
-        employeeName,
-        formatRupiah(item.total ?? 0),
-        item.created_at ? formatDate(item.created_at) : "-",
-      ];
-    });
-
     exportToPDF({
-      title: "Slip Gaji - PT Doa Suryo Agong",
-      headers: ["Periode", "Nama Karyawan", "Total Gaji", "Tanggal Eksekusi"],
-      rows: exportRows,
+      title: REPORT_CONFIG.title,
+      headers: REPORT_CONFIG.headers,
+      rows: reportRows,
       fileName: "Slip_Gaji_PT_Doa_Suryo_Agong.pdf",
     });
+  };
+
+  const handleExportExcel = async () => {
+    if (filteredPayroll.length === 0) {
+      alert("Tidak ada data payroll untuk diekspor.");
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Payroll");
+
+    worksheet.mergeCells("A1:D1");
+    const titleCell = worksheet.getCell("A1");
+    titleCell.value = "PT Doa Suryo Agong";
+    titleCell.font = { name: "Arial", size: 16, bold: true, color: { argb: "FF1B365D" } };
+    titleCell.alignment = { vertical: "middle", horizontal: "center" };
+
+    worksheet.mergeCells("A2:D2");
+    const subCell = worksheet.getCell("A2");
+    subCell.value = "Laporan Payroll";
+    subCell.font = { name: "Arial", size: 12 };
+    subCell.alignment = { vertical: "middle", horizontal: "center" };
+
+    worksheet.mergeCells("A3:D3");
+    const dateCell = worksheet.getCell("A3");
+    dateCell.value = `Tanggal Cetak: ${new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(new Date())}`;
+    dateCell.font = { name: "Arial", size: 10, italic: true };
+    dateCell.alignment = { vertical: "middle", horizontal: "center" };
+
+    const headerRow = worksheet.getRow(5);
+    headerRow.values = ["Periode", "Nama Karyawan", "Total Gaji", "Tanggal Eksekusi"];
+    headerRow.height = 25;
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1B365D" } };
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFD3D3D3" } },
+        left: { style: "thin", color: { argb: "FFD3D3D3" } },
+        bottom: { style: "thin", color: { argb: "FFD3D3D3" } },
+        right: { style: "thin", color: { argb: "FFD3D3D3" } },
+      };
+    });
+
+    filteredPayroll.forEach((item, index) => {
+      const row = worksheet.getRow(6 + index);
+      const employeeName = employeeById[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan";
+      row.values = [
+        item.bulan ? formatPeriod(item.bulan) : "-",
+        employeeName,
+        item.total ?? 0,
+        item.created_at ? formatDate(item.created_at) : "-",
+      ];
+
+      const isEven = index % 2 === 0;
+      row.eachCell((cell, colNumber) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: isEven ? "FFFFFFFF" : "FFF9F9F9" } };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFD3D3D3" } },
+          left: { style: "thin", color: { argb: "FFD3D3D3" } },
+          bottom: { style: "thin", color: { argb: "FFD3D3D3" } },
+          right: { style: "thin", color: { argb: "FFD3D3D3" } },
+        };
+        cell.alignment = { vertical: "middle", horizontal: colNumber === 3 ? "right" : "left" };
+        if (colNumber === 3) {
+          cell.numFmt = '"Rp" #,##0';
+        }
+      });
+    });
+
+    worksheet.columns.forEach((col) => {
+      let maxLen = 10;
+      col.eachCell?.({ includeEmpty: true }, (cell) => {
+        if (cell.value) maxLen = Math.max(maxLen, String(cell.value).length);
+      });
+      col.width = maxLen + 3;
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Payroll_PT_Doa_Suryo_Agong_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const handlePreview = () => {
+    setIsPreviewOpen(true);
+  };
+
+  const handlePrint = () => {
+    const el = reportRef.current;
+    if (!el) return;
+
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.style.position = "static";
+    clone.style.left = "auto";
+    clone.style.top = "auto";
+    clone.style.margin = "0 auto";
+    clone.style.background = "#fff";
+    clone.querySelectorAll(".no-print").forEach((n) => n.remove());
+    clone.querySelectorAll("*").forEach((child) => {
+      (child as HTMLElement).style.maxHeight = "none";
+      (child as HTMLElement).style.overflow = "visible";
+    });
+
+    const styles = document.querySelectorAll("style, link[rel=\"stylesheet\"]");
+    const stylesHTML = Array.from(styles).map((s) => s.outerHTML).join("");
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    win.document.open();
+    win.document.write(`<!DOCTYPE html><html><head><title>Print - Payroll</title>${stylesHTML}<style>body{padding:40px}@page{margin:15mm}</style></head><body>${clone.outerHTML}</body></html>`);
+    win.document.close();
+
+    win.onload = () => { win.focus(); win.print(); };
+    win.onafterprint = () => win.close();
   };
 
   const handleExportSlipGaji = (item: TPayrollHistoryWithCoa) => {
@@ -569,6 +701,141 @@ export default function FinancePayrollPage() {
     doc.save(`Slip_Gaji_${employeeName.replace(/\s+/g, "_")}_${(item.bulan ?? "unknown").substring(0, 7)}.pdf`);
   };
 
+  const renderPayrollTable = (showActions: boolean) => {
+    return (
+      <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
+        <table className="w-full min-w-max text-left">
+          <thead className="bg-slate-50/80">
+            <tr>
+              <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Periode</th>
+              <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">COA</th>
+              <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Karyawan</th>
+              <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Total Gaji</th>
+              <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Tanggal Eksekusi</th>
+              {showActions && (
+                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
+              )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {isLoading ? (
+              <tr key="loading-row">
+                <td colSpan={showActions ? 6 : 5} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
+                  Memuat data...
+                </td>
+              </tr>
+            ) : filteredPayroll.length === 0 ? (
+              <tr key="empty-row">
+                <td colSpan={showActions ? 6 : 5} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
+                  Karyawan tidak ditemukan.
+                </td>
+              </tr>
+            ) : (
+              filteredPayroll.map((item, index) => {
+                const employeeName = employeeById[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan";
+                const rowKey =
+                  item.id ??
+                  `${item.employee_id ?? "unknown"}-${item.bulan ?? "no-period"}-${item.created_at ?? "no-date"}-${index}`;
+                return (
+                  <tr key={rowKey} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.bulan ? formatPeriod(item.bulan) : "-"}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-"}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-900 whitespace-nowrap">{employeeName}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-right text-slate-900 whitespace-nowrap">{formatRupiah(item.total ?? 0)}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
+                    {showActions && (
+                      <td className="px-4 md:px-6 py-3 text-right whitespace-nowrap">
+                        <RowActions>
+                          <DownloadButton onClick={() => handleExportSlipGaji(item)} label="Slip" />
+                          <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
+                          <DeleteButton onClick={() => openDeleteModal(`${item.employee_id}_${toDateInput(item.bulan)}`)} disabled={isSubmitting} />
+                        </RowActions>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const NAVY = "bg-[#1B365D]";
+
+  type PayrollReportProps = {
+    config: typeof REPORT_CONFIG;
+    rows: string[][];
+    total: string;
+  };
+
+  function PayrollReport({ config, rows, total }: PayrollReportProps) {
+    const today = new Intl.DateTimeFormat("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).format(new Date());
+
+    return (
+      <div className="text-sm">
+        <div className="flex items-start justify-between mb-1">
+          <h2 className="text-lg font-bold text-[#1B365D]">{config.companyName}</h2>
+          <p className="text-[10px] italic text-slate-400">Tanggal Cetak: {today}</p>
+        </div>
+        <hr className="border-[#1B365D] border-t-2 mb-3" />
+        <h3 className="text-sm font-bold text-[#1B365D] mb-3">{config.title}</h3>
+
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className={`${NAVY} text-white`}>
+              {config.headers.map((header, i) => (
+                <th
+                  key={header}
+                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-center ${i === config.headers.length - 1 ? "text-right" : ""}`}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={config.headers.length} className="px-3 py-8 text-center text-slate-500">
+                  Tidak ada data.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, index) => (
+                <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-[#F9F9F9]"}>
+                  {row.map((cell, i) => (
+                    <td
+                      key={i}
+                      className={`px-3 py-2 text-xs border-b border-[#E5E7EB] ${i === row.length - 1 ? "text-right font-semibold" : ""}`}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+
+        <hr className="border-[#1B365D] border-t mt-3 mb-2" />
+        <div className="flex justify-end text-xs font-bold text-[#1B365D] py-1">
+          <span className="mr-8">Total Pengeluaran Gaji: {total}</span>
+        </div>
+        <hr className="border-[#1B365D] border-t mb-4" />
+
+        <p className="text-[9px] italic text-slate-400 text-center">
+          Laporan ini sah dan diterbitkan oleh sistem perusahaan. Data bersifat rahasia dan hanya untuk kepentingan internal.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1 md:space-y-2">
@@ -582,13 +849,45 @@ export default function FinancePayrollPage() {
           <p className="mt-2 text-xl md:text-3xl font-bold text-blue-900 break-all">{formatRupiah(totalPayroll)}</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <button
-            type="button"
-            onClick={handleExportPDF}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E3A8A] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-          >
-            Cetak PDF
-          </button>
+          <DropdownMenu
+            trigger={
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E3A8A] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+              >
+                Output
+                <ChevronDown size={16} />
+              </button>
+            }
+            items={[
+              {
+                label: "Open in Excel",
+                onClick: handleExportExcel,
+                icon: <FileSpreadsheet size={16} />,
+              },
+              {
+                label: "PDF",
+                onClick: handleExportPDF,
+                icon: <FileText size={16} />,
+              },
+              {
+                label: "Send To",
+                onClick: () => {},
+                icon: <Send size={16} />,
+                disabled: true,
+              },
+              {
+                label: "Preview",
+                onClick: handlePreview,
+                icon: <Eye size={16} />,
+              },
+              {
+                label: "Print",
+                onClick: handlePrint,
+                icon: <Printer size={16} />,
+              },
+            ]}
+          />
           <button
             type="button"
             onClick={openAddModal}
@@ -610,59 +909,14 @@ export default function FinancePayrollPage() {
           />
         </div>
 
-        <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
-          <table className="w-full min-w-max text-left">
-            <thead className="bg-slate-50/80">
-              <tr>
-                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Periode</th>
-                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">COA</th>
-                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Nama Karyawan</th>
-                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Total Gaji</th>
-                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Tanggal Eksekusi</th>
-                <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
-                <tr key="loading-row">
-                  <td colSpan={5} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
-                    Memuat data...
-                  </td>
-                </tr>
-              ) : filteredPayroll.length === 0 ? (
-                <tr key="empty-row">
-                  <td colSpan={5} className="px-4 md:px-6 py-10 text-center text-sm text-slate-500">
-                    Karyawan tidak ditemukan.
-                  </td>
-                </tr>
-              ) : (
-                filteredPayroll.map((item, index) => {
-                  const employeeName = employeeById[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan";
-                  const rowKey =
-                    item.id ??
-                    `${item.employee_id ?? "unknown"}-${item.bulan ?? "no-period"}-${item.created_at ?? "no-date"}-${index}`;
-                  return (
-                    <tr key={rowKey} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.bulan ? formatPeriod(item.bulan) : "-"}</td>
-                      <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-"}</td>
-                      <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-900 whitespace-nowrap">{employeeName}</td>
-                      <td className="px-4 md:px-6 py-3 text-sm font-semibold text-right text-slate-900 whitespace-nowrap">{formatRupiah(item.total ?? 0)}</td>
-                      <td className="px-4 md:px-6 py-3 text-sm text-slate-600 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
-                      <td className="px-4 md:px-6 py-3 text-right whitespace-nowrap">
-                        <RowActions>
-                          <DownloadButton onClick={() => handleExportSlipGaji(item)} label="Slip" />
-                          <EditButton onClick={() => openEditModal(item)} disabled={isSubmitting} />
-                          <DeleteButton onClick={() => openDeleteModal(`${item.employee_id}_${toDateInput(item.bulan)}`)} disabled={isSubmitting} />
-                        </RowActions>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        {renderPayrollTable(true)}
       </section>
+
+      <div className="fixed left-[-99999px] top-0" style={{ width: "210mm", background: "#fff", zIndex: -1 }} ref={reportRef}>
+        <div className="p-8">
+          <PayrollReport config={REPORT_CONFIG} rows={reportRows} total={formatRupiah(totalPayroll)} />
+        </div>
+      </div>
 
       <Modal
         isOpen={isFormModalOpen}
@@ -772,6 +1026,17 @@ export default function FinancePayrollPage() {
         cancelText="Batal"
         variant="danger"
       />
+
+      <Modal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        title="Preview Payroll"
+        maxWidth="max-w-5xl"
+      >
+        <div className="p-6">
+          <PayrollReport config={REPORT_CONFIG} rows={reportRows} total={formatRupiah(totalPayroll)} />
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -23,6 +23,7 @@ type PenilaianRekap = {
   avg_problem_solving_persen: number;
   avg_leadership_persen: number;
   skor_akhir_total: number;
+  sudah_dinilai?: boolean;
   presensi: {
     hadir: number;
     sakit: number;
@@ -355,9 +356,15 @@ export default function PenilaianKaryawanPage() {
                           </span>
                         </td>
                         <td className="px-4 md:px-6 py-3 text-right">
-                          <RowActions>
-                            <DetailButton onClick={() => openDetailModal(item)} />
-                          </RowActions>
+                          {item.sudah_dinilai ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                              Sudah Dinilai
+                            </span>
+                          ) : (
+                            <RowActions>
+                              <DetailButton onClick={() => openDetailModal(item)} />
+                            </RowActions>
+                          )}
                         </td>
                       </tr>
                     );

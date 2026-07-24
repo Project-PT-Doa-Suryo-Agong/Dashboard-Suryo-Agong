@@ -45,7 +45,33 @@ export async function GET(request: Request) {
       }
     }
 
-    // 3. Batch-fetch all attendance records for these employees
+    // 3. Resolve current user's karyawan ID to flag rows they've already assessed
+    let currentKaryawanId: string | null = null;
+    const { data: currentKaryawan } = await (auth.ctx.supabase as any)
+      .schema("hr")
+      .from("m_karyawan")
+      .select("id")
+      .eq("profile_id", auth.ctx.userId)
+      .maybeSingle();
+
+    if (currentKaryawan) currentKaryawanId = currentKaryawan.id;
+
+    // 4. Fetch all penilaian by current user (use supabaseAdmin – skips RLS)
+    const sudahDinilaiSet = new Set<string>();
+    if (currentKaryawanId) {
+      const { data: myAssessments } = await (supabaseAdmin as any)
+        .schema("management")
+        .from("penilaian_kerja")
+        .select("dinilai, tanggal_penilaian")
+        .eq("penilai", currentKaryawanId);
+
+      for (const a of myAssessments ?? []) {
+        const d = new Date(a.tanggal_penilaian);
+        sudahDinilaiSet.add(`${a.dinilai}_${d.getMonth() + 1}_${d.getFullYear()}`);
+      }
+    }
+
+    // 5. Batch-fetch all attendance records for these employees
     const employeeIds = Object.values(employeeMap).filter(Boolean);
     let allAttendance: any[] = [];
     if (employeeIds.length > 0) {
@@ -57,11 +83,15 @@ export async function GET(request: Request) {
       allAttendance = attData ?? [];
     }
 
-    // 4. Build attendance summary per (employee_id, bulan, tahun)
+    // 6. Build attendance summary per (employee_id, bulan, tahun) + sudah_dinilai flag
     const enrichedItems = items.map((item: any) => {
       const empId = employeeMap[item.nama_karyawan];
+      const sudahDinilai = currentKaryawanId && empId
+        ? sudahDinilaiSet.has(`${empId}_${item.bulan}_${item.tahun}`)
+        : false;
+
       if (!empId) {
-        return { ...item, presensi: null };
+        return { ...item, sudah_dinilai: sudahDinilai, presensi: null };
       }
 
       // Filter attendance for this employee & month
@@ -89,6 +119,7 @@ export async function GET(request: Request) {
 
       return {
         ...item,
+        sudah_dinilai: sudahDinilai,
         presensi: { hadir, sakit, izin, alpha, total, workingDays, persentase },
       };
     });
@@ -126,7 +157,7 @@ export async function POST(request: Request) {
     } = body;
 
     // Resolve the penilai's employee ID from hr.m_karyawan using the authenticated profile ID
-    const { data: karyawanPenilai, error: penilaiErr } = await (supabaseAdmin as any)
+    const { data: karyawanPenilai, error: penilaiErr } = await (auth.ctx.supabase as any)
       .schema("hr")
       .from("m_karyawan")
       .select("id")
@@ -139,7 +170,7 @@ export async function POST(request: Request) {
     }
 
     // Resolve the dinilai's employee ID from hr.m_karyawan using the sent dinilai profile ID
-    const { data: karyawanDinilai, error: dinilaiErr } = await (supabaseAdmin as any)
+    const { data: karyawanDinilai, error: dinilaiErr } = await (auth.ctx.supabase as any)
       .schema("hr")
       .from("m_karyawan")
       .select("id")
@@ -170,8 +201,19 @@ export async function POST(request: Request) {
       .select()
       .single();
 
+    console.error("[PENILAIAN INSERT RESULT]", {
+      data,
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    });
+
     if (error) {
       console.error("[PENILAIAN POST ERROR]", error);
+      if (error.code === "23505" && error.message?.includes("idx_penilaian_bulanan")) {
+        return fail(ErrorCode.ALREADY_EXISTS, "Anda sudah menilai karyawan ini pada bulan yang sama.", 409);
+      }
       return fail(ErrorCode.DB_ERROR, "Gagal menyimpan penilaian.", 500, error.message);
     }
 
