@@ -1,20 +1,8 @@
--- ============================================================================
--- Max Budget (Saldo Perusahaan)
--- 
--- Menyimpan batas maksimal budget perusahaan secara global.
--- Menggunakan mekanisme is_active agar riwayat perubahan tetap tersedia.
---
--- Cara pakai:
---   1. Jalankan script ini di Supabase SQL Editor
---   2. Atur Max Budget via UI Management → Budget → "Atur Max Budget"
--- ============================================================================
+
 
 BEGIN;
 
--- ================================================================
--- DEPENDENCY: Helper function used by RLS policies di bawah.
--- Jika function ini sudah ada (dari rls-policies.sql), akan di-skip.
--- ================================================================
+
 
 CREATE OR REPLACE FUNCTION core.is_strategic()
 RETURNS BOOLEAN AS $$

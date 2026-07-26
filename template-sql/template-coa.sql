@@ -1,11 +1,3 @@
--- ==========================================
--- CHART OF ACCOUNTS (COA) TEMPLATE
--- Schema : finance
--- ==========================================
-
--- =========================
--- HEADER
--- =========================
 
 INSERT INTO finance.m_coa
 (kode_akun, nama_akun, kategori, is_sub_account)

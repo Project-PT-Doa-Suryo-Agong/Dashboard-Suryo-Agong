@@ -1,11 +1,4 @@
 
--- AUTOMATION TRIGGER FOR CASHFLOW
-
--- File ini membuat fungsi dan trigger PostgreSQL untuk mengotomatiskan
--- pencatatan kas (cashflow) dari 3 transaksi:
--- 1. Sales Order (Income)
--- 2. Payroll (Expense)
--- 3. Reimbursement (Expense - saat status 'approved')
 
 
 -- 1. TRIGGER SALES ORDER -> CASHFLOW (INCOME)
