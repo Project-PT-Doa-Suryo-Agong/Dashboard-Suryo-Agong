@@ -450,6 +450,7 @@ export default function LaporanKeuanganPage() {
       for (const item of bukuBesarData.items) {
         const rows = item.mutasi.map((m: any) => [
           formatDate(m.tanggal),
+          m.journal_number || "-",
           m.no_bukti,
           m.keterangan || "-",
           formatRupiah(m.debit),
@@ -459,7 +460,7 @@ export default function LaporanKeuanganPage() {
         exportToPDF({
           title: `Buku Besar - ${item.kode_akun} ${item.nama_akun}`,
           subtitle: `Periode: ${formatDateLong(start_date)} - ${formatDateLong(end_date)}`,
-          headers: ["Tanggal", "No Bukti", "Keterangan", "Debit", "Kredit", "Saldo"],
+          headers: ["Tanggal", "No Jurnal", "No Bukti", "Keterangan", "Debit", "Kredit", "Saldo"],
           rows,
           fileName: `${item.kode_akun}_${exportFileName("buku-besar", start_date, end_date, "pdf")}`,
           summary: [
@@ -558,13 +559,13 @@ export default function LaporanKeuanganPage() {
         i.amount, i.keterangan,
       ]);
     } else if (activeTab === "buku-besar" && bukuBesarData) {
-      headers = ["Kode Akun", "Nama Akun", "Tanggal", "No Bukti", "Keterangan", "Debit", "Kredit", "Saldo"];
+      headers = ["Kode Akun", "Nama Akun", "Tanggal", "No Jurnal", "No Bukti", "Keterangan", "Debit", "Kredit", "Saldo"];
       for (const item of bukuBesarData.items) {
-        dataRows.push([item.kode_akun, item.nama_akun, "Saldo Awal", "", "", "", "", item.opening_balance]);
+        dataRows.push([item.kode_akun, item.nama_akun, "Saldo Awal", "", "", "", "", "", item.opening_balance]);
         for (const m of item.mutasi) {
-          dataRows.push([item.kode_akun, item.nama_akun, formatDate(m.tanggal), m.no_bukti, m.keterangan || "-", m.debit, m.kredit, m.saldo]);
+          dataRows.push([item.kode_akun, item.nama_akun, formatDate(m.tanggal), m.journal_number || "-", m.no_bukti, m.keterangan || "-", m.debit, m.kredit, m.saldo]);
         }
-        dataRows.push([item.kode_akun, item.nama_akun, "Saldo Akhir", "", "", "", "", item.closing_balance]);
+        dataRows.push([item.kode_akun, item.nama_akun, "Saldo Akhir", "", "", "", "", "", item.closing_balance]);
       }
     } else if (activeTab === "jurnal-umum" && jurnalData) {
       headers = ["No Jurnal", "Tanggal", "No Bukti", "Keterangan", "Jumlah Item"];
@@ -1068,6 +1069,7 @@ export default function LaporanKeuanganPage() {
                   <thead className="bg-slate-50/80">
                     <tr>
                       <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase text-slate-500">Tanggal</th>
+                      <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase text-slate-500">No Jurnal</th>
                       <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase text-slate-500">No Bukti</th>
                       <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase text-slate-500">Keterangan</th>
                       <th className="px-4 md:px-6 py-3 text-[11px] font-bold uppercase text-slate-500 text-right">Debit</th>
@@ -1078,12 +1080,13 @@ export default function LaporanKeuanganPage() {
                   <tbody className="divide-y divide-slate-100">
                     {item.mutasi.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 md:px-6 py-6 text-sm text-slate-500 text-center">Tidak ada transaksi pada periode ini.</td>
+                        <td colSpan={7} className="px-4 md:px-6 py-6 text-sm text-slate-500 text-center">Tidak ada transaksi pada periode ini.</td>
                       </tr>
                     ) : (
                       item.mutasi.map((m: any, idx: number) => (
                         <tr key={idx} className="hover:bg-slate-50/70">
                           <td className="px-4 md:px-6 py-3 text-sm text-slate-600">{formatDate(m.tanggal)}</td>
+                          <td className="px-4 md:px-6 py-3 text-sm font-mono text-slate-600">{m.journal_number || "-"}</td>
                           <td className="px-4 md:px-6 py-3 text-sm font-mono text-slate-600">{m.no_bukti}</td>
                           <td className="px-4 md:px-6 py-3 text-sm text-slate-800">{m.keterangan || "-"}</td>
                           <td className="px-4 md:px-6 py-3 text-sm text-right text-slate-800">{m.debit > 0 ? formatRupiah(m.debit) : "-"}</td>

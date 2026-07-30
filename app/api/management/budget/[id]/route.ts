@@ -33,7 +33,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const amount = requireNumber(input, "amount", { min: 0 });
     if (!amount.ok) return fail(ErrorCode.VALIDATION_ERROR, amount.message, 400);
 
-    const { data: maxBudgetData } = await supabaseAdmin
+    const { data: maxBudgetData, error: maxBudgetError } = await supabaseAdmin
       .schema("management")
       .from("t_max_budget")
       .select("max_amount")
@@ -41,6 +41,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (maxBudgetError) {
+      return fail(ErrorCode.DB_ERROR, "Gagal memvalidasi max budget.", 500, maxBudgetError.message);
+    }
 
     if (maxBudgetData && amount.data! > maxBudgetData.max_amount) {
       const maxStr = new Intl.NumberFormat("id-ID").format(maxBudgetData.max_amount);

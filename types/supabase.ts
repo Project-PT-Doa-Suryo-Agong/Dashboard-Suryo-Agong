@@ -466,6 +466,9 @@ export interface Database {
           coa_id: string | null;
           bulan: string | null;
           total: number | null;
+          gaji_pokok: number | null;
+          potongan_kasbon: number | null;
+          gaji_bersih: number | null;
           created_at: string | null;
         };
         Insert: {
@@ -474,6 +477,9 @@ export interface Database {
           coa_id?: string | null;
           bulan?: string | null;
           total?: number | null;
+          gaji_pokok?: number | null;
+          potongan_kasbon?: number | null;
+          gaji_bersih?: number | null;
           created_at?: string | null;
         };
         Update: {
@@ -482,6 +488,9 @@ export interface Database {
           coa_id?: string | null;
           bulan?: string | null;
           total?: number | null;
+          gaji_pokok?: number | null;
+          potongan_kasbon?: number | null;
+          gaji_bersih?: number | null;
         };
         Relationships: [];
       };
@@ -811,6 +820,9 @@ export interface Database {
           id: string;
           qc_in_number: string | null;
           produksi_order_id: string | null;
+          bahan_baku_id: string | null;
+          jumlah: number | null;
+          mutasi_stok_id: string | null;
           hasil: ProductionQcResult | null;
           created_at: string | null;
         };
@@ -818,6 +830,9 @@ export interface Database {
           id?: string;
           qc_in_number?: string | null;
           produksi_order_id?: string | null;
+          bahan_baku_id?: string | null;
+          jumlah?: number | null;
+          mutasi_stok_id?: string | null;
           hasil?: ProductionQcResult | null;
           created_at?: string | null;
         };
@@ -825,9 +840,27 @@ export interface Database {
           id?: string;
           qc_in_number?: string | null;
           produksi_order_id?: string | null;
+          bahan_baku_id?: string | null;
+          jumlah?: number | null;
+          mutasi_stok_id?: string | null;
           hasil?: ProductionQcResult | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "t_qc_inbound_bahan_baku_id_fkey";
+            columns: ["bahan_baku_id"];
+            isOneToOne: false;
+            referencedRelation: "m_bahan_baku";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "t_qc_inbound_mutasi_stok_id_fkey";
+            columns: ["mutasi_stok_id"];
+            isOneToOne: false;
+            referencedRelation: "t_stok_mutasi";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       t_qc_outbound: {
         Row: {
@@ -1298,6 +1331,7 @@ export interface Database {
           amount: number;
           status: ManagementBudgetStatus | null;
           created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
           id?: string;

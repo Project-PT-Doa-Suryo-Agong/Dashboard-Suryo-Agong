@@ -249,7 +249,11 @@ export default function FinancePayrollPage() {
         headers: { "Content-Type": "application/json" },
       });
       const payload = await parseJsonResponse<{ utang_piutang: TUtangPiutang[] }>(response);
-      const kasbonList = payload.data.utang_piutang ?? [];
+      // Hanya hitung kasbon yang BELUM LUNAS (kas === "tidak")
+      // kas === "ya" berarti sudah lunas (di-map dari "kas tunai" oleh API)
+      const kasbonList = (payload.data.utang_piutang ?? []).filter(
+        (k) => k.kas === "tidak",
+      );
       if (kasbonList.length > 0) {
         const total = kasbonList.reduce((sum, k) => sum + Number(k.nominal), 0);
         setKasbonInfo({ totalKasbon: total, count: kasbonList.length });
@@ -540,9 +544,9 @@ export default function FinancePayrollPage() {
   const handleExportSlipGaji = (item: TPayrollHistoryWithCoa) => {
     const employee = employeeDataById[item.employee_id ?? ""];
     const employeeName = employee?.nama ?? "Karyawan";
-    const gajiPokok = employeeSalaryById[item.employee_id ?? ""] ?? 0;
-    const totalDibayar = item.total ?? 0;
-    const potongan = Math.max(gajiPokok - totalDibayar, 0);
+    const gajiPokok = item.gaji_pokok ?? 0;
+    const totalDibayar = item.gaji_bersih ?? item.total ?? 0;
+    const potongan = item.potongan_kasbon ?? 0;
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const pageW = 210;

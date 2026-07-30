@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listQCInbound, createQCInbound } from "@/lib/services/production.service";
-import { requireString, requireUUID } from "@/lib/validation/body-validator";
+import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import type { TQCInboundInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -28,17 +28,30 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return fail(ErrorCode.INVALID_JSON, "Body harus JSON valid.", 400); }
 
   const input = body as Record<string, unknown>;
-  const produksiOrderId = requireUUID(input, "produksi_order_id", { optional: true });
+
+  // ── Field validations ──────────────────────────────────────────────────────
+  const produksiOrderId = requireUUID(input, "produksi_order_id");
   if (!produksiOrderId.ok) return fail(ErrorCode.VALIDATION_ERROR, produksiOrderId.message, 400);
-  const hasil = requireString(input, "hasil", { optional: true });
+
+  const hasil = requireString(input, "hasil");
   if (!hasil.ok) return fail(ErrorCode.VALIDATION_ERROR, hasil.message, 400);
-  if (hasil.data !== null && !["pass", "reject"].includes(hasil.data)) {
+  if (!["pass", "reject"].includes(hasil.data!)) {
     return fail(ErrorCode.VALIDATION_ERROR, "hasil harus pass atau reject.", 400);
   }
+
+  const bahanBakuId = requireUUID(input, "bahan_baku_id");
+  if (!bahanBakuId.ok) return fail(ErrorCode.VALIDATION_ERROR, bahanBakuId.message, 400);
+
+  const jumlah = requireNumber(input, "jumlah", { min: 0.0001 });
+  if (!jumlah.ok) return fail(ErrorCode.VALIDATION_ERROR, jumlah.message, 400);
+
+  const operator = requireString(input, "operator");
+  if (!operator.ok) return fail(ErrorCode.VALIDATION_ERROR, operator.message, 400);
 
   const qcInNumber = requireString(input, "qc_in_number", { optional: true });
   if (!qcInNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, qcInNumber.message, 400);
 
+  // ── Generate QC number ─────────────────────────────────────────────────────
   const generateQcInNumber = async () => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -67,10 +80,40 @@ export async function POST(request: Request) {
     }
     finalQcInNumber = generated.number;
   }
-  // Create strict payload without input spreading to avoid DB type mismatches
+
+  // ── Stock mutation (only when PASS) ────────────────────────────────────────
+  let mutasiStokId: string | null = null;
+
+  if (hasil.data === "pass") {
+    const sb = auth.ctx.supabase as any;
+
+    const { data: mutasi, error: mutasiError } = await sb
+      .schema("production")
+      .from("t_stok_mutasi")
+      .insert({
+        bahan_baku_id: bahanBakuId.data,
+        tipe: "masuk",
+        jumlah: jumlah.data,
+        keterangan: `QC Inbound ${finalQcInNumber}`,
+        operator: operator.data,
+      })
+      .select("id")
+      .single();
+
+    if (mutasiError) {
+      return fail(ErrorCode.DB_ERROR, "Gagal mencatat mutasi stok masuk.", 500, mutasiError.message);
+    }
+
+    mutasiStokId = mutasi.id;
+  }
+
+  // ── Create QC record ───────────────────────────────────────────────────────
   const payload: TQCInboundInsert = {
     qc_in_number: finalQcInNumber,
     produksi_order_id: produksiOrderId.data,
+    bahan_baku_id: bahanBakuId.data,
+    jumlah: jumlah.data,
+    mutasi_stok_id: mutasiStokId,
     hasil: hasil.data as TQCInboundInsert["hasil"],
   };
 

@@ -290,3 +290,22 @@ INSERT INTO finance.m_coa
 (kode_akun, nama_akun, kategori, is_sub_account, parent_id)
 SELECT '5103', 'Beban Reimbursement', 'Beban', true, id
 FROM finance.m_coa WHERE kode_akun = '5000';
+
+-- =========================
+-- COA UNTUK MANAJEMEN ASET TETAP (FIXED ASSET)
+-- =========================
+
+INSERT INTO finance.m_coa
+(kode_akun, nama_akun, kategori, is_sub_account, parent_id)
+SELECT '1400', 'Aset Tetap', 'Aset', true, id
+FROM finance.m_coa WHERE kode_akun = '1000';
+
+INSERT INTO finance.m_coa
+(kode_akun, nama_akun, kategori, is_sub_account, parent_id)
+SELECT '1401', 'Akumulasi Penyusutan Aset Tetap', 'Aset', true, id
+FROM finance.m_coa WHERE kode_akun = '1400';
+
+INSERT INTO finance.m_coa
+(kode_akun, nama_akun, kategori, is_sub_account, parent_id)
+SELECT '6200', 'Beban Penyusutan Aset Tetap', 'Beban', true, id
+FROM finance.m_coa WHERE kode_akun = '6000';

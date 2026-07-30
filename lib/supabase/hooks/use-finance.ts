@@ -1,6 +1,6 @@
 "use client";
 
-import { useTable, useInsert, useUpdate, useDelete } from "@/lib/supabase/hooks";
+import { useTable, useInsert, useInsertMany, useUpdate, useDelete } from "@/lib/supabase/hooks";
 import type { TCashflow, TAsset, TAssetDepreciationSchedule } from "@/types/supabase";
 import type { UseTableOptions } from "@/lib/supabase/hooks";
 
@@ -42,4 +42,5 @@ export function useAssetDepreciationSchedule(options?: UseTableOptions) {
 export function useInsertAssetDepreciationSchedule() { return useInsert<TAssetDepreciationSchedule>("finance", "t_asset_depreciation_schedule"); }
 export function useUpdateAssetDepreciationSchedule() { return useUpdate<TAssetDepreciationSchedule>("finance", "t_asset_depreciation_schedule"); }
 export function useDeleteAssetDepreciationSchedule() { return useDelete("finance", "t_asset_depreciation_schedule"); }
+export function useInsertManyAssetDepreciationSchedule() { return useInsertMany<TAssetDepreciationSchedule>("finance", "t_asset_depreciation_schedule"); }
 

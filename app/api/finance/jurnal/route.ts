@@ -47,6 +47,11 @@ export async function POST(request: Request) {
   if (journalNumber.ok && journalNumber.data) payload.journal_number = journalNumber.data;
 
   const { data, error } = await createJurnal(auth.ctx.supabase, payload);
-  if (error) return fail(ErrorCode.DB_ERROR, "Gagal membuat data jurnal.", 500, error.message);
+  if (error) {
+    if (error.code === "23505") {
+      return fail(ErrorCode.ALREADY_EXISTS, "No bukti sudah ada. Jurnal duplikat tidak diizinkan.", 409, error.message);
+    }
+    return fail(ErrorCode.DB_ERROR, "Gagal membuat data jurnal.", 500, error.message);
+  }
   return ok({ jurnal: data }, "Data jurnal berhasil dibuat.", 201);
 }

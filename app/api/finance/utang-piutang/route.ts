@@ -81,7 +81,18 @@ export async function POST(request: Request) {
   };
 
   const { data, error } = await createUtangPiutang(supabaseAdmin as any, payload);
-  if (error) return fail(ErrorCode.DB_ERROR, "Gagal membuat data utang/piutang.", 500, error.message);
+  if (error) {
+    const errorDetails = {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    };
+    const errorMessage = error.message
+      ? `Gagal membuat data utang/piutang: ${error.message}${error.details ? ` (${error.details})` : ""}`
+      : "Gagal membuat data utang/piutang.";
+    return fail(ErrorCode.DB_ERROR, errorMessage, 500, errorDetails);
+  }
   
   if (data) {
     data.kas = (data.kas as unknown as string) === "kas tunai" ? ("ya" as any) : data.kas;

@@ -67,14 +67,16 @@ export async function POST(request: Request) {
   const coaId = requireUUID(input, "coa_id", { optional: true });
   if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
 
+  let gajiPokok = 0;
+  if (employeeId.data) {
+    const { data: employee } = await auth.ctx.supabase.schema("hr").from("m_karyawan").select("gaji_pokok").eq("id", employeeId.data).single();
+    if (employee?.gaji_pokok) {
+      gajiPokok = employee.gaji_pokok;
+    }
+  }
   let finalTotal = total.data ?? 0;
-  
-  // Jika tidak diinputkan (misalkan dikirim kosong atau 0), kita ambilkan dari gaji_pokok HR
-  if (finalTotal === 0 && employeeId.data) {
-      const { data: employee } = await auth.ctx.supabase.schema("hr").from("m_karyawan").select("gaji_pokok").eq("id", employeeId.data).single();
-      if (employee?.gaji_pokok) {
-        finalTotal = employee.gaji_pokok;
-      }
+  if (finalTotal === 0 && gajiPokok > 0) {
+    finalTotal = gajiPokok;
   }
 
   // Cari kasbon aktif milik karyawan ini untuk potongan otomatis
@@ -119,6 +121,9 @@ export async function POST(request: Request) {
     employee_id: employeeId.data,
     bulan: normalizedBulan,
     total: finalTotal,
+    gaji_pokok: gajiPokok,
+    potongan_kasbon: potonganKasbon,
+    gaji_bersih: finalTotal,
     coa_id: resolvedCoaId,
   };
 

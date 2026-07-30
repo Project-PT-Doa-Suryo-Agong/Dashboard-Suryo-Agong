@@ -26,7 +26,7 @@ import type { ApiSuccess, ApiError } from "@/types/api";
 import type { TAsset, TAssetDepreciationSchedule, MCOA } from "@/types/supabase";
 import { 
   useAsset, useInsertAsset, useUpdateAsset, useDeleteAsset,
-  useAssetDepreciationSchedule, useInsertAssetDepreciationSchedule, useUpdateAssetDepreciationSchedule, useDeleteAssetDepreciationSchedule
+  useAssetDepreciationSchedule, useInsertAssetDepreciationSchedule, useInsertManyAssetDepreciationSchedule, useDeleteAssetDepreciationSchedule
 } from "@/lib/supabase/hooks/use-finance";
 
 type CoaListPayload = {
@@ -96,7 +96,7 @@ function calculateSchedule(
       }
 
       schedule.push({
-        periode: `${year}-${month}`,
+        periode: `${year}-${month}-01`,
         jumlahPenyusutan: Math.max(0, amount),
       });
     }
@@ -125,7 +125,7 @@ function calculateSchedule(
       bookValue -= amount;
 
       schedule.push({
-        periode: `${year}-${month}`,
+        periode: `${year}-${month}-01`,
         jumlahPenyusutan: Math.max(0, amount),
       });
     }
@@ -148,14 +148,15 @@ export default function AssetManagementPage() {
   // Custom hook integrations for depreciation schedule
   const { data: schedules, loading: schedulesLoading, refresh: refreshSchedules } = useAssetDepreciationSchedule({ limit: 1000 });
   const { insert: insertSchedule } = useInsertAssetDepreciationSchedule();
-  const { update: updateSchedule } = useUpdateAssetDepreciationSchedule();
   const { remove: deleteSchedule } = useDeleteAssetDepreciationSchedule();
+  const { insertMany: insertManySchedules } = useInsertManyAssetDepreciationSchedule();
 
   // State Modals
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isViewScheduleModalOpen, setIsViewScheduleModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<TAsset | null>(null);
+  const [viewAsset, setViewAsset] = useState<TAsset | null>(null);
   
   // Posting journal loading states
   const [postingId, setPostingId] = useState<string | null>(null);
@@ -221,9 +222,9 @@ export default function AssetManagementPage() {
       nilai_residu: "0",
       masa_manfaat_bulan: "48",
       metode_penyusutan: "straight_line",
-      coa_asset_id: coaOptions.find((c: MCOA) => c.kode_akun?.startsWith("1101.01.01.02") && c.kode_akun !== "1101.01.01.02")?.id || "",
-      coa_depr_accumulation_id: coaOptions.find((c: MCOA) => c.kode_akun === "1203" || (c.kode_akun?.startsWith("1") && c.nama_akun?.toLowerCase().includes("akum")))?.id || "",
-      coa_depr_expense_id: coaOptions.find((c: MCOA) => c.kode_akun === "6004" || c.kode_akun?.startsWith("5") || c.kode_akun?.startsWith("6"))?.id || "",
+      coa_asset_id: "",
+      coa_depr_accumulation_id: "",
+      coa_depr_expense_id: "",
       keterangan: "",
       status: "active",
     });
@@ -254,7 +255,7 @@ export default function AssetManagementPage() {
   };
 
   const handleOpenViewSchedule = (asset: TAsset) => {
-    setSelectedAsset(asset);
+    setViewAsset(asset);
     setIsViewScheduleModalOpen(true);
   };
 
@@ -308,7 +309,7 @@ export default function AssetManagementPage() {
       // Create Asset
       const newAsset = await insertAsset(payload);
       if (newAsset) {
-        // Calculate & Insert Depreciation Schedule
+        // Calculate & Insert Depreciation Schedule (bulk insert)
         const schedule = calculateSchedule(
           nilaiPerolehan,
           nilaiResidu,
@@ -317,14 +318,19 @@ export default function AssetManagementPage() {
           formData.tanggal_perolehan
         );
 
-        // Sequence inserts for schedule
-        for (const item of schedule) {
-          await insertSchedule({
-            asset_id: newAsset.id,
-            periode: item.periode,
-            jumlah_penyusutan: item.jumlahPenyusutan,
-            is_posted: false,
-          });
+        if (schedule.length > 0) {
+          const inserted = await insertManySchedules(
+            schedule.map((item) => ({
+              asset_id: newAsset.id,
+              periode: item.periode,
+              jumlah_penyusutan: item.jumlahPenyusutan,
+              is_posted: false,
+            }))
+          );
+          if (!inserted) {
+            alert("Gagal menambahkan jadwal penyusutan.");
+            return;
+          }
         }
 
         setIsFormModalOpen(false);
@@ -356,77 +362,38 @@ export default function AssetManagementPage() {
     }
   };
 
-  // Post Journal for Depreciation Schedule Row
+  // Post Journal for Depreciation Schedule Row — atomic via RPC
   const handlePostJournal = async (schedule: TAssetDepreciationSchedule) => {
     if (postingId) return;
     setPostingId(schedule.id);
 
-    const asset = assets?.find((a: TAsset) => a.id === schedule.asset_id);
-    if (!asset) {
-      alert("Data aset tidak ditemukan.");
-      setPostingId(null);
-      return;
-    }
-
     try {
-      // 1. Create Jurnal header
-      const journalRes = await apiFetch("/api/finance/jurnal", {
+      const res = await apiFetch("/api/finance/asset/depreciation/post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tanggal: `${schedule.periode}-01`,
-          no_bukti: `AST-DEP-${asset.kode_aset}-${schedule.periode}`,
-          keterangan: `Penyusutan Aset Tetap: ${asset.nama_aset} - Periode ${schedule.periode}`,
-        }),
+        body: JSON.stringify({ schedule_id: schedule.id }),
       });
-      
-      const journalPayload = (await journalRes.json()) as any;
-      if (!journalRes.ok || !journalPayload.success) {
-        throw new Error(journalPayload.error?.message || "Gagal membuat jurnal.");
+
+      const payload = (await res.json()) as any;
+
+      if (!payload.success) {
+        if (res.status === 409) {
+          refreshSchedules();
+          alert("Schedule ini sudah terposting.");
+        } else if (res.status === 422) {
+          alert(payload.message || "Jurnal existing ditemukan tetapi strukturnya tidak valid.");
+        } else {
+          throw new Error(payload.message || "Gagal memposting jurnal.");
+        }
+        return;
       }
-
-      const journalId = journalPayload.data.jurnal.id;
-
-      // 2. Create Debit Jurnal Item (Beban Penyusutan)
-      const debitRes = await apiFetch("/api/finance/jurnal-items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          journal_id: journalId,
-          coa_id: asset.coa_depr_expense_id,
-          debit: schedule.jumlah_penyusutan || 0,
-          kredit: 0,
-        }),
-      });
-
-      if (!debitRes.ok) {
-        throw new Error("Gagal membuat item debit jurnal.");
-      }
-
-      // 3. Create Credit Jurnal Item (Akumulasi Penyusutan)
-      const creditRes = await apiFetch("/api/finance/jurnal-items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          journal_id: journalId,
-          coa_id: asset.coa_depr_accumulation_id,
-          debit: 0,
-          kredit: schedule.jumlah_penyusutan || 0,
-        }),
-      });
-
-      if (!creditRes.ok) {
-        throw new Error("Gagal membuat item kredit jurnal.");
-      }
-
-      // 4. Update schedule is_posted status & journal_id reference
-      await updateSchedule(schedule.id, {
-        is_posted: true,
-        journal_id: journalId,
-      });
 
       refreshSchedules();
-      alert("Jurnal penyusutan berhasil diposting!");
+      if (payload.data?.recovered) {
+        alert("Jurnal penyusutan berhasil dipulihkan dan dikaitkan ke schedule.");
+      } else {
+        alert("Jurnal penyusutan berhasil diposting!");
+      }
     } catch (err: any) {
       alert(err.message || "Gagal memposting jurnal.");
     } finally {
@@ -480,6 +447,19 @@ export default function AssetManagementPage() {
 
     return { totalValue, activeCount, totalDepr, netValue };
   }, [assets, schedules]);
+
+  const scheduleByAsset = useMemo(() => {
+    const map = new Map<string, TAssetDepreciationSchedule[]>();
+    for (const schedule of schedules ?? []) {
+      const aid = schedule.asset_id;
+      if (!aid) continue;
+      if (!map.has(aid)) {
+        map.set(aid, []);
+      }
+      map.get(aid)!.push(schedule);
+    }
+    return map;
+  }, [schedules]);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -720,89 +700,91 @@ export default function AssetManagementPage() {
         <div className="rounded-2xl bg-white p-6 border border-slate-200/80">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-slate-600 text-sm font-medium">
-              Daftar seluruh jadwal depresiasi per periode bulanan. Pastikan depresiasi diposting setiap bulannya.
+              Ringkasan jadwal depresiasi per aset. Klik "Lihat Jadwal" untuk melihat detail dan memposting jurnal.
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  <th className="px-6 py-4">Aset</th>
-                  <th className="px-6 py-4">Periode</th>
-                  <th className="px-6 py-4">Jumlah Depresiasi</th>
-                  <th className="px-6 py-4">Status Posting</th>
-                  <th className="px-6 py-4 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {schedulesLoading ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400">
-                      Memuat data jadwal depresiasi...
-                    </td>
-                  </tr>
-                ) : !schedules || schedules.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400">
-                      Tidak ada jadwal depresiasi yang ditemukan.
-                    </td>
-                  </tr>
-                ) : (
-                  schedules.map((schedule: TAssetDepreciationSchedule) => {
-                    const asset = assets?.find((a: TAsset) => a.id === schedule.asset_id);
-                    if (!asset) return null;
-                    return (
-                      <tr key={schedule.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-semibold text-slate-800">{asset.nama_aset}</div>
-                          <div className="text-xs text-slate-400 font-mono mt-0.5">{asset.kode_aset}</div>
-                        </td>
-                        <td className="px-6 py-4 font-mono font-bold text-[#BC934B]">
-                          {schedule.periode}
-                        </td>
-                        <td className="px-6 py-4 font-bold text-slate-900">
-                          {formatRupiah(schedule.jumlah_penyusutan || 0)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            schedule.is_posted
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-amber-50 text-amber-700"
-                          }`}>
-                            {schedule.is_posted ? (
-                              <>
-                                <CheckCircle size={14} className="text-emerald-500" />
-                                Terposting
-                              </>
-                            ) : (
-                              <>
-                                <XCircle size={14} className="text-amber-500" />
-                                Belum Diposting
-                              </>
-                            )}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          {schedule.is_posted ? (
-                            <span className="text-xs text-slate-400 font-medium">No Jurnal: {schedule.journal_id ? "Posted" : "-"}</span>
-                          ) : (
-                            <button
-                              onClick={() => handlePostJournal(schedule)}
-                              disabled={postingId === schedule.id}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#BC934B] px-3.5 py-2 text-xs font-bold text-white transition-all hover:bg-[#A88444] disabled:opacity-50"
-                            >
-                              {postingId === schedule.id ? "Memproses..." : "Posting Jurnal"}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+          {schedulesLoading ? (
+            <div className="py-8 text-center text-slate-400">
+              Memuat data jadwal depresiasi...
+            </div>
+          ) : !schedules || schedules.length === 0 ? (
+            <div className="py-8 text-center text-slate-400">
+              Tidak ada jadwal depresiasi yang ditemukan.
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {assets
+                ?.filter((a: TAsset) => scheduleByAsset.has(a.id))
+                .map((asset: TAsset) => {
+                  const assetSchedules = scheduleByAsset.get(asset.id) || [];
+                  const total = assetSchedules.length;
+                  const posted = assetSchedules.filter(s => s.is_posted).length;
+                  const unposted = total - posted;
+                  const pct = total > 0 ? Math.round((posted / total) * 100) : 0;
+
+                  return (
+                    <div key={asset.id} className="rounded-xl border border-slate-200 bg-white p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-bold text-slate-800">{asset.nama_aset}</h3>
+                          <p className="mt-0.5 text-xs font-mono text-slate-400">{asset.kode_aset}</p>
+                        </div>
+                        <Activity size={18} className="text-[#BC934B]" />
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600">
+                        <span className="font-semibold text-slate-800">{formatRupiah(asset.nilai_perolehan || 0)}</span>
+                        <span>{asset.masa_manfaat_bulan} Bulan</span>
+                        <span className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${
+                          asset.metode_penyusutan === "straight_line"
+                            ? "bg-sky-50 text-sky-700 border border-sky-100"
+                            : asset.metode_penyusutan === "double_declining"
+                            ? "bg-purple-50 text-purple-700 border border-purple-100"
+                            : "bg-slate-50 text-slate-600"
+                        }`}>
+                          {asset.metode_penyusutan === "straight_line"
+                            ? "Garis Lurus"
+                            : asset.metode_penyusutan === "double_declining"
+                            ? "Saldo Menurun"
+                            : "Tanpa Penyusutan"}
+                        </span>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="mb-1.5 flex items-center justify-between text-xs text-slate-500">
+                          <span>Progress: {posted} / {total} bulan terposting</span>
+                          <span>{pct}%</span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-slate-100">
+                          <div
+                            className="h-2 rounded-full bg-emerald-500 transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between">
+                        <div className="flex gap-4 text-xs font-semibold">
+                          <span className="text-emerald-700">Terposting: {posted}</span>
+                          <span className="text-amber-700">Belum Posting: {unposted}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setViewAsset(asset);
+                            setIsViewScheduleModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#BC934B] px-4 py-2 text-xs font-bold text-white transition-all hover:bg-[#A88444]"
+                        >
+                          <Calendar size={14} />
+                          Lihat Jadwal
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
         </div>
       )}
 
@@ -950,7 +932,7 @@ export default function AssetManagementPage() {
                 >
                   <option value="">Pilih COA...</option>
                   {coaOptions
-                    .filter((coa: MCOA) => coa.kode_akun?.startsWith("1101.01.01.02") && coa.kode_akun !== "1101.01.01.02")
+                    .filter((coa: MCOA) => coa.kode_akun === "1400")
                     .map((coa: MCOA) => (
                       <option key={coa.id} value={coa.id}>
                         {coa.kode_akun} - {coa.nama_akun}
@@ -970,7 +952,7 @@ export default function AssetManagementPage() {
                 >
                   <option value="">Pilih COA...</option>
                   {coaOptions
-                    .filter((coa: MCOA) => coa.kode_akun?.startsWith("1203"))
+                    .filter((coa: MCOA) => coa.kode_akun === "1401")
                     .map((coa: MCOA) => (
                       <option key={coa.id} value={coa.id}>
                         {coa.kode_akun} - {coa.nama_akun}
@@ -990,7 +972,7 @@ export default function AssetManagementPage() {
                 >
                   <option value="">Pilih COA...</option>
                   {coaOptions
-                    .filter((coa: MCOA) => coa.kode_akun?.startsWith("6004"))
+                    .filter((coa: MCOA) => coa.kode_akun === "6200")
                     .map((coa: MCOA) => (
                       <option key={coa.id} value={coa.id}>
                         {coa.kode_akun} - {coa.nama_akun}
@@ -1035,57 +1017,99 @@ export default function AssetManagementPage() {
       <Modal
         isOpen={isViewScheduleModalOpen}
         onClose={() => setIsViewScheduleModalOpen(false)}
-        title={selectedAsset ? `Jadwal Depresiasi: ${selectedAsset.nama_aset}` : "Jadwal Depresiasi"}
-        maxWidth="max-w-xl"
+        title={viewAsset ? `Jadwal Depresiasi: ${viewAsset.nama_aset}` : "Jadwal Depresiasi"}
+        maxWidth="max-w-2xl"
       >
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <div className="max-h-[60vh] overflow-y-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase text-slate-400">
-                  <th className="px-5 py-3">Periode</th>
-                  <th className="px-5 py-3">Penyusutan</th>
-                  <th className="px-5 py-3 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {!selectedAsset || schedules?.filter((s: TAssetDepreciationSchedule) => s.asset_id === selectedAsset.id).length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-5 py-6 text-center text-slate-400">
-                      Jadwal penyusutan belum dihasilkan untuk aset ini.
-                    </td>
-                  </tr>
-                ) : (
-                  schedules
-                    ?.filter((s: TAssetDepreciationSchedule) => s.asset_id === selectedAsset.id)
-                    .map((item: TAssetDepreciationSchedule) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50">
-                        <td className="px-5 py-3.5 font-mono text-[#BC934B] font-bold">{item.periode}</td>
-                        <td className="px-5 py-3.5 font-semibold text-slate-800">{formatRupiah(item.jumlah_penyusutan || 0)}</td>
-                        <td className="px-5 py-3.5 text-right">
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            item.is_posted
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-amber-50 text-amber-700"
-                          }`}>
-                            {item.is_posted ? "Terposting" : "Belum Diposting"}
-                          </span>
-                        </td>
+        {viewAsset && (() => {
+          const assetSchedules = schedules?.filter((s: TAssetDepreciationSchedule) => s.asset_id === viewAsset.id) || [];
+          const total = assetSchedules.length;
+          const posted = assetSchedules.filter(s => s.is_posted).length;
+          const unposted = total - posted;
+          const metodeLabel = viewAsset.metode_penyusutan === "straight_line" ? "Garis Lurus"
+            : viewAsset.metode_penyusutan === "double_declining" ? "Saldo Menurun"
+            : "Tanpa Penyusutan";
+
+          return (
+            <>
+              <div className="mb-5 space-y-1">
+                <p className="text-xs font-mono text-slate-400">{viewAsset.kode_aset}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-xs bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <div><span className="text-slate-400">Nilai Perolehan</span><p className="font-bold text-slate-800">{formatRupiah(viewAsset.nilai_perolehan || 0)}</p></div>
+                  <div><span className="text-slate-400">Masa Manfaat</span><p className="font-bold text-slate-800">{viewAsset.masa_manfaat_bulan} Bulan</p></div>
+                  <div><span className="text-slate-400">Metode</span><p className="font-bold text-slate-800">{metodeLabel}</p></div>
+                  <div><span className="text-slate-400">Total Schedule</span><p className="font-bold text-slate-800">{total}</p></div>
+                  <div><span className="text-slate-400">Sudah Terposting</span><p className="font-bold text-emerald-700">{posted}</p></div>
+                  <div><span className="text-slate-400">Belum Terposting</span><p className="font-bold text-amber-700">{unposted}</p></div>
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase text-slate-400">
+                        <th className="px-5 py-3">Periode</th>
+                        <th className="px-5 py-3">Penyusutan</th>
+                        <th className="px-5 py-3">Status</th>
+                        <th className="px-5 py-3 text-right">Aksi</th>
                       </tr>
-                    ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className="mt-5 flex justify-end">
-          <button
-            onClick={() => setIsViewScheduleModalOpen(false)}
-            className="rounded-xl bg-slate-100 px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200"
-          >
-            Tutup
-          </button>
-        </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {assetSchedules.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-5 py-6 text-center text-slate-400">
+                            Jadwal penyusutan belum dihasilkan untuk aset ini.
+                          </td>
+                        </tr>
+                      ) : (
+                        assetSchedules.map((item: TAssetDepreciationSchedule) => (
+                          <tr key={item.id} className="hover:bg-slate-50/50">
+                            <td className="px-5 py-3.5 font-mono text-[#BC934B] font-bold">{item.periode}</td>
+                            <td className="px-5 py-3.5 font-semibold text-slate-800">{formatRupiah(item.jumlah_penyusutan || 0)}</td>
+                            <td className="px-5 py-3.5">
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                item.is_posted
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-amber-50 text-amber-700"
+                              }`}>
+                                {item.is_posted ? (
+                                  <><CheckCircle size={14} className="text-emerald-500" /> Terposting</>
+                                ) : (
+                                  <><XCircle size={14} className="text-amber-500" /> Belum Diposting</>
+                                )}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 text-right">
+                              {item.is_posted ? (
+                                <span className="text-xs text-slate-400 font-medium">No Jurnal: {item.journal_id || "-"}</span>
+                              ) : (
+                                <button
+                                  onClick={() => handlePostJournal(item)}
+                                  disabled={postingId === item.id}
+                                  className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#BC934B] px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-[#A88444] disabled:opacity-50"
+                                >
+                                  {postingId === item.id ? "Memproses..." : "Posting Jurnal"}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end">
+                <button
+                  onClick={() => setIsViewScheduleModalOpen(false)}
+                  className="rounded-xl bg-slate-100 px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                >
+                  Tutup
+                </button>
+              </div>
+            </>
+          );
+        })()}
       </Modal>
 
       {/* CONFIRM DELETE DIALOG */}

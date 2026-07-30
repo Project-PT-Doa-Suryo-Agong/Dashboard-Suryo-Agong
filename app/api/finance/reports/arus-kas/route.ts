@@ -41,11 +41,14 @@ export async function GET(request: Request) {
   try {
     const financeDb = (supabaseAdmin as any).schema("finance");
 
+    const formatStart = startDate.length === 10 ? `${startDate}T00:00:00.000Z` : startDate;
+    const formatEnd = endDate.length === 10 ? `${endDate}T23:59:59.999Z` : endDate;
+
     const { data, error } = await financeDb
       .from("t_cashflow")
       .select("id, tipe, tipe_kas, amount, keterangan, created_at")
-      .gte("created_at", startDate)
-      .lte("created_at", endDate)
+      .gte("created_at", formatStart)
+      .lte("created_at", formatEnd)
       .order("created_at", { ascending: false });
 
     if (error) {

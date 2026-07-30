@@ -245,6 +245,57 @@ export function useInsert<T extends Record<string, unknown>>(
 }
 
 /**
+ * Hook for bulk inserting multiple rows into any table.
+ * Mengirim semua row dalam 1 query (INSERT dengan multiple VALUES).
+ *
+ * @example
+ * const { insertMany, loading, error } = useInsertMany<TSchedule>("finance", "t_schedule");
+ * const results = await insertMany([{ col: "a" }, { col: "b" }]);
+ */
+export function useInsertMany<T extends Record<string, unknown>>(
+  schema: SchemaName,
+  table: string
+) {
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const insertMany = useCallback(
+    async (input: Record<string, unknown>[]): Promise<T[] | null> => {
+      if (input.length === 0) return [];
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const db = (supabase as unknown as { schema: (s: string) => typeof supabase }).schema(schema);
+        const { data, error: insertError } = await db
+          .from(table)
+          .insert(input as never)
+          .select();
+
+        if (insertError) {
+          setError(insertError.message);
+          return null;
+        }
+
+        return data as T[];
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Insert failed");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [supabase, schema, table]
+  );
+
+  return { insertMany, loading, error } as MutationResult & {
+    insertMany: (input: Record<string, unknown>[]) => Promise<T[] | null>;
+  };
+}
+
+/**
  * Hook for updating a row.
  *
  * @example

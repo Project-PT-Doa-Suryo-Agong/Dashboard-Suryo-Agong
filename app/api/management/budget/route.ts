@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   if (!budgetNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, budgetNumber.message, 400);
 
   let warning: string | undefined;
-  const { data: maxBudgetData } = await supabaseAdmin
+  const { data: maxBudgetData, error: maxBudgetError } = await supabaseAdmin
     .schema("management")
     .from("t_max_budget")
     .select("max_amount")
@@ -52,6 +52,10 @@ export async function POST(request: Request) {
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  if (maxBudgetError) {
+    return fail(ErrorCode.DB_ERROR, "Gagal memvalidasi max budget.", 500, maxBudgetError.message);
+  }
 
   if (maxBudgetData && amount.data! > maxBudgetData.max_amount) {
     const maxStr = new Intl.NumberFormat("id-ID").format(maxBudgetData.max_amount);

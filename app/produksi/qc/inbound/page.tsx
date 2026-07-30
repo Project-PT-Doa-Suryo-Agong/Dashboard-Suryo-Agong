@@ -2,13 +2,15 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, Package } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
-import type { ProductionQcResult, TProduksiOrder, TQCInbound } from "@/types/supabase";
+import type { MBahanBaku, ProductionQcResult, TProduksiOrder, TQCInbound } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { useAuth } from "@/lib/supabase/auth-context";
+import { useBahanBaku } from "@/lib/supabase/hooks/use-bahan-baku";
 
 type QcInboundListPayload = {
   qc_inbound: TQCInbound[];
@@ -76,6 +78,7 @@ function getQcPrimaryKey(value: { produksi_order_id?: string | null; id?: string
 }
 
 export default function QcInboundPage() {
+  const { user } = useAuth();
   const [items, setItems] = useState<TQCInbound[]>([]);
   const [orders, setOrders] = useState<TProduksiOrder[]>([]);
 
@@ -92,11 +95,19 @@ export default function QcInboundPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [qcInNumber, setQcInNumber] = useState("");
 
+  const { data: bahanBakuList } = useBahanBaku({ limit: 500, statusAktif: true });
+
   const [formData, setFormData] = useState<{
     produksi_order_id: string;
+    bahan_baku_id: string;
+    jumlah: string;
+    operator: string;
     hasil: ProductionQcResult;
   }>({
     produksi_order_id: "",
+    bahan_baku_id: "",
+    jumlah: "",
+    operator: "",
     hasil: "pass",
   });
 
@@ -134,6 +145,19 @@ export default function QcInboundPage() {
       alert(message);
     }
   };
+
+  const bahanByKode = useMemo(
+    () => Object.fromEntries(bahanBakuList.map((b) => [b.id, b.kode_bahan])),
+    [bahanBakuList],
+  );
+  const bahanNamaMap = useMemo(
+    () => Object.fromEntries(bahanBakuList.map((b) => [b.id, b.nama_bahan])),
+    [bahanBakuList],
+  );
+  const bahanSatuanMap = useMemo(
+    () => Object.fromEntries(bahanBakuList.map((b) => [b.id, b.satuan])),
+    [bahanBakuList],
+  );
 
   const fetchDefaultQcInNumber = async () => {
     try {
@@ -190,6 +214,9 @@ export default function QcInboundPage() {
   const resetForm = () => {
     setFormData({
       produksi_order_id: orders[0]?.id ?? "",
+      bahan_baku_id: bahanBakuList[0]?.id ?? "",
+      jumlah: "",
+      operator: user?.profile?.nama || "Operator Produksi",
       hasil: "pass",
     });
     setEditData(null);
@@ -206,6 +233,9 @@ export default function QcInboundPage() {
     setQcInNumber(item.qc_in_number ?? "");
     setFormData({
       produksi_order_id: item.produksi_order_id ?? "",
+      bahan_baku_id: item.bahan_baku_id ?? "",
+      jumlah: String(item.jumlah ?? ""),
+      operator: user?.profile?.nama || "Operator Produksi",
       hasil: item.hasil ?? "pass",
     });
     setIsFormModalOpen(true);
@@ -234,14 +264,33 @@ export default function QcInboundPage() {
       alert("Pilih produksi order terlebih dahulu.");
       return;
     }
+    if (!formData.bahan_baku_id) {
+      alert("Pilih bahan baku terlebih dahulu.");
+      return;
+    }
+    const parsedJumlah = Number(formData.jumlah);
+    if (!formData.jumlah || Number.isNaN(parsedJumlah) || parsedJumlah <= 0) {
+      alert("Jumlah bahan baku harus diisi dengan angka lebih dari 0.");
+      return;
+    }
+    if (!formData.operator.trim()) {
+      alert("Nama operator wajib diisi.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const payload = {
+      const basePayload = {
         produksi_order_id: formData.produksi_order_id,
+        bahan_baku_id: formData.bahan_baku_id,
+        jumlah: parsedJumlah,
+        operator: formData.operator.trim(),
         hasil: formData.hasil,
-        ...(editData ? {} : { qc_in_number: qcInNumber || undefined }),
       };
+
+      const payload = editData
+        ? { ...basePayload, ...(formData.hasil === "pass" || formData.hasil === "reject" ? {} : {}) }
+        : { ...basePayload, qc_in_number: qcInNumber || undefined };
 
       if (editData) {
         const primaryKey = getQcPrimaryKey(editData);
@@ -344,6 +393,8 @@ export default function QcInboundPage() {
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Nomor QC</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Produksi Order</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Bahan Baku</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Jumlah</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Aksi</th>
               </tr>
@@ -351,11 +402,11 @@ export default function QcInboundPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Memuat data...</td>
+                    <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={7}>Memuat data...</td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Tidak ada data inspeksi yang sesuai filter.</td>
+                    <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={7}>Tidak ada data inspeksi yang sesuai filter.</td>
                 </tr>
               ) : (
                 filteredItems.map((item) => (
@@ -363,6 +414,17 @@ export default function QcInboundPage() {
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.qc_in_number ?? "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-72">{orderById[item.produksi_order_id ?? ""]?.produksi_number ?? orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan"}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm text-slate-700">
+                      {item.bahan_baku_id ? (
+                        <span className="inline-flex items-center gap-1 font-semibold">
+                          <Package className="h-3.5 w-3.5 text-slate-400" />
+                          {bahanNamaMap[item.bahan_baku_id] ?? bahanByKode[item.bahan_baku_id] ?? item.bahan_baku_id}
+                        </span>
+                      ) : "-"}
+                    </td>
+                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">
+                      {item.jumlah ? `${item.jumlah} ${bahanSatuanMap[item.bahan_baku_id ?? ""] ?? ""}` : "-"}
+                    </td>
                     <td className="px-4 md:px-6 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass[item.hasil ?? "pass"]}`}>
                         {statusLabel[item.hasil ?? "pass"]}
@@ -419,6 +481,50 @@ export default function QcInboundPage() {
                 <option key={order.id} value={order.id}>{order.produksi_number ?? order.id}</option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="bahan-baku-inbound" className="text-sm font-semibold text-slate-700">Bahan Baku *</label>
+            <select
+              id="bahan-baku-inbound"
+              required
+              value={formData.bahan_baku_id}
+              onChange={(event) => setFormData((prev) => ({ ...prev, bahan_baku_id: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20"
+            >
+              <option value="" disabled>Pilih bahan baku...</option>
+              {bahanBakuList.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.kode_bahan} — {item.nama_bahan} (Stok: {item.stok} {item.satuan})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="jumlah-inbound" className="text-sm font-semibold text-slate-700">Jumlah Diterima *</label>
+            <input
+              id="jumlah-inbound"
+              required
+              type="number"
+              step="any"
+              min={0.0001}
+              placeholder="0.00"
+              value={formData.jumlah}
+              onChange={(event) => setFormData((prev) => ({ ...prev, jumlah: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="operator-inbound" className="text-sm font-semibold text-slate-700">Operator *</label>
+            <input
+              id="operator-inbound"
+              required
+              value={formData.operator}
+              onChange={(event) => setFormData((prev) => ({ ...prev, operator: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20"
+            />
           </div>
 
           <div className="space-y-1.5">
