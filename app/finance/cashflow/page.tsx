@@ -1,12 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Edit, PlusCircle, Trash2, Wallet, Coins, ArrowUpRight, ArrowDownRight, Info } from "lucide-react";
+import { Edit, PlusCircle, Trash2, Wallet, Coins, ArrowUpRight, ArrowDownRight, Info, Printer, FileSpreadsheet } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { FinanceCashflowType, TCashflow } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 import { SearchBar } from "@/components/ui/search-bar";
 
@@ -367,6 +369,64 @@ export default function FinanceCashflowPage() {
     );
   };
 
+  const kasLabel = activeTab === "besar" ? "Kas Besar" : "Kas Kecil";
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    const totalIn = exportRows.filter((i) => i.tipe === "income").reduce((s, i) => s + (i.amount ?? 0), 0);
+    const totalOut = exportRows.filter((i) => i.tipe === "expense").reduce((s, i) => s + (i.amount ?? 0), 0);
+    exportToPDF({
+      title: `Laporan Arus Kas ${kasLabel}`,
+      subtitle: periodType === "all"
+        ? "Semua Periode"
+        : periodType === "daily"
+          ? `Tanggal: ${filterDate || "-"}`
+          : periodType === "monthly"
+            ? `Periode: ${filterMonth ? NAMA_BULAN[Number(filterMonth) - 1] : "Semua Bulan"} ${filterYear}`
+            : `Tahun: ${filterYear || "-"}`,
+      headers: ["ID Cashflow", "Tanggal", "Keterangan", "Tipe", "Nominal"],
+      rows: exportRows.map((item) => [
+        item.cashflow_number ?? "-",
+        item.created_at ? formatDate(item.created_at) : "-",
+        item.keterangan ?? "-",
+        item.tipe === "income" ? "Pemasukan" : "Pengeluaran",
+        formatRupiah(item.amount ?? 0),
+      ]),
+      columnStyles: {
+        0: { cellWidth: 32 },
+        4: { halign: "right" },
+      },
+      summary: [
+        { label: "Total Pemasukan", value: formatRupiah(totalIn) },
+        { label: "Total Pengeluaran", value: formatRupiah(totalOut) },
+        { label: "Saldo Bersih", value: formatRupiah(totalIn - totalOut) },
+      ],
+      fileName: `Laporan_Arus_Kas_${kasLabel.replace(/\s+/g, "_")}_PT_Doa_Suryo_Agong.pdf`,
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: `Laporan Arus Kas ${kasLabel}`,
+      headers: ["ID Cashflow", "Tanggal", "Keterangan", "Tipe", "Nominal"],
+      rows: exportRows.map((item) => [
+        item.cashflow_number ?? "-",
+        item.created_at ? formatDate(item.created_at) : "-",
+        item.keterangan ?? "-",
+        item.tipe === "income" ? "Pemasukan" : "Pengeluaran",
+        item.amount ?? 0,
+      ]),
+      moneyColumns: [5],
+      columnAlign: { 5: "right" },
+      fileName: `Laporan_Arus_Kas_${kasLabel.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -375,14 +435,34 @@ export default function FinanceCashflowPage() {
           <p className="text-sm md:text-base text-slate-300">Pantau seluruh transaksi pemasukan dan pengeluaran secara real-time.</p>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 hover:bg-green-600 hover:text-gray-300 px-4 py-2.5 text-sm font-semibold text-white transition-all shadow-sm active:scale-95"
-        >
-          <PlusCircle className="h-4 w-4 md:h-5 md:w-5" />
-          Catat Transaksi
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer className="h-4 w-4" />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 hover:bg-green-600 hover:text-gray-300 px-4 py-2.5 text-sm font-semibold text-white transition-all shadow-sm active:scale-95"
+          >
+            <PlusCircle className="h-4 w-4 md:h-5 md:w-5" />
+            Catat Transaksi
+          </button>
+        </div>
       </section>
 
       {/* Modern custom tab switcher with glassmorphic tabs and glowing status states */}

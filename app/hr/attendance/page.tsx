@@ -2,7 +2,7 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useMemo, useState, useEffect } from "react";
-import { Pencil, Search, Trash2, UserCheck } from "lucide-react";
+import { FileSpreadsheet, Pencil, Printer, Search, Trash2, UserCheck } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { HrAttendanceStatus, MKaryawan, TAttendance } from "@/types/supabase";
@@ -14,6 +14,8 @@ import {
   useDeleteAttendance,
 } from "@/lib/supabase/hooks/use-attendance";
 import { useKaryawan } from "@/lib/supabase/hooks/use-karyawan";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type AttendanceStatus = HrAttendanceStatus;
 type AttendanceItem = TAttendance;
@@ -288,6 +290,60 @@ export default function AttendancePage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Absensi Karyawan",
+      headers: ["Nama Karyawan", "Divisi", "Tanggal", "Status", "Jam Masuk", "Jam Keluar", "Dinas"],
+      rows: exportRows.map((item) => {
+        const employee = employeeById[item.employee_id ?? ""];
+        return [
+          employee?.nama ?? "Karyawan tidak ditemukan",
+          employee?.divisi ?? "-",
+          item.tanggal ? dateFormatter.format(new Date(item.tanggal)) : "-",
+          item.status ?? "alpha",
+          item.jam_masuk ?? "-",
+          item.jam_keluar ?? "-",
+          item.is_dinas ?? "Tidak",
+        ];
+      }),
+      summary: [
+        { label: "Total Data", value: `${exportRows.length} data` },
+        { label: "Hadir", value: `${exportRows.filter((i) => i.status === "hadir").length} data` },
+        { label: "Izin", value: `${exportRows.filter((i) => i.status === "izin").length} data` },
+        { label: "Sakit", value: `${exportRows.filter((i) => i.status === "sakit").length} data` },
+        { label: "Alpha", value: `${exportRows.filter((i) => i.status === "alpha").length} data` },
+      ],
+      fileName: "Laporan_Absensi_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Absensi Karyawan",
+      headers: ["Nama Karyawan", "Divisi", "Tanggal", "Status", "Jam Masuk", "Jam Keluar", "Dinas"],
+      rows: exportRows.map((item) => {
+        const employee = employeeById[item.employee_id ?? ""];
+        return [
+          employee?.nama ?? "Karyawan tidak ditemukan",
+          employee?.divisi ?? "-",
+          item.tanggal ? dateFormatter.format(new Date(item.tanggal)) : "-",
+          item.status ?? "alpha",
+          item.jam_masuk ?? "-",
+          item.jam_keluar ?? "-",
+          item.is_dinas ?? "Tidak",
+        ];
+      }),
+      fileName: `Laporan_Absensi_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
@@ -349,14 +405,34 @@ export default function AttendancePage() {
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-        >
-          <UserCheck size={18} />
-          Input Presensi
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+          >
+            <UserCheck size={18} />
+            Input Presensi
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">

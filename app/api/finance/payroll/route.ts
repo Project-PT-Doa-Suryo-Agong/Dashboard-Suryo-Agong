@@ -1,8 +1,9 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
-import { listPayroll, createPayroll, listKasbonByEmployee, updateUtangPiutang } from "@/lib/services/finance.service";
+import { listPayroll, createPayroll, listKasbonByEmployee, updateUtangPiutang, replacePayrollItems } from "@/lib/services/finance.service";
+import { calculatePayroll, buildManualItems, type PayrollItem } from "@/lib/services/payroll.service";
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
-import type { TPayrollHistoryInsert } from "@/types/supabase";
+import type { TPayrollHistoryInsert, TPayrollItemInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 
 const DEFAULT_PAYROLL_COA_KODE_AKUN = "5101";
@@ -59,37 +60,24 @@ export async function POST(request: Request) {
   if (!normalizedBulan) {
     return fail(ErrorCode.VALIDATION_ERROR, "bulan harus berupa tanggal valid.", 400);
   }
-  
-  // Total can be explicitly set or fetched strictly from m_karyawan's gaji_pokok
+
+  // Total dapat di-set eksplisit (backward-compatible legacy: dipakai sebagai
+  // override gaji pokok saat payload tanpa items).
   const total = requireNumber(input, "total", { min: 0, optional: true });
   if (!total.ok) return fail(ErrorCode.VALIDATION_ERROR, total.message, 400);
 
+  // Override nominal BPJS per payroll (opsional; kosong = otomatis dari tarif).
+  const bpjsJht = requireNumber(input, "bpjs_jht", { min: 0, optional: true });
+  if (!bpjsJht.ok) return fail(ErrorCode.VALIDATION_ERROR, bpjsJht.message, 400);
+  const bpjsJp = requireNumber(input, "bpjs_jp", { min: 0, optional: true });
+  if (!bpjsJp.ok) return fail(ErrorCode.VALIDATION_ERROR, bpjsJp.message, 400);
+
+  // Komponen manual (FASE 1): TUNJANGAN / LEMBUR / BONUS / INSENTIF / POTONGAN_MANUAL
+  const manualItems = buildManualItems(input.items);
+  if (!manualItems.ok) return fail(ErrorCode.VALIDATION_ERROR, manualItems.message, 400);
+
   const coaId = requireUUID(input, "coa_id", { optional: true });
   if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
-
-  let gajiPokok = 0;
-  if (employeeId.data) {
-    const { data: employee } = await auth.ctx.supabase.schema("hr").from("m_karyawan").select("gaji_pokok").eq("id", employeeId.data).single();
-    if (employee?.gaji_pokok) {
-      gajiPokok = employee.gaji_pokok;
-    }
-  }
-  let finalTotal = total.data ?? 0;
-  if (finalTotal === 0 && gajiPokok > 0) {
-    finalTotal = gajiPokok;
-  }
-
-  // Cari kasbon aktif milik karyawan ini untuk potongan otomatis
-  const { data: kasbonList } = await listKasbonByEmployee(auth.ctx.supabase, employeeId.data!);
-  let potonganKasbon = 0;
-  if (kasbonList && kasbonList.length > 0) {
-    potonganKasbon = kasbonList.reduce((sum, k) => sum + Number(k.nominal), 0);
-    // Pastikan potongan tidak melebihi total gaji
-    if (potonganKasbon > finalTotal) {
-      potonganKasbon = finalTotal;
-    }
-    finalTotal = finalTotal - potonganKasbon;
-  }
 
   // Cek duplikasi: employee_id + bulan sudah ada?
   const { data: existing } = await auth.ctx.supabase
@@ -102,6 +90,37 @@ export async function POST(request: Request) {
   if (existing) {
     return fail(ErrorCode.ALREADY_EXISTS, "Payroll untuk karyawan dan periode ini sudah ada.", 409);
   }
+
+  // Ambil master karyawan (gaji pokok + tunjangan tetap)
+  const { data: employee } = await auth.ctx.supabase.schema("hr").from("m_karyawan")
+    .select("gaji_pokok, tunjangan_tetap")
+    .eq("id", employeeId.data!)
+    .single();
+
+  const masterGajiPokok = Number(employee?.gaji_pokok ?? 0);
+  // Backward-compatible: payload lama (tanpa items) yang mengirim `total` > 0
+  // memperlakukan `total` sebagai gaji pokok (perilaku legacy).
+  const gajiPokok =
+    manualItems.items.length === 0 && Number(total.data ?? 0) > 0
+      ? Number(total.data)
+      : masterGajiPokok;
+
+  // Kasbon aktif milik karyawan ini untuk potongan otomatis (lunas penuh)
+  const { data: kasbonList } = await listKasbonByEmployee(auth.ctx.supabase, employeeId.data!);
+  const kasbon = (kasbonList ?? []).map((k) => ({ id: k.id, nominal: Number(k.nominal) }));
+
+  // Hitung payroll via engine
+  const result = calculatePayroll({
+    gajiPokok,
+    tunjanganTetap: Number(employee?.tunjangan_tetap ?? 0),
+    manualItems: manualItems.items,
+    kasbonList: kasbon,
+    bpjsOverride: {
+      jht: bpjsJht.data ?? undefined,
+      jp: bpjsJp.data ?? undefined,
+    },
+  });
+  const summary = result.summary;
 
   // Resolve COA: jika tidak diinput, cari default dari m_coa
   let resolvedCoaId: string | null = coaId.data ?? null;
@@ -120,20 +139,58 @@ export async function POST(request: Request) {
   const payload: TPayrollHistoryInsert = {
     employee_id: employeeId.data,
     bulan: normalizedBulan,
-    total: finalTotal,
-    gaji_pokok: gajiPokok,
-    potongan_kasbon: potonganKasbon,
-    gaji_bersih: finalTotal,
+    total: summary.total,
+    gaji_pokok: summary.gaji_pokok,
+    potongan_kasbon: summary.potongan_kasbon,
+    gaji_bersih: summary.gaji_bersih,
     coa_id: resolvedCoaId,
+    status: "paid",
+    gaji_kotor: summary.gaji_kotor,
+    tunjangan: summary.tunjangan,
+    lembur: summary.lembur,
+    bonus: summary.bonus,
+    insentif: summary.insentif,
+    potongan_manual: summary.potongan_manual,
+    bpjs_jht: summary.bpjs_jht,
+    bpjs_jp: summary.bpjs_jp,
+    bpjs_jkk_jkm: summary.bpjs_jkk_jkm,
   };
 
   const { data, error } = await createPayroll(auth.ctx.supabase, payload);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal membuat data payroll.", 500, error.message);
 
-  // Jika ada potongan kasbon, tandai kasbon sebagai lunas
-  if (data && potonganKasbon > 0 && kasbonList) {
-    for (const kasbon of kasbonList) {
-      await updateUtangPiutang(auth.ctx.supabase, kasbon.id, { kas: "kas tunai" } as any);
+  // Simpan detail komponen ke t_payroll_item
+  if (data) {
+    const itemRows: TPayrollItemInsert[] = (result.items as PayrollItem[]).map((item) => ({
+      employee_id: employeeId.data!,
+      bulan: normalizedBulan,
+      kode_komponen: item.kode_komponen,
+      nama_komponen: item.nama_komponen,
+      kategori: item.kategori,
+      tipe: item.tipe,
+      jumlah: item.jumlah,
+      kasbon_id: item.kasbon_id ?? null,
+      coa_id: item.coa_id ?? null,
+    }));
+
+    const { error: itemsError } = await replacePayrollItems(auth.ctx.supabase, employeeId.data!, normalizedBulan, itemRows);
+    if (itemsError) {
+      console.error("PAYROLL POST itemsError:", itemsError);
+      // Rollback header agar tidak ada payroll tanpa detail komponen.
+      await auth.ctx.supabase
+        .schema("finance")
+        .from("t_payroll_history")
+        .delete()
+        .eq("employee_id", employeeId.data!)
+        .eq("bulan", normalizedBulan);
+      return fail(ErrorCode.DB_ERROR, "Gagal menyimpan detail komponen payroll.", 500, itemsError.message);
+    }
+
+    // Jika ada potongan kasbon, tandai kasbon sebagai lunas
+    if (summary.potongan_kasbon > 0 && kasbonList) {
+      for (const kasbonRow of kasbonList) {
+        await updateUtangPiutang(auth.ctx.supabase, kasbonRow.id, { kas: "kas tunai" });
+      }
     }
   }
 

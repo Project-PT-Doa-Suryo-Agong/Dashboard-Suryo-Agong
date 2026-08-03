@@ -2,11 +2,13 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { FileSpreadsheet, Plus, Printer, Search } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MProduk, MVarian } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 import { useProfile } from "@/hooks/use-profile";
 
 type ProductsListPayload = {
@@ -235,6 +237,72 @@ export default function OfficeProductsPage() {
     }
   };
 
+  const exportRows = filteredProdukCards.flatMap((produk) => {
+    const varianList = produk.relatedVarian;
+    if (varianList.length === 0) {
+      return [[
+        produk.nama_produk,
+        produk.kategoriLabel,
+        "-",
+        "-",
+        0,
+      ]];
+    }
+    return varianList.map((varian) => [
+      produk.nama_produk,
+      produk.kategoriLabel,
+      varian.nama_varian ?? "-",
+      varian.sku ?? "-",
+      varian.harga ?? 0,
+    ]);
+  });
+
+  const totalVarian = filteredProdukCards.reduce(
+    (acc, produk) => acc + produk.relatedVarian.length,
+    0,
+  );
+  const totalNilaiHarga = exportRows.reduce(
+    (acc, row) => acc + (Number(row[4]) || 0),
+    0,
+  );
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Katalog Produk dan Varian",
+      headers: ["Produk", "Kategori", "Nama Varian", "SKU", "Harga"],
+      rows: exportRows.map((row) => [
+        row[0],
+        row[1],
+        row[2],
+        row[3],
+        formatRupiah(Number(row[4]) || 0),
+      ]),
+      columnStyles: { 4: { halign: "right" } },
+      summary: [
+        { label: "Total Produk", value: `${filteredProdukCards.length} produk` },
+        { label: "Total Varian", value: `${totalVarian} varian` },
+        { label: "Total Nilai Harga", value: formatRupiah(totalNilaiHarga) },
+      ],
+      fileName: "Laporan_Katalog_Produk_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Katalog Produk dan Varian",
+      headers: ["Produk", "Kategori", "Nama Varian", "SKU", "Harga"],
+      rows: exportRows,
+      moneyColumns: [5],
+      columnAlign: { 5: "right" },
+      fileName: `Laporan_Katalog_Produk_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
@@ -262,6 +330,27 @@ export default function OfficeProductsPage() {
       ))}
     </select>
     
+  </div>
+
+  <div className="flex flex-wrap items-center gap-2 xl:ml-4">
+    <button
+      type="button"
+      onClick={handleExportPDF}
+      disabled={isLoading || exportRows.length === 0}
+      className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+    >
+      <Printer size={18} />
+      PDF
+    </button>
+    <button
+      type="button"
+      onClick={handleExportExcel}
+      disabled={isLoading || exportRows.length === 0}
+      className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+    >
+      <FileSpreadsheet size={18} />
+      Excel
+    </button>
   </div>
 </section>
 

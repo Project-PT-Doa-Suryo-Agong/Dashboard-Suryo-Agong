@@ -3,9 +3,11 @@
 import React, { FormEvent, useEffect, useState } from 'react';
 import {
   ChevronDown,
+  FileSpreadsheet,
   List,
   Pencil,
   PlusCircle,
+  Printer,
   Save,
   Trash2,
 } from 'lucide-react';
@@ -15,6 +17,8 @@ import type { ApiError, ApiSuccess } from '@/types/api';
 import type { MAfiliator, SalesContentStatus, SalesContentType, TContentPlanner } from '@/types/supabase';
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DeleteButton, DetailButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type Platform = 'TikTok' | 'Instagram' | 'YouTube Shorts' | 'LinkedIn' | 'Twitter / X' | 'Lainnya'| 'Website';
 
@@ -461,6 +465,55 @@ export default function ContentPlannerPage() {
     }
   };
 
+  const exportRows = contents;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Content Planner",
+      headers: ["Content Number", "Judul", "Platform", "Affiliator", "Jadwal", "Tipe", "Status", "Tanggal Dibuat"],
+      rows: exportRows.map((item) => [
+        item.content_number?.trim() || item.id,
+        item.judul,
+        item.platform ?? "-",
+        item.m_affiliator?.nama ?? "-",
+        item.jadwal ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(item.jadwal)) : "-",
+        item.tipe ?? "-",
+        item.status ?? "-",
+        item.created_at ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(item.created_at)) : "-",
+      ]),
+      summary: [
+        { label: "Total Konten", value: `${exportRows.length} data` },
+        { label: "Direncanakan", value: `${exportRows.filter((i) => i.status === "direncanakan").length} data` },
+        { label: "Terupload", value: `${exportRows.filter((i) => i.status === "terupload").length} data` },
+        { label: "Dihapus", value: `${exportRows.filter((i) => i.status === "dihapus").length} data` },
+      ],
+      fileName: "Laporan_Content_Planner_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Content Planner",
+      headers: ["Content Number", "Judul", "Platform", "Affiliator", "Jadwal", "Tipe", "Status", "Tanggal Dibuat"],
+      rows: exportRows.map((item) => [
+        item.content_number?.trim() || item.id,
+        item.judul,
+        item.platform ?? "-",
+        item.m_affiliator?.nama ?? "-",
+        item.jadwal ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(item.jadwal)) : "-",
+        item.tipe ?? "-",
+        item.status ?? "-",
+        item.created_at ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(item.created_at)) : "-",
+      ]),
+      fileName: `Laporan_Content_Planner_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 p-4 md:space-y-6 md:p-6 lg:space-y-8 lg:p-8">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -504,9 +557,29 @@ export default function ContentPlannerPage() {
             <List size={18} className="text-slate-400" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">Content Log</h3>
           </div>
-          <button className="text-left text-xs font-semibold text-slate-500 underline transition-colors hover:text-slate-700 sm:text-right">
-            View All Schedule
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={contents.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <Printer size={18} />
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={contents.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <FileSpreadsheet size={18} />
+              Excel
+            </button>
+            <button className="text-left text-xs font-semibold text-slate-500 underline transition-colors hover:text-slate-700 sm:text-right">
+              View All Schedule
+            </button>
+          </div>
         </div>
 
         <div className="w-full overflow-x-auto">

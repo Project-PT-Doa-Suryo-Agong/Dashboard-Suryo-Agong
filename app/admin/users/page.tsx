@@ -1,10 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Eye, EyeOff, UserPlus, Users2 } from "lucide-react";
+import { Eye, EyeOff, FileSpreadsheet, Printer, UserPlus, Users2 } from "lucide-react";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { CoreUserRole, Profile } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
@@ -215,6 +217,62 @@ export default function AdminUsersPage() {
     setIsDeleteModalOpen(true);
   };
 
+  const exportRows = sortedUsers;
+
+  const roleCount = (role: string) =>
+    exportRows.filter((user) => user.role === role).length;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan System Users",
+      headers: ["User ID", "Nama", "Role", "Phone", "Tanggal Terdaftar"],
+      rows: exportRows.map((user) => [
+        user.id.slice(0, 8),
+        user.nama?.trim() || "-",
+        user.role,
+        user.phone?.trim() || "-",
+        user.created_at
+          ? new Intl.DateTimeFormat("id-ID", {
+              dateStyle: "short",
+              timeStyle: "short",
+            }).format(new Date(user.created_at))
+          : "-",
+      ]),
+      summary: [
+        { label: "Total User", value: `${exportRows.length} user` },
+        { label: "Super Admin", value: `${roleCount("Super Admin")} user` },
+        { label: "Developer", value: `${roleCount("Developer")} user` },
+        { label: "Admin", value: `${roleCount("Admin")} user` },
+      ],
+      fileName: "Laporan_Users_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan System Users",
+      headers: ["User ID", "Nama", "Role", "Phone", "Tanggal Terdaftar"],
+      rows: exportRows.map((user) => [
+        user.id.slice(0, 8),
+        user.nama?.trim() || "-",
+        user.role,
+        user.phone?.trim() || "-",
+        user.created_at
+          ? new Intl.DateTimeFormat("id-ID", {
+              dateStyle: "short",
+              timeStyle: "short",
+            }).format(new Date(user.created_at))
+          : "-",
+      ]),
+      fileName: `Laporan_Users_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-3 md:p-4 lg:p-8 space-y-4 md:space-y-6 lg:space-y-8 max-w-7xl mx-auto w-full">
       <section className="space-y-1 md:space-y-2">
@@ -353,6 +411,26 @@ export default function AdminUsersPage() {
           </span>
           <div className="min-w-0">
             <h2 className="text-sm md:text-base lg:text-lg font-bold text-slate-900">Daftar User</h2>
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <Printer size={18} />
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <FileSpreadsheet size={18} />
+              Excel
+            </button>
           </div>
         </div>
 

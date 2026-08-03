@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MessageSquare, RefreshCw, AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, FileSpreadsheet, Loader2, MessageSquare, Printer, RefreshCw } from "lucide-react";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ChatLog = {
@@ -85,6 +87,100 @@ export default function LogChatSalesPage() {
     setIsAnswerModalOpen(false);
   };
 
+  const exportRows = [...logs].sort((a, b) => {
+    const tA = new Date(a.timestamp ?? a.created_at ?? 0).getTime();
+    const tB = new Date(b.timestamp ?? b.created_at ?? 0).getTime();
+    return tA - tB;
+  });
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Log Chat Sales Agent",
+      headers: ["Waktu", "Pengirim", "Pesan", "Jawaban AI"],
+      rows: exportRows.map((log) => {
+        const timestamp = log.timestamp ?? log.created_at;
+        const senderName =
+          (typeof log.sender_name === "string" ? log.sender_name : null) ??
+          (typeof log.sender === "string" ? log.sender : null) ??
+          (typeof log.sender_id === "string" ? log.sender_id : null) ??
+          "Unknown";
+        const message =
+          (typeof log.message === "string" && log.message ? log.message : null) ??
+          (typeof log.message_body === "string" && log.message_body
+            ? log.message_body
+            : null) ??
+          "Pesan tidak tersedia";
+        const answer =
+          typeof log.message_answer === "string" ? log.message_answer : "";
+        return [
+          timestamp
+            ? new Date(timestamp).toLocaleString("id-ID", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })
+            : "-",
+          senderName,
+          message,
+          answer.trim().length > 0 ? answer : "-",
+        ];
+      }),
+      summary: [
+        { label: "Total Pesan", value: `${exportRows.length} pesan` },
+        {
+          label: "Dengan Jawaban AI",
+          value: `${
+            exportRows.filter(
+              (l) =>
+                typeof l.message_answer === "string" &&
+                l.message_answer.trim().length > 0
+            ).length
+          } pesan`,
+        },
+      ],
+      fileName: "Laporan_Log_Chat_Sales_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Log Chat Sales Agent",
+      headers: ["Waktu", "Pengirim", "Pesan", "Jawaban AI"],
+      rows: exportRows.map((log) => {
+        const timestamp = log.timestamp ?? log.created_at;
+        const senderName =
+          (typeof log.sender_name === "string" ? log.sender_name : null) ??
+          (typeof log.sender === "string" ? log.sender : null) ??
+          (typeof log.sender_id === "string" ? log.sender_id : null) ??
+          "Unknown";
+        const message =
+          (typeof log.message === "string" && log.message ? log.message : null) ??
+          (typeof log.message_body === "string" && log.message_body
+            ? log.message_body
+            : null) ??
+          "Pesan tidak tersedia";
+        const answer =
+          typeof log.message_answer === "string" ? log.message_answer : "";
+        return [
+          timestamp
+            ? new Date(timestamp).toLocaleString("id-ID", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })
+            : "-",
+          senderName,
+          message,
+          answer.trim().length > 0 ? answer : "-",
+        ];
+      }),
+      fileName: `Laporan_Log_Chat_Sales_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="mx-auto flex h-[calc(100vh-120px)] w-full max-w-6xl flex-col gap-4 p-4 md:p-6 lg:p-8">
 
@@ -98,6 +194,24 @@ export default function LogChatSalesPage() {
 
       {/* ── Toolbar ── */}
       <div className="flex shrink-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={handleExportPDF}
+          disabled={isLoading || exportRows.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          <Printer size={14} />
+          PDF
+        </button>
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={isLoading || exportRows.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          <FileSpreadsheet size={14} />
+          Excel
+        </button>
         <button
           id="btn-refresh-sales-logs"
           onClick={() => void fetchLogs()}

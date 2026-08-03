@@ -2,13 +2,15 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Edit, PlusCircle, Save, Search, Trash2, Users } from "lucide-react";
+import { Edit, FileSpreadsheet, PlusCircle, Printer, Save, Search, Trash2, Users } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MAfiliator } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type AffiliatorListPayload = {
   afiliator: MAfiliator[];
@@ -234,6 +236,49 @@ export default function AffiliatesPage() {
     return bTime - aTime;
   });
 
+  const exportRows = sortedItems.filter((item) => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return true;
+    return (
+      item.nama.toLowerCase().includes(keyword) ||
+      (item.platform ?? "").toLowerCase().includes(keyword)
+    );
+  });
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Master Affiliator",
+      headers: ["Affiliator Number", "Nama", "Platform", "Dibuat"],
+      rows: exportRows.map((item) => [
+        item.affiliator_number?.trim() || item.id,
+        item.nama,
+        item.platform ?? "-",
+        formatDate(item.created_at),
+      ]),
+      summary: [{ label: "Total Affiliator", value: `${exportRows.length} data` }],
+      fileName: "Laporan_Affiliator_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Master Affiliator",
+      headers: ["Affiliator Number", "Nama", "Platform", "Dibuat"],
+      rows: exportRows.map((item) => [
+        item.affiliator_number?.trim() || item.id,
+        item.nama,
+        item.platform ?? "-",
+        formatDate(item.created_at),
+      ]),
+      fileName: `Laporan_Affiliator_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
@@ -242,15 +287,35 @@ export default function AffiliatesPage() {
             <Users className="text-slate-500 w-6 h-6" />
             <h2 className="text-xl font-bold text-slate-800">Master Affiliator</h2>
           </div>
-          <button
-            type="button"
-            onClick={openCreateModal}
-            disabled={isSubmitting}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-green-200 transition-all hover:bg-green-600 disabled:opacity-60"
-          >
-            <PlusCircle className="w-4 h-4" />
-            Tambah Affiliator
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <Printer size={18} />
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <FileSpreadsheet size={18} />
+              Excel
+            </button>
+            <button
+              type="button"
+              onClick={openCreateModal}
+              disabled={isSubmitting}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-green-200 transition-all hover:bg-green-600 disabled:opacity-60"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Tambah Affiliator
+            </button>
+          </div>
         </div>
       </section>
 

@@ -2,13 +2,15 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Plus, Search, Trash2 } from "lucide-react";
+import { CheckCircle2, FileSpreadsheet, Plus, Printer, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { LogisticsPackingStatus, TPacking, TSalesOrder } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type ProductLite = {
   id: string;
@@ -329,6 +331,55 @@ export default function PackingPage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Packing Barang",
+      headers: ["ID Packing", "Order", "Varian", "Tanggal", "Status"],
+      rows: exportRows.map((item) => {
+        const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
+        return [
+          item.packing_number?.trim() || shortId(getOrderPrimaryKey(item)),
+          getOrderDisplayCode(order, item.order_id),
+          item.variant?.nama_varian ?? "Varian tidak ditemukan",
+          item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-",
+          item.status ?? "pending",
+        ];
+      }),
+      summary: [
+        { label: "Total Data", value: `${exportRows.length} data` },
+        { label: "Pending", value: `${exportRows.filter((i) => i.status === "pending").length} data` },
+        { label: "Packed", value: `${exportRows.filter((i) => i.status === "packed").length} data` },
+        { label: "Shipped", value: `${exportRows.filter((i) => i.status === "shipped").length} data` },
+      ],
+      fileName: "Laporan_Packing_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Packing Barang",
+      headers: ["ID Packing", "Order", "Varian", "Tanggal", "Status"],
+      rows: exportRows.map((item) => {
+        const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
+        return [
+          item.packing_number?.trim() || shortId(getOrderPrimaryKey(item)),
+          getOrderDisplayCode(order, item.order_id),
+          item.variant?.nama_varian ?? "Varian tidak ditemukan",
+          item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-",
+          item.status ?? "pending",
+        ];
+      }),
+      fileName: `Laporan_Packing_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
@@ -336,24 +387,47 @@ export default function PackingPage() {
         <p className="text-sm md:text-base text-slate-200">Pantau antrean dan proses pengemasan pesanan.</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <SearchBar
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:max-w-2xl">
+          <SearchBar
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Cari order atau varian..."
             className="relative w-full sm:max-w-md"
           />
 
-        <select
-          value={filterStatus}
-          onChange={(event) => setFilterStatus(event.target.value as FilterStatus)}
-          className="w-full sm:w-52 rounded-xl border border-slate-300 bg-slate-200 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
-        >
-          <option value="all">Semua Status</option>
-          <option value="pending">pending</option>
-          <option value="packed">packed</option>
-          <option value="shipped">shipped</option>
-        </select>
+          <select
+            value={filterStatus}
+            onChange={(event) => setFilterStatus(event.target.value as FilterStatus)}
+            className="w-full sm:w-52 rounded-xl border border-slate-300 bg-slate-200 px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-200 focus:ring-2 focus:ring-slate-200/20"
+          >
+            <option value="all">Semua Status</option>
+            <option value="pending">pending</option>
+            <option value="packed">packed</option>
+            <option value="shipped">shipped</option>
+          </select>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">

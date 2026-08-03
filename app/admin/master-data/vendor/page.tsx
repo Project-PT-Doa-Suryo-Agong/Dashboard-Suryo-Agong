@@ -11,6 +11,8 @@ import {
   Trash2,
   PlusCircle,
   ChevronRight,
+  FileSpreadsheet,
+  Printer,
 } from "lucide-react";
 import type { MVendor } from "@/types/supabase";
 import {
@@ -21,6 +23,8 @@ import {
 } from "@/lib/supabase/hooks/index";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 export default function VendorPage() {
   const [namaVendor, setNamaVendor] = useState("");
@@ -112,6 +116,42 @@ export default function VendorPage() {
       ),
     [searchQuery, vendorList],
   );
+
+  const exportRows = filtered;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Master Data Vendor",
+      headers: ["ID", "Nama Vendor", "Kontak", "Terdaftar"],
+      rows: exportRows.map((v) => [
+        v.id,
+        v.nama_vendor ?? "-",
+        v.kontak ?? "-",
+        v.created_at ? v.created_at.split("T")[0] : "-",
+      ]),
+      summary: [{ label: "Total Vendor", value: `${exportRows.length} vendor` }],
+      fileName: "Laporan_Vendor_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Master Data Vendor",
+      headers: ["ID", "Nama Vendor", "Kontak", "Terdaftar"],
+      rows: exportRows.map((v) => [
+        v.id,
+        v.nama_vendor ?? "-",
+        v.kontak ?? "-",
+        v.created_at ? v.created_at.split("T")[0] : "-",
+      ]),
+      fileName: `Laporan_Vendor_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
@@ -208,12 +248,32 @@ export default function VendorPage() {
               {filtered.length}
             </span>
           </div>
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Cari nama vendor atau kontak..."
-            className="relative w-full sm:w-64"
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <Printer size={18} />
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <FileSpreadsheet size={18} />
+              Excel
+            </button>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Cari nama vendor atau kontak..."
+              className="relative w-full sm:w-64"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">

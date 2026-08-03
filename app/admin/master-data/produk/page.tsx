@@ -14,6 +14,8 @@ import {
   ChevronRight,
   ImagePlus,
   X,
+  FileSpreadsheet,
+  Printer,
 } from "lucide-react";
 import type { MProduk } from "@/types/supabase";
 import {
@@ -28,6 +30,8 @@ import {
 } from "@/lib/utils/upload-produk-foto";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 const KATEGORI_LIST = [
   "Pakaian",
@@ -199,6 +203,57 @@ export default function ProdukPage() {
 
   // The preview to show in the form — new file takes priority over existing URL
   const displayPreview = fotoPreview ?? existingFotoUrl ?? null;
+
+  const exportRows = filtered;
+
+  const kategoriSummary = useMemo(() => {
+    const counts = new Map<string, number>();
+    exportRows.forEach((p) => {
+      const k = (p.kategori ?? "Tanpa Kategori").trim() || "Tanpa Kategori";
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([kategori, count]) => ({
+        label: `Produk: ${kategori}`,
+        value: `${count} produk`,
+      }));
+  }, [exportRows]);
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Master Data Produk",
+      headers: ["Nama Produk", "Kategori", "Ditambahkan"],
+      rows: exportRows.map((p) => [
+        p.nama_produk,
+        p.kategori ?? "-",
+        p.created_at ? p.created_at.split("T")[0] : "-",
+      ]),
+      summary: [
+        { label: "Total Produk", value: `${exportRows.length} produk` },
+        ...kategoriSummary,
+      ],
+      fileName: "Laporan_Produk_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Master Data Produk",
+      headers: ["Nama Produk", "Kategori", "Ditambahkan"],
+      rows: exportRows.map((p) => [
+        p.nama_produk,
+        p.kategori ?? "-",
+        p.created_at ? p.created_at.split("T")[0] : "-",
+      ]),
+      fileName: `Laporan_Produk_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
@@ -446,12 +501,32 @@ export default function ProdukPage() {
               {filtered.length}
             </span>
           </div>
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Cari nama produk atau kategori..."
-            className="w-full sm:w-64"
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <Printer size={18} />
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <FileSpreadsheet size={18} />
+              Excel
+            </button>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Cari nama produk atau kategori..."
+              className="w-full sm:w-64"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">

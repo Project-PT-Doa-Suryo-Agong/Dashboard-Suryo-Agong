@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Activity, PlusCircle, Trophy, Users } from "lucide-react";
+import { Activity, FileSpreadsheet, PlusCircle, Printer, Trophy, Users } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import { SearchBar } from "@/components/ui/search-bar";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 // Tipe data mock (hanya untuk UI)
 type Penilaian = {
@@ -211,6 +213,71 @@ export default function PenilaianKaryawanPage() {
     closeDeleteModal();
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Penilaian Karyawan",
+      headers: ["Tanggal", "Karyawan (Dinilai)", "Penilai", "Skor", "Grade"],
+      rows: exportRows.map((item) => {
+        const score = calculateTotalScore(item);
+        const formattedDate = new Date(item.tanggal_penilaian).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        return [
+          formattedDate,
+          item.dinilai_nama,
+          item.penilai_nama,
+          `${score} / ${calculateMaxScore()}`,
+          getGrade(score),
+        ];
+      }),
+      columnStyles: { 3: { halign: "right" } },
+      summary: [
+        { label: "Total Penilaian", value: `${exportRows.length} data` },
+        { label: "Rata-Rata Nilai", value: `${averageScore}%` },
+        {
+          label: "Nilai Terbaik",
+          value: bestEmployee
+            ? `${bestEmployee.dinilai_nama} (${calculateTotalScore(bestEmployee)} / ${calculateMaxScore()})`
+            : "-",
+        },
+      ],
+      fileName: "Laporan_Penilaian_Karyawan_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Penilaian Karyawan",
+      headers: ["Tanggal", "Karyawan (Dinilai)", "Penilai", "Skor", "Grade"],
+      rows: exportRows.map((item) => {
+        const score = calculateTotalScore(item);
+        const formattedDate = new Date(item.tanggal_penilaian).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        return [
+          formattedDate,
+          item.dinilai_nama,
+          item.penilai_nama,
+          `${score} / ${calculateMaxScore()}`,
+          getGrade(score),
+        ];
+      }),
+      columnAlign: { 3: "right" },
+      fileName: `Laporan_Penilaian_Karyawan_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
@@ -274,14 +341,34 @@ export default function PenilaianKaryawanPage() {
           className="w-full sm:max-w-sm rounded-xl border border-slate-300 bg-slate-200 text-sm text-slate-700 shadow-sm outline-none"
         />
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
-        >
-          <PlusCircle size={17} />
-          Tambah Penilaian
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={exportRows.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={exportRows.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
+          >
+            <PlusCircle size={17} />
+            Tambah Penilaian
+          </button>
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

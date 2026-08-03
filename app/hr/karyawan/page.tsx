@@ -1,7 +1,7 @@
 "use client";
 import { SearchBar } from "@/components/ui/search-bar";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Pencil, PlusCircle, Search, Trash2 } from "lucide-react";
+import { FileSpreadsheet, Pencil, PlusCircle, Printer, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -14,6 +14,8 @@ import {
   useUpdateKaryawan,
   useDeleteKaryawan,
 } from "@/lib/supabase/hooks/index";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 // use MKaryawan from types/supabase for full employee shape
 
@@ -87,6 +89,7 @@ export default function KaryawanPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [gajiPokokInput, setGajiPokokInput] = useState<string>("");
+  const [tunjanganTetapInput, setTunjanganTetapInput] = useState<string>("");
   const [isDivisiManuallyEdited, setIsDivisiManuallyEdited] = useState<boolean>(false);
   const [detailItem, setDetailItem] = useState<MKaryawan | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
@@ -131,6 +134,7 @@ export default function KaryawanPage() {
     pengalaman_kerja_sebelumnya: string;
     keahlian_khusus: string;
     motivasi_kerja: string;
+    bpjs_number: string;
   }>({
     email: "",
     password: "",
@@ -141,6 +145,7 @@ export default function KaryawanPage() {
     status: "aktif",
     nik: "",
     nip: "",
+    bpjs_number: "",
     alamat_domisili: "",
     nomor_whatsapp: "",
     email_pribadi: "",
@@ -235,6 +240,7 @@ export default function KaryawanPage() {
       status: "aktif",
       nik: "",
       nip: "",
+      bpjs_number: "",
       alamat_domisili: "",
       nomor_whatsapp: "",
       email_pribadi: "",
@@ -248,6 +254,7 @@ export default function KaryawanPage() {
       motivasi_kerja: "",
     });
     setGajiPokokInput("");
+    setTunjanganTetapInput("");
     setPhotoFiles(EMPTY_PHOTO_FILES);
     setIsDivisiManuallyEdited(false);
     setEditData(null);
@@ -290,6 +297,7 @@ export default function KaryawanPage() {
       status: item.status ?? "aktif",
       nik: item.nik ?? "",
       nip: ((item as unknown as Record<string, unknown>)?.nip as string | undefined) ?? "",
+      bpjs_number: ((item as unknown as Record<string, unknown>)?.bpjs_number as string | undefined) ?? "",
       alamat_domisili: item.alamat_domisili ?? "",
       nomor_whatsapp: item.nomor_whatsapp ?? "",
       email_pribadi: item.email_pribadi ?? "",
@@ -303,6 +311,7 @@ export default function KaryawanPage() {
       motivasi_kerja: item.motivasi_kerja ?? "",
     });
     setGajiPokokInput(item.gaji_pokok != null ? String(item.gaji_pokok) : "");
+    setTunjanganTetapInput(item.tunjangan_tetap != null ? String(item.tunjangan_tetap) : "");
     setIsDivisiManuallyEdited(false);
     setIsFormModalOpen(true);
   };
@@ -403,6 +412,12 @@ export default function KaryawanPage() {
       return;
     }
 
+    const parsedTunjanganTetap = tunjanganTetapInput.trim() ? Number(tunjanganTetapInput) : null;
+    if (parsedTunjanganTetap !== null && (Number.isNaN(parsedTunjanganTetap) || parsedTunjanganTetap < 0)) {
+      alert("Tunjangan tetap harus berupa angka valid (>= 0).");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -415,6 +430,8 @@ export default function KaryawanPage() {
           divisi: formData.divisi,
           status: formData.status,
           gaji_pokok: parsedGajiPokok,
+          tunjangan_tetap: parsedTunjanganTetap,
+          bpjs_number: formData.bpjs_number.trim() || null,
           nik: formData.nik,
           nip: formData.nip,
           alamat_domisili: formData.alamat_domisili,
@@ -452,6 +469,8 @@ export default function KaryawanPage() {
           divisi: formData.divisi,
           status: formData.status,
           gaji_pokok: parsedGajiPokok,
+          tunjangan_tetap: parsedTunjanganTetap,
+          bpjs_number: formData.bpjs_number.trim() || null,
           nik: formData.nik,
           nip: formData.nip,
           alamat_domisili: formData.alamat_domisili,
@@ -525,6 +544,53 @@ export default function KaryawanPage() {
     !!formData.pendidikan_terakhir.trim() &&
     !!formData.jurusan.trim();
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Data Karyawan",
+      headers: ["Nama", "Posisi", "Divisi", "Gaji Pokok", "Status"],
+      rows: exportRows.map((item) => [
+        item.nama ?? "-",
+        item.posisi ?? "-",
+        item.divisi ?? "-",
+        rupiahFormatter.format(item.gaji_pokok ?? 0),
+        item.status ?? "nonaktif",
+      ]),
+      columnStyles: {
+        3: { halign: "right" },
+      },
+      summary: [
+        { label: "Total Karyawan", value: `${exportRows.length} karyawan` },
+        { label: "Aktif", value: `${exportRows.filter((i) => i.status === "aktif").length} karyawan` },
+        { label: "Nonaktif", value: `${exportRows.filter((i) => i.status !== "aktif").length} karyawan` },
+      ],
+      fileName: "Laporan_Data_Karyawan_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Data Karyawan",
+      headers: ["Nama", "Posisi", "Divisi", "Gaji Pokok", "Status"],
+      rows: exportRows.map((item) => [
+        item.nama ?? "-",
+        item.posisi ?? "-",
+        item.divisi ?? "-",
+        item.gaji_pokok ?? 0,
+        item.status ?? "nonaktif",
+      ]),
+      moneyColumns: [4],
+      columnAlign: { 4: "right" },
+      fileName: `Laporan_Data_Karyawan_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
@@ -544,14 +610,34 @@ export default function KaryawanPage() {
             className="relative w-full sm:max-w-md"
           />
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 hover:bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-        >
-          <PlusCircle size={18} />
-          Tambah Karyawan
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 hover:bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+          >
+            <PlusCircle size={18} />
+            Tambah Karyawan
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">
@@ -745,6 +831,30 @@ export default function KaryawanPage() {
                   required
                   value={gajiPokokInput}
                   onChange={(event) => setGajiPokokInput(event.target.value.replace(/[^0-9]/g, ""))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">No. BPJS (Opsional)</span>
+                <input
+                  type="text"
+                  value={formData.bpjs_number}
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, bpjs_number: event.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
+                />
+              </label>
+
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-700">Tunjangan Tetap</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={tunjanganTetapInput}
+                  onChange={(event) => setTunjanganTetapInput(event.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Rp"
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
                 />
               </label>
@@ -1068,6 +1178,10 @@ export default function KaryawanPage() {
                 <div>
                   <div className="text-xs text-slate-500">Gaji Pokok</div>
                   <div className="text-sm text-slate-900">{rupiahFormatter.format(detailItem.gaji_pokok ?? 0)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500">Tunjangan Tetap</div>
+                  <div className="text-sm text-slate-900">{rupiahFormatter.format(detailItem.tunjangan_tetap ?? 0)}</div>
                 </div>
               </div>
             </section>

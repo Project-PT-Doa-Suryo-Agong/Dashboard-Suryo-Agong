@@ -1,12 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CheckCircle, Edit, PlusCircle, Trash2, XCircle } from "lucide-react";
+import { CheckCircle, Edit, PlusCircle, Trash2, XCircle, Printer, FileSpreadsheet } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { getStorageFileName } from "@/lib/utils/upload-reimburse-bukti";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 import { SearchBar } from "@/components/ui/search-bar";
 import type {
@@ -395,6 +397,64 @@ export default function FinanceReimbursePage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: `Laporan Reimburse (${activeTab === "pending" ? "Menunggu Persetujuan" : "Diproses"})`,
+      headers: ["ID Reimburse", "Tanggal", "Nama Karyawan", "COA", "Divisi", "Nominal", "Status"],
+      rows: exportRows.map((item) => {
+        const employee = employeeById[item.employee_id ?? ""];
+        return [
+          item.reimbursement_number ?? "-",
+          item.created_at ? formatDate(item.created_at) : "-",
+          employee?.nama ?? "Karyawan tidak ditemukan",
+          item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-",
+          employee?.divisi ?? "-",
+          formatRupiah(item.amount ?? 0),
+          item.status ?? "pending",
+        ];
+      }),
+      columnStyles: {
+        0: { cellWidth: 30 },
+        5: { halign: "right" },
+      },
+      summary: [
+        { label: "Total Pengajuan", value: `${exportRows.length} data` },
+        { label: "Total Nominal", value: formatRupiah(exportRows.reduce((s, i) => s + (i.amount ?? 0), 0)) },
+        { label: "Disetujui", value: `${exportRows.filter((i) => i.status === "approved").length} data` },
+      ],
+      fileName: `Laporan_Reimburse_${activeTab === "pending" ? "Menunggu_Persetujuan" : "Diproses"}_PT_Doa_Suryo_Agong.pdf`,
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: `Laporan Reimburse (${activeTab === "pending" ? "Menunggu Persetujuan" : "Diproses"})`,
+      headers: ["ID Reimburse", "Tanggal", "Nama Karyawan", "COA", "Divisi", "Nominal", "Status"],
+      rows: exportRows.map((item) => {
+        const employee = employeeById[item.employee_id ?? ""];
+        return [
+          item.reimbursement_number ?? "-",
+          item.created_at ? formatDate(item.created_at) : "-",
+          employee?.nama ?? "Karyawan tidak ditemukan",
+          item.m_coa ? `${item.m_coa.kode_akun} - ${item.m_coa.nama_akun}` : "-",
+          employee?.divisi ?? "-",
+          item.amount ?? 0,
+          item.status ?? "pending",
+        ];
+      }),
+      moneyColumns: [6],
+      columnAlign: { 6: "right" },
+      fileName: `Laporan_Reimburse_${activeTab === "pending" ? "Menunggu_Persetujuan" : "Diproses"}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1 md:space-y-2">
@@ -429,14 +489,34 @@ export default function FinanceReimbursePage() {
             Riwayat Diproses ({processedItems.length})
           </button>
         </div>
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-        >
-          <PlusCircle size={18} />
-          Tambah Reimburse
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+          >
+            <PlusCircle size={18} />
+            Tambah Reimburse
+          </button>
+        </div>
       </section>
 
       <section className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">

@@ -1,7 +1,7 @@
 "use client";
 import { SearchBar } from "@/components/ui/search-bar";
 import { FormEvent, useMemo, useState, useEffect } from "react";
-import { FileText, PlusCircle, Search, Trash2 } from "lucide-react";
+import { FileSpreadsheet, FileText, PlusCircle, Printer, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
@@ -13,6 +13,8 @@ import {
 import type { MSop } from "@/types/supabase";
 import { RowActions, EditButton, DeleteButton, DetailButton } from "@/components/ui/RowActions";
 import type { CoreUserRole } from "@/types/supabase";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 const FALLBACK_DIVISI_OPTIONS: CoreUserRole[] = [
   "Developer",
@@ -154,6 +156,42 @@ export default function SopPage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Data SOP",
+      headers: ["Judul", "Divisi", "Konten", "Dibuat"],
+      rows: exportRows.map((item) => [
+        item.judul ?? "-",
+        item.divisi ?? "-",
+        item.konten ?? "-",
+        item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-",
+      ]),
+      summary: [{ label: "Total SOP", value: `${exportRows.length} dokumen` }],
+      fileName: "Laporan_SOP_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Data SOP",
+      headers: ["Judul", "Divisi", "Konten", "Dibuat"],
+      rows: exportRows.map((item) => [
+        item.judul ?? "-",
+        item.divisi ?? "-",
+        item.konten ?? "-",
+        item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-",
+      ]),
+      fileName: `Laporan_SOP_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
@@ -164,10 +202,30 @@ export default function SopPage() {
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <SearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Cari judul SOP..." className="relative w-full sm:max-w-md" />
 
-        <button type="button" onClick={openAddModal} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95">
-          <PlusCircle size={18} />
-          Tambah SOP Baru
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button type="button" onClick={openAddModal} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95">
+            <PlusCircle size={18} />
+            Tambah SOP Baru
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">

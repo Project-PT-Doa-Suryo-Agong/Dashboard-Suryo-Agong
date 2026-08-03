@@ -11,6 +11,8 @@ import {
   PackageOpen,
   ChevronRight,
   ChevronDown,
+  FileSpreadsheet,
+  Printer,
 } from "lucide-react";
 import type { MVarian } from "@/types/supabase";
 import {
@@ -22,6 +24,8 @@ import {
 import { useProducts } from "@/lib/supabase/hooks/use-products";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 const formatRupiah = (value: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -150,6 +154,57 @@ export default function VarianPage() {
       }),
     [productNameById, searchQuery, varianList],
   );
+
+  const exportRows = filteredVarian;
+
+  const totalProdukInduk = new Set(
+    exportRows.map((v) => v.product_id ?? "").filter(Boolean),
+  ).size;
+  const totalNilaiHarga = exportRows.reduce(
+    (acc, v) => acc + (v.harga ?? 0),
+    0,
+  );
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Master Data Varian",
+      headers: ["SKU", "Nama Produk", "Nama Varian", "Harga"],
+      rows: exportRows.map((v) => [
+        v.sku ?? "-",
+        productNameById.get(v.product_id ?? "") ?? "-",
+        v.nama_varian ?? "-",
+        formatRupiah(v.harga ?? 0),
+      ]),
+      columnStyles: { 3: { halign: "right" } },
+      summary: [
+        { label: "Total Varian", value: `${exportRows.length} varian` },
+        { label: "Total Produk Induk", value: `${totalProdukInduk} produk` },
+        { label: "Total Nilai Harga", value: formatRupiah(totalNilaiHarga) },
+      ],
+      fileName: "Laporan_Varian_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Master Data Varian",
+      headers: ["SKU", "Nama Produk", "Nama Varian", "Harga"],
+      rows: exportRows.map((v) => [
+        v.sku ?? "-",
+        productNameById.get(v.product_id ?? "") ?? "-",
+        v.nama_varian ?? "-",
+        v.harga ?? 0,
+      ]),
+      moneyColumns: [4],
+      columnAlign: { 4: "right" },
+      fileName: `Laporan_Varian_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
@@ -296,12 +351,32 @@ export default function VarianPage() {
               {filteredVarian.length}
             </span>
           </div>
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Cari SKU, varian, produk..."
-            className="w-full sm:w-64"
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <Printer size={18} />
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <FileSpreadsheet size={18} />
+              Excel
+            </button>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Cari SKU, varian, produk..."
+              className="w-full sm:w-64"
+            />
+          </div>
         </div>
 
         {/* Table */}

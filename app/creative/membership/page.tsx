@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Crown, PlusCircle, Save } from "lucide-react";
+import { Crown, FileSpreadsheet, PlusCircle, Printer, Save } from "lucide-react";
 import type { TMembership } from "@/types/supabase";
 import {
   useMembership,
@@ -12,6 +12,8 @@ import {
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
 import { SearchBar } from "@/components/ui/search-bar";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 export default function MembershipPage() {
   const [nama, setNama] = useState("");
@@ -107,6 +109,42 @@ export default function MembershipPage() {
       ),
     [searchQuery, membershipList],
   );
+
+  const exportRows = filtered;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Membership",
+      headers: ["No", "Nama", "Telepon", "Lokasi"],
+      rows: exportRows.map((m, i) => [
+        String(i + 1),
+        m.nama ?? "-",
+        m.telepon ?? "-",
+        m.lokasi ?? "-",
+      ]),
+      summary: [{ label: "Total Member", value: `${exportRows.length} data` }],
+      fileName: "Laporan_Membership_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Membership",
+      headers: ["No", "Nama", "Telepon", "Lokasi"],
+      rows: exportRows.map((m, i) => [
+        i + 1,
+        m.nama ?? "-",
+        m.telepon ?? "-",
+        m.lokasi ?? "-",
+      ]),
+      fileName: `Laporan_Membership_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -208,12 +246,32 @@ export default function MembershipPage() {
               {filtered.length}
             </span>
           </div>
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Cari nama, telepon, atau lokasi..."
-            className="relative w-full sm:w-64"
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <Printer size={18} />
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={isLoading || exportRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <FileSpreadsheet size={18} />
+              Excel
+            </button>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Cari nama, telepon, atau lokasi..."
+              className="relative w-full sm:w-64"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">

@@ -9,6 +9,8 @@ const ALLOWED_CREATE_EMPLOYEE_FIELDS = new Set([
   "posisi",
   "divisi",
   "gaji_pokok",
+  "tunjangan_tetap",
+  "bpjs_number",
   "phone",
   "status",
   "nik",
@@ -46,6 +48,8 @@ export type CreateEmployeeWithAccountInput = {
   posisi?: string | null;
   divisi?: string | null;
   gaji_pokok?: number | null;
+  tunjangan_tetap?: number | null;
+  bpjs_number?: string | null;
   phone?: string | null;
   status?: HrEmployeeStatus | null;
   nik: string;
@@ -146,6 +150,8 @@ export function parseCreateEmployeeInput(payload: unknown):
   if (!posisi.ok) return posisi;
   const divisi = validateOptionalString("divisi", body.divisi, 100);
   if (!divisi.ok) return divisi;
+  const bpjs_number = validateOptionalString("bpjs_number", body.bpjs_number, 50);
+  if (!bpjs_number.ok) return bpjs_number;
 
   const email_pribadi = validateOptionalString("email_pribadi", body.email_pribadi, 255);
   if (!email_pribadi.ok) return email_pribadi;
@@ -174,6 +180,18 @@ export function parseCreateEmployeeInput(payload: unknown):
     gaji_pokok = parsedSalary;
   }
 
+  let tunjangan_tetap: number | null | undefined = undefined;
+  if (body.tunjangan_tetap !== undefined && body.tunjangan_tetap !== null) {
+    const parsedTunjangan = Number(body.tunjangan_tetap);
+    if (Number.isNaN(parsedTunjangan)) {
+      return { ok: false, message: "tunjangan_tetap harus berupa angka." };
+    }
+    if (parsedTunjangan < 0) {
+      return { ok: false, message: "tunjangan_tetap tidak boleh kurang dari 0." };
+    }
+    tunjangan_tetap = parsedTunjangan;
+  }
+
   let status: HrEmployeeStatus | null | undefined = undefined;
   if (body.status !== undefined && body.status !== null) {
     if (body.status !== "aktif" && body.status !== "nonaktif") {
@@ -193,6 +211,8 @@ export function parseCreateEmployeeInput(payload: unknown):
       posisi: posisi.value,
       divisi: divisi.value,
       gaji_pokok,
+      tunjangan_tetap,
+      bpjs_number: bpjs_number.value,
       status: status ?? "aktif",
       nik: body.nik.trim(),
       nip: body.nip.trim(),

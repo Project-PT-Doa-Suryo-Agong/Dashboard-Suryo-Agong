@@ -6,7 +6,7 @@
  * 
  * @see lib/supabase/hooks/use-finance.ts
  */
-import type { TCashflow, TPayrollHistory, TReimbursement, MCoa, MCoaInsert, TJournal, TJournalItem, TInvoice, TInvoiceItem, TUtangPiutang } from "@/types/supabase";
+import type { TCashflow, TPayrollHistory, TPayrollItem, TPayrollItemInsert, TReimbursement, MCoa, MCoaInsert, TJournal, TJournalItem, TInvoice, TInvoiceItem, TUtangPiutang } from "@/types/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type DbClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -64,6 +64,16 @@ export async function createPayroll(client: DbClient, input: Record<string, unkn
   return { data: data as TPayrollHistory | null, error };
 }
 
+export async function getPayroll(client: DbClient, employeeId: string, bulan: string) {
+  const { data, error } = await db(client)
+    .from("t_payroll_history")
+    .select("*, m_coa(kode_akun,nama_akun)")
+    .eq("employee_id", employeeId)
+    .eq("bulan", bulan)
+    .maybeSingle();
+  return { data: data as (TPayrollHistory & { m_coa?: { kode_akun: string; nama_akun: string } | null }) | null, error };
+}
+
 export async function updatePayroll(client: DbClient, id: string, input: Record<string, unknown>) {
   const [employeeId, bulan] = id.split("_");
   const { data, error } = await db(client)
@@ -84,6 +94,41 @@ export async function deletePayroll(client: DbClient, id: string) {
     .eq("employee_id", employeeId)
     .eq("bulan", bulan);
   return { error, deleted: (count ?? 0) > 0 };
+}
+
+//  t_payroll_item (detail komponen payroll — FASE 1)
+
+export async function listPayrollItems(client: DbClient, employeeId: string, bulan: string) {
+  const { data, error } = await db(client)
+    .from("t_payroll_item")
+    .select("*")
+    .eq("employee_id", employeeId)
+    .eq("bulan", bulan)
+    .order("created_at", { ascending: true });
+  return { data: (data ?? []) as TPayrollItem[], error };
+}
+
+/** Hapus item lama lalu insert item baru untuk satu payroll (employee_id + bulan). */
+export async function replacePayrollItems(
+  client: DbClient,
+  employeeId: string,
+  bulan: string,
+  items: TPayrollItemInsert[],
+) {
+  const { error: deleteError } = await db(client)
+    .from("t_payroll_item")
+    .delete()
+    .eq("employee_id", employeeId)
+    .eq("bulan", bulan);
+  if (deleteError) return { data: null as TPayrollItem[] | null, error: deleteError };
+
+  if (items.length === 0) return { data: [] as TPayrollItem[], error: null };
+
+  const { data, error } = await db(client)
+    .from("t_payroll_item")
+    .insert(items as never)
+    .select("*");
+  return { data: (data ?? []) as TPayrollItem[], error };
 }
 
 //  t_reimbursement 

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Edit, PlusCircle, Trash2, RefreshCw } from "lucide-react";
+import { Edit, PlusCircle, Trash2, RefreshCw, Printer, FileSpreadsheet } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { SearchBar } from "@/components/ui/search-bar";
@@ -9,6 +9,8 @@ import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MCOA, TJournal, TJournalItem } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type JournalItemForm = {
   id?: string;
@@ -452,6 +454,51 @@ export default function FinanceJournalPage() {
     }
   };
 
+  const exportRows = filteredJournals;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Jurnal Akuntansi",
+      headers: ["Journal Number", "No Bukti", "Tanggal", "Keterangan", "Jumlah Item"],
+      rows: exportRows.map((journal) => [
+        journal.journal_number ?? "-",
+        journal.no_bukti ?? "-",
+        formatDate(journal.tanggal),
+        journal.keterangan || "-",
+        String(journal.t_journal_item?.length ?? 0),
+      ]),
+      columnStyles: {
+        0: { cellWidth: 32 },
+        4: { halign: "center" },
+      },
+      summary: [
+        { label: "Total Jurnal", value: `${exportRows.length} data` },
+      ],
+      fileName: "Laporan_Jurnal_Akuntansi_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Jurnal Akuntansi",
+      headers: ["Journal Number", "No Bukti", "Tanggal", "Keterangan", "Jumlah Item"],
+      rows: exportRows.map((journal) => [
+        journal.journal_number ?? "-",
+        journal.no_bukti ?? "-",
+        formatDate(journal.tanggal),
+        journal.keterangan || "-",
+        journal.t_journal_item?.length ?? 0,
+      ]),
+      columnAlign: { 5: "center" },
+      fileName: `Laporan_Jurnal_Akuntansi_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1 md:space-y-2">
@@ -459,21 +506,41 @@ export default function FinanceJournalPage() {
         <p className="text-sm md:text-base text-slate-300">Catat jurnal transaksi keuangan dan pastikan debit/kredit seimbang.</p>
       </section>
 
-      <section className="rounded-xl md:flex flex-col lg:flex-row items-start lg:items-center justify-between">
+      <section className="rounded-xl md:flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
         <SearchBar
           value={searchTerm}
           onChange={setSearchTerm}
           placeholder="Cari nomor bukti..."
           className="w-full lg:max-w-md"
         />
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-600 transition"
-        >
-          <PlusCircle size={18} />
-          Tambah Jurnal
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredJournals.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredJournals.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-600 transition"
+          >
+            <PlusCircle size={18} />
+            Tambah Jurnal
+          </button>
+        </div>
       </section>
 
       <section className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">

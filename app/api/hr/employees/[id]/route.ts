@@ -64,9 +64,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     payload.gaji_pokok = gajiPokok.data;
   }
 
+  if ("tunjangan_tetap" in input) {
+    const tunjanganTetap = requireNumber(input, "tunjangan_tetap", { min: 0, optional: true });
+    if (!tunjanganTetap.ok) return fail(ErrorCode.VALIDATION_ERROR, tunjanganTetap.message, 400);
+    payload.tunjangan_tetap = tunjanganTetap.data;
+  }
+
   const optionalStringFields = [
     "nik",
     "nip",
+    "bpjs_number",
     "alamat_domisili",
     "nomor_whatsapp",
     "email_pribadi",

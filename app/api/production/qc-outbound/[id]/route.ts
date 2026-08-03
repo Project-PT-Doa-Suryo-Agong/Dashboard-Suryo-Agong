@@ -4,7 +4,7 @@ import {
   updateQCOutbound,
   deleteQCOutbound,
 } from "@/lib/services/production.service";
-import { requireString, requireUUID } from "@/lib/validation/body-validator";
+import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import { ErrorCode } from "@/lib/http/error-codes";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,6 +34,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (hasil.data !== null && !["pass", "reject"].includes(hasil.data)) {
       return fail(ErrorCode.VALIDATION_ERROR, "hasil harus pass atau reject.", 400);
     }
+  }
+  if ("quantity" in input) {
+    const quantity = requireNumber(input, "quantity", { min: 1, optional: true });
+    if (!quantity.ok) return fail(ErrorCode.VALIDATION_ERROR, quantity.message, 400);
   }
 
   const { data, error } = await updateQCOutbound(

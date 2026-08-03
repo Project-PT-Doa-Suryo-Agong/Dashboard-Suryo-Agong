@@ -2,7 +2,7 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useMemo, useState, useEffect } from "react";
-import { AlertTriangle, Pencil, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet, Pencil, Printer, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
@@ -14,6 +14,8 @@ import {
 import { useKaryawan } from "@/lib/supabase/hooks/use-karyawan";
 import type { TEmployeeWarning, MKaryawan } from "@/types/supabase";
 import { RowActions, EditButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type WarningItem = TEmployeeWarning;
 
@@ -194,6 +196,56 @@ export default function EmployeeWarningsPage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Surat Peringatan",
+      headers: ["Tanggal", "Nama Karyawan", "Posisi", "Level", "Alasan"],
+      rows: exportRows.map((item) => {
+        const employee = employeeById[item.employee_id ?? ""];
+        return [
+          item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-",
+          employee?.nama ?? "Karyawan tidak ditemukan",
+          employee?.posisi ?? "-",
+          item.level ?? "-",
+          item.alasan ?? "-",
+        ];
+      }),
+      summary: [
+        { label: "Total Data", value: `${exportRows.length} data` },
+        { label: "Teguran Lisan", value: `${exportRows.filter((i) => i.level === "Teguran Lisan").length} data` },
+        { label: "SP1", value: `${exportRows.filter((i) => i.level === "SP1").length} data` },
+        { label: "SP2", value: `${exportRows.filter((i) => i.level === "SP2").length} data` },
+        { label: "SP3", value: `${exportRows.filter((i) => i.level === "SP3").length} data` },
+      ],
+      fileName: "Laporan_Surat_Peringatan_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Surat Peringatan",
+      headers: ["Tanggal", "Nama Karyawan", "Posisi", "Level", "Alasan"],
+      rows: exportRows.map((item) => {
+        const employee = employeeById[item.employee_id ?? ""];
+        return [
+          item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-",
+          employee?.nama ?? "Karyawan tidak ditemukan",
+          employee?.posisi ?? "-",
+          item.level ?? "-",
+          item.alasan ?? "-",
+        ];
+      }),
+      fileName: `Laporan_Surat_Peringatan_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
@@ -213,14 +265,34 @@ export default function EmployeeWarningsPage() {
             className="relative w-full sm:max-w-md"
           />
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
-        >
-          <AlertTriangle size={18} />
-          Buat Peringatan
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
+          >
+            <AlertTriangle size={18} />
+            Buat Peringatan
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">

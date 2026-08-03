@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PlusCircle } from "lucide-react";
+import { FileSpreadsheet, PlusCircle, Printer } from "lucide-react";
 import { SearchBar } from "@/components/ui/search-bar";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
@@ -10,6 +10,8 @@ import {
   DeleteButton,
 } from "@/components/ui/RowActions";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 import type { TContentStatistic, TContentPlanner } from "@/types/supabase";
 
 export default function ContentStatsPage() {
@@ -168,6 +170,55 @@ export default function ContentStatsPage() {
     });
   }, [searchQuery, stats]);
 
+  const exportRows = filtered;
+
+  const totalMonetasi = useMemo(
+    () => exportRows.reduce((acc, s) => acc + (s.monetasi ?? 0), 0),
+    [exportRows]
+  );
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Statistik Konten",
+      headers: ["Judul Konten", "Link", "Jumlah View", "Monetasi", "Terakhir Update"],
+      rows: exportRows.map((r) => [
+        r.t_content_planner?.judul ?? "-",
+        r.link ?? "-",
+        r.jumlah_view?.toLocaleString("id-ID") ?? "0",
+        formatCurrency(r.monetasi),
+        r.updated_at ? new Date(r.updated_at).toLocaleDateString("id-ID") : "-",
+      ]),
+      columnStyles: { 3: { halign: "right" } },
+      summary: [
+        { label: "Total Data", value: `${exportRows.length} data` },
+        { label: "Total Monetasi", value: formatCurrency(totalMonetasi) },
+      ],
+      fileName: "Laporan_Statistik_Konten_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Statistik Konten",
+      headers: ["Judul Konten", "Link", "Jumlah View", "Monetasi", "Terakhir Update"],
+      rows: exportRows.map((r) => [
+        r.t_content_planner?.judul ?? "-",
+        r.link ?? "-",
+        r.jumlah_view?.toLocaleString("id-ID") ?? "0",
+        formatCurrency(r.monetasi),
+        r.updated_at ? new Date(r.updated_at).toLocaleDateString("id-ID") : "-",
+      ]),
+      moneyColumns: [4],
+      columnAlign: { 4: "right" },
+      fileName: `Laporan_Statistik_Konten_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
       <div>
@@ -299,12 +350,32 @@ export default function ContentStatsPage() {
               {filtered.length}
             </span>
           </div>
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Cari judul atau link..."
-            className="w-full sm:w-64"
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={filtered.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <Printer size={18} />
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={filtered.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <FileSpreadsheet size={18} />
+              Excel
+            </button>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Cari judul atau link..."
+              className="w-full sm:w-64"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">

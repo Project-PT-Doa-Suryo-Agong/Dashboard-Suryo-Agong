@@ -1,13 +1,15 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Printer, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 import { SearchBar } from "@/components/ui/search-bar";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 import type { TInvoice, TInvoiceItem, TSalesOrder, MVarian } from "@/types/supabase";
 import type { ApiSuccess } from "@/types/api";
 
@@ -205,6 +207,61 @@ export default function FinanceInvoicePage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Invoice Penjualan",
+      headers: ["ID Invoice", "Tanggal", "Klien", "No. Faktur Pajak", "Total Invoice", "Bayar Cash (DP)", "Bayar Piutang"],
+      rows: exportRows.map((item) => [
+        item.id_invoice ?? "-",
+        formatDate(item.tanggal),
+        item.pelanggan ?? "-",
+        item.nomor_faktur_pajak || "-",
+        formatRupiah(item.total_amount ?? 0),
+        formatRupiah(item.bayar_cash ?? 0),
+        formatRupiah(item.bayar_piutang ?? 0),
+      ]),
+      columnStyles: {
+        0: { cellWidth: 32 },
+        4: { halign: "right" },
+        5: { halign: "right" },
+        6: { halign: "right" },
+      },
+      summary: [
+        { label: "Total Invoice", value: `${exportRows.length} invoice` },
+        { label: "Total Nominal", value: formatRupiah(exportRows.reduce((s, i) => s + (i.total_amount ?? 0), 0)) },
+        { label: "Total Bayar Cash", value: formatRupiah(exportRows.reduce((s, i) => s + (i.bayar_cash ?? 0), 0)) },
+        { label: "Total Bayar Piutang", value: formatRupiah(exportRows.reduce((s, i) => s + (i.bayar_piutang ?? 0), 0)) },
+      ],
+      fileName: "Laporan_Invoice_Penjualan_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Invoice Penjualan",
+      headers: ["ID Invoice", "Tanggal", "Klien", "No. Faktur Pajak", "Total Invoice", "Bayar Cash (DP)", "Bayar Piutang"],
+      rows: exportRows.map((item) => [
+        item.id_invoice ?? "-",
+        formatDate(item.tanggal),
+        item.pelanggan ?? "-",
+        item.nomor_faktur_pajak || "-",
+        item.total_amount ?? 0,
+        item.bayar_cash ?? 0,
+        item.bayar_piutang ?? 0,
+      ]),
+      moneyColumns: [5, 6, 7],
+      columnAlign: { 5: "right", 6: "right", 7: "right" },
+      fileName: `Laporan_Invoice_Penjualan_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 max-w-7xl mx-auto w-full">
       <section className="flex flex-col sm:flex-row justify-between gap-3">
@@ -212,9 +269,29 @@ export default function FinanceInvoicePage() {
           <h1 className="text-2xl font-bold text-slate-100">Invoice Penjualan</h1>
           <p className="text-slate-300">Kelola tagihan pelanggan.</p>
         </div>
-        <button onClick={openAddModal} className="flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-white font-semibold hover:bg-green-600">
-          <PlusCircle className="h-5 w-5" /> Buat Invoice Penjualan
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer className="h-4 w-4" />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Excel
+          </button>
+          <button onClick={openAddModal} className="flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-white font-semibold hover:bg-green-600">
+            <PlusCircle className="h-5 w-5" /> Buat Invoice Penjualan
+          </button>
+        </div>
       </section>
 
       <section className="bg-white rounded-xl shadow-sm overflow-hidden">

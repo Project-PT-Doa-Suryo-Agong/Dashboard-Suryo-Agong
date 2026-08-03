@@ -187,6 +187,11 @@ export interface Database {
           divisi: string | null;
           status: HrEmployeeStatus | null;
           gaji_pokok: number | null;
+          bpjs_number: string | null;
+          no_rekening: string | null;
+          bank: string | null;
+          tanggal_masuk: string | null;
+          tunjangan_tetap: number | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -211,6 +216,11 @@ export interface Database {
           divisi?: string | null;
           status?: HrEmployeeStatus | null;
           gaji_pokok?: number | null;
+          bpjs_number?: string | null;
+          no_rekening?: string | null;
+          bank?: string | null;
+          tanggal_masuk?: string | null;
+          tunjangan_tetap?: number | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
@@ -235,6 +245,11 @@ export interface Database {
           divisi?: string | null;
           status?: HrEmployeeStatus | null;
           gaji_pokok?: number | null;
+          bpjs_number?: string | null;
+          no_rekening?: string | null;
+          bank?: string | null;
+          tanggal_masuk?: string | null;
+          tunjangan_tetap?: number | null;
           updated_at?: string | null;
         };
         Relationships: [];
@@ -470,6 +485,18 @@ export interface Database {
           potongan_kasbon: number | null;
           gaji_bersih: number | null;
           created_at: string | null;
+          status: string | null;
+          tanggal_pay: string | null;
+          gaji_kotor: number | null;
+          tunjangan: number | null;
+          lembur: number | null;
+          bonus: number | null;
+          insentif: number | null;
+          potongan_manual: number | null;
+          bpjs_jht: number | null;
+          bpjs_jp: number | null;
+          bpjs_jkk_jkm: number | null;
+          keterangan: string | null;
         };
         Insert: {
           id?: string;
@@ -481,6 +508,18 @@ export interface Database {
           potongan_kasbon?: number | null;
           gaji_bersih?: number | null;
           created_at?: string | null;
+          status?: string | null;
+          tanggal_pay?: string | null;
+          gaji_kotor?: number | null;
+          tunjangan?: number | null;
+          lembur?: number | null;
+          bonus?: number | null;
+          insentif?: number | null;
+          potongan_manual?: number | null;
+          bpjs_jht?: number | null;
+          bpjs_jp?: number | null;
+          bpjs_jkk_jkm?: number | null;
+          keterangan?: string | null;
         };
         Update: {
           id?: string;
@@ -491,6 +530,63 @@ export interface Database {
           gaji_pokok?: number | null;
           potongan_kasbon?: number | null;
           gaji_bersih?: number | null;
+          status?: string | null;
+          tanggal_pay?: string | null;
+          gaji_kotor?: number | null;
+          tunjangan?: number | null;
+          lembur?: number | null;
+          bonus?: number | null;
+          insentif?: number | null;
+          potongan_manual?: number | null;
+          bpjs_jht?: number | null;
+          bpjs_jp?: number | null;
+          bpjs_jkk_jkm?: number | null;
+          keterangan?: string | null;
+        };
+        Relationships: [];
+      };
+      t_payroll_item: {
+        Row: {
+          id: string;
+          employee_id: string;
+          bulan: string;
+          kode_komponen: string;
+          nama_komponen: string;
+          kategori: string;
+          tipe: string;
+          jumlah: number;
+          kasbon_id: string | null;
+          coa_id: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          employee_id: string;
+          bulan: string;
+          kode_komponen: string;
+          nama_komponen: string;
+          kategori: string;
+          tipe?: string;
+          jumlah?: number;
+          kasbon_id?: string | null;
+          coa_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          employee_id?: string;
+          bulan?: string;
+          kode_komponen?: string;
+          nama_komponen?: string;
+          kategori?: string;
+          tipe?: string;
+          jumlah?: number;
+          kasbon_id?: string | null;
+          coa_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
@@ -867,6 +963,7 @@ export interface Database {
           id: string;
           qc_out_number: string | null;
           produksi_order_id: string | null;
+          quantity: number | null;
           hasil: ProductionQcResult | null;
           created_at: string | null;
         };
@@ -874,6 +971,7 @@ export interface Database {
           id?: string;
           qc_out_number?: string | null;
           produksi_order_id?: string | null;
+          quantity?: number | null;
           hasil?: ProductionQcResult | null;
           created_at?: string | null;
         };
@@ -881,6 +979,7 @@ export interface Database {
           id?: string;
           qc_out_number?: string | null;
           produksi_order_id?: string | null;
+          quantity?: number | null;
           hasil?: ProductionQcResult | null;
         };
         Relationships: [];
@@ -1484,6 +1583,7 @@ export type MSopInsert       = Tables<"hr", "m_sop">["Insert"];
 // finance
 export type TCashflow       = Tables<"finance", "t_cashflow">["Row"];
 export type TPayrollHistory = Tables<"finance", "t_payroll_history">["Row"];
+export type TPayrollItem    = Tables<"finance", "t_payroll_item">["Row"];
 export type TReimbursement  = Tables<"finance", "t_reimbursement">["Row"];
 export type MCoa             = Tables<"finance", "m_coa">["Row"];
 export type MCOA = {
@@ -1501,6 +1601,7 @@ export type TJournal         = Tables<"finance", "t_journal">["Row"];
 export type TJournalItem     = Tables<"finance", "t_journal_item">["Row"];
 export type TCashflowInsert  = Tables<"finance", "t_cashflow">["Insert"];
 export type TPayrollHistoryInsert = Tables<"finance", "t_payroll_history">["Insert"];
+export type TPayrollItemInsert    = Tables<"finance", "t_payroll_item">["Insert"];
 export type TReimbursementInsert = Tables<"finance", "t_reimbursement">["Insert"];
 export type MCoaInsert            = Tables<"finance", "m_coa">["Insert"];
 export type TJournalInsert        = Tables<"finance", "t_journal">["Insert"];

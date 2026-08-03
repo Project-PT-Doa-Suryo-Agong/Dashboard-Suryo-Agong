@@ -301,6 +301,8 @@ export async function createKaryawan(client: DbClient, input: CreateEmployeeWith
     divisi: input.divisi,
     status: input.status,
     gaji_pokok: input.gaji_pokok,
+    tunjangan_tetap: input.tunjangan_tetap,
+    bpjs_number: input.bpjs_number,
     nik: input.nik,
     nip: input.nip,
     alamat_domisili: input.alamat_domisili,

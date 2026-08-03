@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listQCOutbound, createQCOutbound } from "@/lib/services/production.service";
-import { requireString, requireUUID } from "@/lib/validation/body-validator";
+import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import type { TQCOutboundInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -34,6 +34,9 @@ export async function POST(request: Request) {
   if (hasil.data !== null && !["pass", "reject"].includes(hasil.data)) {
     return fail(ErrorCode.VALIDATION_ERROR, "hasil harus pass atau reject.", 400);
   }
+
+  const quantity = requireNumber(input, "quantity", { min: 1, optional: true });
+  if (!quantity.ok) return fail(ErrorCode.VALIDATION_ERROR, quantity.message, 400);
 
   const qcOutNumber = requireString(input, "qc_out_number", { optional: true });
   if (!qcOutNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, qcOutNumber.message, 400);
@@ -70,6 +73,7 @@ export async function POST(request: Request) {
   const payload: TQCOutboundInsert = {
     qc_out_number: finalQcOutNumber,
     produksi_order_id: produksiOrderId.data,
+    quantity: quantity.data,
     hasil: hasil.data as TQCOutboundInsert["hasil"],
   };
 

@@ -2,12 +2,14 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Edit2, Plus, Search, Trash2 } from "lucide-react";
+import { Edit2, FileSpreadsheet, Plus, Printer, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { MVendor } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 import { useProfile } from "@/hooks/use-profile";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 
@@ -202,6 +204,42 @@ export default function OfficeVendorsPage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Manajemen Mitra dan Vendor",
+      headers: ["ID Vendor", "Nama Vendor", "Kontak", "Terakhir Diupdate"],
+      rows: exportRows.map((vendor) => [
+        vendor.id,
+        vendor.nama_vendor ?? "-",
+        vendor.kontak ?? "-",
+        formatDate(vendor.updated_at ?? null),
+      ]),
+      summary: [{ label: "Total Vendor", value: `${exportRows.length} vendor` }],
+      fileName: "Laporan_Vendor_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Manajemen Mitra dan Vendor",
+      headers: ["ID Vendor", "Nama Vendor", "Kontak", "Terakhir Diupdate"],
+      rows: exportRows.map((vendor) => [
+        vendor.id,
+        vendor.nama_vendor ?? "-",
+        vendor.kontak ?? "-",
+        formatDate(vendor.updated_at ?? null),
+      ]),
+      fileName: `Laporan_Vendor_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
@@ -216,6 +254,27 @@ export default function OfficeVendorsPage() {
             placeholder="Cari nama vendor atau kontak..."
             className="relative w-full sm:max-w-xl"
           />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || exportRows.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || exportRows.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+        </div>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">

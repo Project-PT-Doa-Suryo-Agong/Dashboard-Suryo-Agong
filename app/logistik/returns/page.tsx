@@ -2,13 +2,15 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Eye, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, Plus, Printer, RefreshCcw, Search, Trash2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { TReturnOrder, TSalesOrder, TLogistikManifest } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type ProductLite = {
   id: string;
@@ -485,6 +487,57 @@ export default function ReturnsPage() {
   const detailBuktiUrl = selectedDetailItem?.foto_bukti_signed_url ?? null;
   const detailHasPdf = isPdfFile(selectedDetailItem?.foto_bukti_url);
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Retur Barang",
+      headers: ["ID Retur", "Order", "Produk", "Alasan", "Status", "Tanggal"],
+      rows: exportRows.map((item) => {
+        const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
+        return [
+          item.return_number?.trim() || (getReturnPrimaryKey(item) ? getReturnPrimaryKey(item).slice(0, 8).toUpperCase() : "-"),
+          getOrderDisplayCode(order, item.order_id),
+          item.product?.nama_produk ?? "Produk tidak ditemukan",
+          item.alasan ?? "-",
+          getReturnStatusUi(item.status).label,
+          item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-",
+        ];
+      }),
+      summary: [
+        { label: "Total Data", value: `${exportRows.length} data` },
+        { label: "Pending", value: `${exportRows.filter((i) => normalizeReturnStatus(i.status) === "pending").length} data` },
+        { label: "Diproses", value: `${exportRows.filter((i) => normalizeReturnStatus(i.status) === "diproses").length} data` },
+        { label: "Selesai", value: `${exportRows.filter((i) => normalizeReturnStatus(i.status) === "selesai").length} data` },
+      ],
+      fileName: "Laporan_Retur_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Retur Barang",
+      headers: ["ID Retur", "Order", "Produk", "Alasan", "Status", "Tanggal"],
+      rows: exportRows.map((item) => {
+        const order = orderById[item.order_id ?? ""] ?? item.order ?? null;
+        return [
+          item.return_number?.trim() || (getReturnPrimaryKey(item) ? getReturnPrimaryKey(item).slice(0, 8).toUpperCase() : "-"),
+          getOrderDisplayCode(order, item.order_id),
+          item.product?.nama_produk ?? "Produk tidak ditemukan",
+          item.alasan ?? "-",
+          getReturnStatusUi(item.status).label,
+          item.created_at ? dateFormatter.format(new Date(item.created_at)) : "-",
+        ];
+      }),
+      fileName: `Laporan_Retur_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-1">
@@ -492,7 +545,7 @@ export default function ReturnsPage() {
         <p className="text-sm md:text-base text-slate-200">Kelola pengajuan pengembalian barang berdasarkan sales order.</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar
             value={searchTerm}
             onChange={setSearchTerm}
@@ -500,14 +553,34 @@ export default function ReturnsPage() {
             className="relative w-full sm:max-w-md"
           />
 
-        <button
-          type="button"
-          onClick={() => openFormModal()}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
-        >
-          <Plus size={17} />
-          Tambah Retur
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={() => openFormModal()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
+          >
+            <Plus size={17} />
+            Tambah Retur
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto w-full -mx-4 md:mx-0 px-4 md:px-0">

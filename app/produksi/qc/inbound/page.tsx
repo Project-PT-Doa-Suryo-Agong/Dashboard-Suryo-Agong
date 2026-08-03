@@ -2,7 +2,7 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ClipboardCheck, Package } from "lucide-react";
+import { ClipboardCheck, FileSpreadsheet, Package, Printer } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -11,6 +11,8 @@ import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { useBahanBaku } from "@/lib/supabase/hooks/use-bahan-baku";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type QcInboundListPayload = {
   qc_inbound: TQCInbound[];
@@ -343,6 +345,50 @@ export default function QcInboundPage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan QC Inbound (Bahan Baku Masuk)",
+      headers: ["Tanggal", "Nomor QC", "Produksi Order", "Bahan Baku", "Jumlah", "Status"],
+      rows: exportRows.map((item) => [
+        item.created_at ? formatDate(item.created_at) : "-",
+        item.qc_in_number ?? "-",
+        orderById[item.produksi_order_id ?? ""]?.produksi_number ?? orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan",
+        item.bahan_baku_id ? (bahanNamaMap[item.bahan_baku_id] ?? bahanByKode[item.bahan_baku_id] ?? item.bahan_baku_id) : "-",
+        item.jumlah ? `${item.jumlah} ${bahanSatuanMap[item.bahan_baku_id ?? ""] ?? ""}` : "-",
+        statusLabel[item.hasil ?? "pass"],
+      ]),
+      summary: [
+        { label: "Total Data", value: `${exportRows.length} data` },
+        { label: "Lolos QC", value: `${exportRows.filter((i) => i.hasil === "pass").length} data` },
+        { label: "Ditolak", value: `${exportRows.filter((i) => i.hasil === "reject").length} data` },
+      ],
+      fileName: "Laporan_QC_Inbound_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan QC Inbound (Bahan Baku Masuk)",
+      headers: ["Tanggal", "Nomor QC", "Produksi Order", "Bahan Baku", "Jumlah", "Status"],
+      rows: exportRows.map((item) => [
+        item.created_at ? formatDate(item.created_at) : "-",
+        item.qc_in_number ?? "-",
+        orderById[item.produksi_order_id ?? ""]?.produksi_number ?? orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan",
+        item.bahan_baku_id ? (bahanNamaMap[item.bahan_baku_id] ?? bahanByKode[item.bahan_baku_id] ?? item.bahan_baku_id) : "-",
+        item.jumlah ? `${item.jumlah} ${bahanSatuanMap[item.bahan_baku_id ?? ""] ?? ""}` : "-",
+        statusLabel[item.hasil ?? "pass"],
+      ]),
+      fileName: `Laporan_QC_Inbound_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
@@ -370,14 +416,34 @@ export default function QcInboundPage() {
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className={`${CRUD_PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
-        >
-          <ClipboardCheck className="h-4 w-4" />
-          Catat Inspeksi Baru
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className={`${CRUD_PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            Catat Inspeksi Baru
+          </button>
+        </div>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">

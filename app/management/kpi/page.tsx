@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Activity, Edit, PlusCircle, Trash2, Trophy } from "lucide-react";
+import { Activity, Edit, FileSpreadsheet, PlusCircle, Printer, Trash2, Trophy } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -9,6 +9,8 @@ import type { TKPIWeekly } from "@/types/supabase";
 import { SearchBar } from "@/components/ui/search-bar";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type KpiListPayload = {
   kpi: TKPIWeekly[];
@@ -280,6 +282,71 @@ export default function ManagementKpiPage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan KPI Mingguan",
+      headers: ["Nomor KPI", "Tanggal", "Divisi", "Target", "Realisasi", "Pencapaian (%)", "Status"],
+      rows: exportRows.map((item) => {
+        const score = getScore(item);
+        const formattedDate = new Date(item.minggu).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        return [
+          item.kpi_number ?? item.id,
+          formattedDate,
+          item.divisi ?? "-",
+          item.target ? String(item.target) : "-",
+          item.realisasi ? String(item.realisasi) : "-",
+          `${score}%`,
+          statusLabel(score),
+        ];
+      }),
+      columnStyles: { 5: { halign: "right" } },
+      summary: [
+        { label: "Total Data", value: `${exportRows.length} data` },
+        { label: "Rata-Rata Performa", value: `${averagePerformance}%` },
+        { label: "Divisi Terbaik", value: bestDivision ? `${bestDivision.divisi ?? "-"} (${getScore(bestDivision)}%)` : "-" },
+        { label: "Perlu Perhatian", value: `${needAttentionCount} data` },
+      ],
+      fileName: "Laporan_KPI_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan KPI Mingguan",
+      headers: ["Nomor KPI", "Tanggal", "Divisi", "Target", "Realisasi", "Pencapaian (%)", "Status"],
+      rows: exportRows.map((item) => {
+        const score = getScore(item);
+        const formattedDate = new Date(item.minggu).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        return [
+          item.kpi_number ?? item.id,
+          formattedDate,
+          item.divisi ?? "-",
+          item.target ?? "-",
+          item.realisasi ?? "-",
+          `${score}%`,
+          statusLabel(score),
+        ];
+      }),
+      columnAlign: { 5: "right" },
+      fileName: `Laporan_KPI_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
@@ -336,14 +403,34 @@ export default function ManagementKpiPage() {
             className="w-full sm:max-w-sm rounded-xl border border-slate-300 bg-slate-200 text-sm text-slate-700 shadow-sm outline-none"
           />
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
-        >
-          <PlusCircle size={17} />
-          Tambah KPI
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || exportRows.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || exportRows.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600"
+          >
+            <PlusCircle size={17} />
+            Tambah KPI
+          </button>
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

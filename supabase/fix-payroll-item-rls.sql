@@ -1,0 +1,2 @@
+
+ALTER TABLE finance.t_payroll_item DISABLE ROW LEVEL SECURITY;

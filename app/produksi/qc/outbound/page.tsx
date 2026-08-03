@@ -2,13 +2,15 @@
 import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { FileSpreadsheet, Printer, ShieldCheck } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import type { ProductionQcResult, TProduksiOrder, TQCOutbound } from "@/types/supabase";
 import { apiFetch } from "@/lib/utils/api-fetch";
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 
 type QcOutboundListPayload = {
   qc_outbound: TQCOutbound[];
@@ -94,9 +96,11 @@ export default function QcOutboundPage() {
 
   const [formData, setFormData] = useState<{
     produksi_order_id: string;
+    quantity: string;
     hasil: ProductionQcResult;
   }>({
     produksi_order_id: "",
+    quantity: "",
     hasil: "pass",
   });
 
@@ -125,9 +129,11 @@ export default function QcOutboundPage() {
       const payload = await parseJsonResponse<OrdersListPayload>(response);
       const orderList = payload.data.orders ?? [];
       setOrders(orderList);
+      const firstOrder = orderList[0];
       setFormData((prev) => ({
         ...prev,
-        produksi_order_id: prev.produksi_order_id || orderList[0]?.id || "",
+        produksi_order_id: prev.produksi_order_id || firstOrder?.id || "",
+        quantity: prev.quantity || (firstOrder?.quantity ? String(firstOrder.quantity) : ""),
       }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Gagal memuat data produksi order.";
@@ -190,6 +196,7 @@ export default function QcOutboundPage() {
   const resetForm = () => {
     setFormData({
       produksi_order_id: orders[0]?.id ?? "",
+      quantity: orders[0]?.quantity ? String(orders[0].quantity) : "",
       hasil: "pass",
     });
     setEditData(null);
@@ -206,6 +213,7 @@ export default function QcOutboundPage() {
     setQcOutNumber(item.qc_out_number ?? "");
     setFormData({
       produksi_order_id: item.produksi_order_id ?? "",
+      quantity: item.quantity != null ? String(item.quantity) : "",
       hasil: item.hasil ?? "pass",
     });
     setIsFormModalOpen(true);
@@ -235,11 +243,18 @@ export default function QcOutboundPage() {
       return;
     }
 
+    const parsedQuantity = formData.quantity ? Number(formData.quantity) : null;
+    if (parsedQuantity !== null && (Number.isNaN(parsedQuantity) || parsedQuantity <= 0)) {
+      alert("Jumlah hasil harus diisi dengan angka lebih dari 0.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const payload = {
         produksi_order_id: formData.produksi_order_id,
         hasil: formData.hasil,
+        ...(parsedQuantity !== null && !Number.isNaN(parsedQuantity) ? { quantity: parsedQuantity } : {}),
         ...(editData ? {} : { qc_out_number: qcOutNumber || undefined }),
       };
 
@@ -294,6 +309,48 @@ export default function QcOutboundPage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan QC Outbound (Produk Jadi)",
+      headers: ["Tanggal", "Nomor QC", "Produksi Order", "Jumlah Hasil", "Status"],
+      rows: exportRows.map((item) => [
+        item.created_at ? formatDate(item.created_at) : "-",
+        item.qc_out_number ?? "-",
+        orderById[item.produksi_order_id ?? ""]?.produksi_number ?? orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan",
+        item.quantity != null ? item.quantity : "-",
+        statusLabel[item.hasil ?? "pass"],
+      ]),
+      summary: [
+        { label: "Total Data", value: `${exportRows.length} data` },
+        { label: "Lolos QC / Siap Kirim", value: `${exportRows.filter((i) => i.hasil === "pass").length} data` },
+        { label: "Reject", value: `${exportRows.filter((i) => i.hasil === "reject").length} data` },
+      ],
+      fileName: "Laporan_QC_Outbound_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan QC Outbound (Produk Jadi)",
+      headers: ["Tanggal", "Nomor QC", "Produksi Order", "Jumlah Hasil", "Status"],
+      rows: exportRows.map((item) => [
+        item.created_at ? formatDate(item.created_at) : "-",
+        item.qc_out_number ?? "-",
+        orderById[item.produksi_order_id ?? ""]?.produksi_number ?? orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan",
+        item.quantity != null ? item.quantity : "-",
+        statusLabel[item.hasil ?? "pass"],
+      ]),
+      fileName: `Laporan_QC_Outbound_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <section className="space-y-1">
@@ -321,14 +378,34 @@ export default function QcOutboundPage() {
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={openAddModal}
-          className={`${CRUD_PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
-        >
-          <ShieldCheck className="h-4 w-4" />
-          Jadwalkan Inspeksi
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer size={18} />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet size={18} />
+            Excel
+          </button>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className={`${CRUD_PRIMARY_BUTTON_CLASS} w-full sm:w-auto`}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Jadwalkan Inspeksi
+          </button>
+        </div>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -344,6 +421,7 @@ export default function QcOutboundPage() {
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Tanggal</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Nomor QC</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Produksi Order</th>
+                <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Jumlah Hasil</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Status</th>
                 <th className="px-4 md:px-6 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">Aksi</th>
               </tr>
@@ -351,11 +429,11 @@ export default function QcOutboundPage() {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Memuat data...</td>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={6}>Memuat data...</td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={5}>Tidak ada data inspeksi yang sesuai filter.</td>
+                  <td className="px-4 md:px-6 py-6 text-sm text-slate-500" colSpan={6}>Tidak ada data inspeksi yang sesuai filter.</td>
                 </tr>
               ) : (
                 filteredItems.map((item) => (
@@ -363,6 +441,7 @@ export default function QcOutboundPage() {
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 whitespace-nowrap">{item.created_at ? formatDate(item.created_at) : "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.qc_out_number ?? "-"}</td>
                     <td className="px-4 md:px-6 py-3 text-sm text-slate-700 min-w-72">{orderById[item.produksi_order_id ?? ""]?.produksi_number ?? orderById[item.produksi_order_id ?? ""]?.id ?? "Order tidak ditemukan"}</td>
+                    <td className="px-4 md:px-6 py-3 text-sm font-semibold text-slate-800 whitespace-nowrap">{item.quantity != null ? item.quantity : "-"}</td>
                     <td className="px-4 md:px-6 py-3">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${statusBadgeClass[item.hasil ?? "pass"]}`}>
                         {statusLabel[item.hasil ?? "pass"]}
@@ -411,7 +490,15 @@ export default function QcOutboundPage() {
               id="produksi-order-outbound"
               required
               value={formData.produksi_order_id}
-              onChange={(event) => setFormData((prev) => ({ ...prev, produksi_order_id: event.target.value }))}
+              onChange={(event) => {
+                const selectedOrderId = event.target.value;
+                const selectedOrder = orderById[selectedOrderId];
+                setFormData((prev) => ({
+                  ...prev,
+                  produksi_order_id: selectedOrderId,
+                  quantity: selectedOrder?.quantity != null ? String(selectedOrder.quantity) : "",
+                }));
+              }}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20"
             >
               <option value="" disabled>Pilih produksi order</option>
@@ -419,6 +506,21 @@ export default function QcOutboundPage() {
                 <option key={order.id} value={order.id}>{order.produksi_number ?? order.id}</option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="quantity-outbound" className="text-sm font-semibold text-slate-700">Jumlah Hasil (Produk Jadi)</label>
+            <input
+              id="quantity-outbound"
+              type="number"
+              min={1}
+              step={1}
+              placeholder="0"
+              value={formData.quantity}
+              onChange={(event) => setFormData((prev) => ({ ...prev, quantity: event.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20"
+            />
+            <p className="text-xs text-slate-500">Otomatis terisi dari quantity Production Order, bisa disesuaikan dengan hasil produksi aktual.</p>
           </div>
 
           <div className="space-y-1.5">
