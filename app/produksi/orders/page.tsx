@@ -3,7 +3,7 @@ import { SearchBar } from "@/components/ui/search-bar";
 
 import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
 import * as xlsx from "xlsx";
-import { Edit3, Plus, Search, Trash2, FileSpreadsheet, Download } from "lucide-react";
+import { Edit3, Plus, Search, Trash2, FileSpreadsheet, Download, Calculator } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -17,6 +17,7 @@ import type {
   TProduksiOrder,
 } from "@/types/supabase";
 import { useBahanBaku } from "@/lib/supabase/hooks/use-bahan-baku";
+import { useCalculateBom } from "@/lib/supabase/hooks/use-bom";
 
 type OrdersListPayload = {
   orders: TProduksiOrder[];
@@ -131,6 +132,7 @@ export default function ProductionOrdersPage() {
   const [produksiNumber, setProduksiNumber] = useState("");
 
   const { data: bahanBakuList } = useBahanBaku({ limit: 500, statusAktif: true });
+  const { calculate: calculateFromBom, loading: isCalculatingBom, error: calculateBomError } = useCalculateBom();
   const [allocatedMaterials, setAllocatedMaterials] = useState<any[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
@@ -388,6 +390,41 @@ export default function ProductionOrdersPage() {
   const closeFormModal = () => {
     setIsFormModalOpen(false);
     resetForm();
+  };
+
+  const handleCalculateFromBom = async () => {
+    if (isCalculatingBom) return;
+
+    if (!formData.product_id) {
+      alert("Pilih produk terlebih dahulu.");
+      return;
+    }
+    const parsedQty = Number(formData.quantity);
+    if (Number.isNaN(parsedQty) || parsedQty <= 0) {
+      alert("Isi target quantity terlebih dahulu (angka lebih dari 0).");
+      return;
+    }
+
+    console.log("ORDERS-CALC", { selectedProductId: formData.product_id, quantity: parsedQty });
+
+    const calculated = await calculateFromBom(formData.product_id, parsedQty);
+
+    if (calculated === null) {
+      alert(calculateBomError || "Gagal menghitung kebutuhan bahan baku dari resep.");
+      return;
+    }
+    if (calculated.length === 0) {
+      alert("Produk ini belum memiliki resep (BOM) aktif. Silakan input bahan baku secara manual.");
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      materials: calculated.map((item) => ({
+        bahan_baku_id: item.bahan_baku_id,
+        jumlah: String(item.jumlah),
+      })),
+    }));
   };
 
   const openDeleteModal = (id: string) => {
@@ -703,18 +740,29 @@ export default function ProductionOrdersPage() {
             <div className="space-y-3 border-t border-slate-100 pt-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Alokasi Bahan Baku</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      materials: [...prev.materials, { bahan_baku_id: "", jumlah: "" }],
-                    }))
-                  }
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Tambah Bahan
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleCalculateFromBom()}
+                    disabled={isCalculatingBom}
+                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    <Calculator className="h-3.5 w-3.5" />
+                    {isCalculatingBom ? "Menghitung..." : "Hitung dari Resep"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        materials: [...prev.materials, { bahan_baku_id: "", jumlah: "" }],
+                      }))
+                    }
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Tambah Bahan
+                  </button>
+                </div>
               </div>
 
               {formData.materials.length === 0 ? (

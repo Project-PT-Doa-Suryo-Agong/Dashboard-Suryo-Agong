@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Printer, FileSpreadsheet } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { apiFetch } from "@/lib/utils/api-fetch";
@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/RowActions";
 import { jsPDF } from "jspdf";
 import { SearchBar } from "@/components/ui/search-bar";
+import { exportToPDF } from "@/lib/utils/export-pdf";
+import { exportToExcel } from "@/lib/utils/export-excel";
 import type {
   FinanceTipeKas,
   FinanceUtangPiutangTipe,
@@ -230,6 +232,60 @@ export default function FinancePiutangPage() {
     }
   };
 
+  const exportRows = filteredItems;
+
+  const handleExportPDF = () => {
+    if (exportRows.length === 0) return;
+    exportToPDF({
+      title: "Laporan Catatan Piutang",
+      headers: ["Pihak/Klien", "Tanggal Awal", "Jatuh Tempo", "Nominal", "Lunas (Kas)", "Overdue", "COA/Akun"],
+      rows: exportRows.map((item) => [
+        item.klien + (item.deskripsi ? ` - ${item.deskripsi}` : ""),
+        formatDate(item.tanggal_awal),
+        formatDate(item.jatuh_tempo),
+        formatRupiah(item.nominal),
+        item.kas === "ya" ? "Lunas" : "Belum",
+        getOverdueStatus(item.jatuh_tempo, item.kas).label,
+        item.coa ? `${item.coa.kode_akun} - ${item.coa.nama_akun}` : "-",
+      ]),
+      columnStyles: {
+        0: { cellWidth: 50 },
+        3: { halign: "right" },
+        4: { halign: "center" },
+        5: { halign: "center" },
+      },
+      summary: [
+        { label: "Total Piutang", value: `${exportRows.length} catatan` },
+        { label: "Total Nominal", value: formatRupiah(exportRows.reduce((s, i) => s + (i.nominal ?? 0), 0)) },
+        { label: "Belum Lunas", value: `${exportRows.filter((i) => i.kas !== "ya").length} catatan` },
+      ],
+      fileName: "Laporan_Catatan_Piutang_PT_Doa_Suryo_Agong.pdf",
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (exportRows.length === 0) {
+      alert("Tidak ada data untuk diekspor.");
+      return;
+    }
+    void exportToExcel({
+      title: "Laporan Catatan Piutang",
+      headers: ["Pihak/Klien", "Tanggal Awal", "Jatuh Tempo", "Nominal", "Lunas (Kas)", "Overdue", "COA/Akun"],
+      rows: exportRows.map((item) => [
+        item.klien + (item.deskripsi ? ` - ${item.deskripsi}` : ""),
+        formatDate(item.tanggal_awal),
+        formatDate(item.jatuh_tempo),
+        item.nominal,
+        item.kas === "ya" ? "Lunas" : "Belum",
+        getOverdueStatus(item.jatuh_tempo, item.kas).label,
+        item.coa ? `${item.coa.kode_akun} - ${item.coa.nama_akun}` : "-",
+      ]),
+      moneyColumns: [4],
+      columnAlign: { 4: "right" },
+      fileName: `Laporan_Catatan_Piutang_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    });
+  };
+
   const handleDownloadPdf = (item: TUtangPiutangWithCoa) => {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
@@ -338,12 +394,12 @@ export default function FinancePiutangPage() {
     doc.save(`Kuitansi_Pelunasan_${item.klien.replace(/\s+/g, "_")}_${item.id?.substring(0, 8)}.pdf`);
   };
 
+  // Filter COA untuk Piutang (menggunakan kelompok akun Piutang: 12xx)
   const filteredCoas = useMemo(() => {
-    const parent = coas.find((c) => c.kode_akun === "1102");
-    return coas.filter((c) => 
-      c.kode_akun.startsWith("1102.") || 
-      (parent && c.parent_id === parent.id)
-    );
+    return coas.filter((c) => {
+      const code = String(c.kode_akun ?? "");
+      return code.startsWith("12");
+    });
   }, [coas]);
 
   return (
@@ -364,12 +420,32 @@ export default function FinancePiutangPage() {
           placeholder="Cari klien, deskripsi, atau COA..."
           className="w-full sm:max-w-md"
         />
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-white font-semibold hover:bg-green-600 transition"
-        >
-          <PlusCircle className="h-5 w-5" /> Catat Piutang Baru
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <Printer className="h-4 w-4" />
+            PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isLoading || filteredItems.length === 0}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Excel
+          </button>
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2 text-white font-semibold hover:bg-green-600 transition"
+          >
+            <PlusCircle className="h-5 w-5" /> Catat Piutang Baru
+          </button>
+        </div>
       </section>
 
       <section className="bg-white rounded-xl shadow-sm overflow-hidden">

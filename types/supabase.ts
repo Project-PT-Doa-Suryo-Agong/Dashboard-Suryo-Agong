@@ -1107,6 +1107,78 @@ export interface Database {
           }
         ];
       };
+      m_bom: {
+        Row: {
+          id: string;
+          product_id: string;
+          nama_resep: string | null;
+          status_aktif: boolean;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          nama_resep?: string | null;
+          status_aktif?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          product_id?: string;
+          nama_resep?: string | null;
+          status_aktif?: boolean;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "m_bom_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: true;
+            referencedRelation: "m_produk";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      t_bom_item: {
+        Row: {
+          id: string;
+          bom_id: string;
+          bahan_baku_id: string;
+          qty_per_unit: number;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          bom_id: string;
+          bahan_baku_id: string;
+          qty_per_unit: number;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          bom_id?: string;
+          bahan_baku_id?: string;
+          qty_per_unit?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "t_bom_item_bom_id_fkey";
+            columns: ["bom_id"];
+            isOneToOne: false;
+            referencedRelation: "m_bom";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "t_bom_item_bahan_baku_id_fkey";
+            columns: ["bahan_baku_id"];
+            isOneToOne: false;
+            referencedRelation: "m_bahan_baku";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: { [_ in never]: never };
     Functions: { [_ in never]: never };
@@ -1624,12 +1696,16 @@ export type TQCOutbound    = Tables<"production", "t_qc_outbound">["Row"];
 export type MBahanBaku     = Tables<"production", "m_bahan_baku">["Row"];
 export type TStokMutasi    = Tables<"production", "t_stok_mutasi">["Row"];
 export type TProduksiBahan = Tables<"production", "t_produksi_bahan">["Row"];
+export type MBom          = Tables<"production", "m_bom">["Row"];
+export type TBomItem      = Tables<"production", "t_bom_item">["Row"];
 export type TProduksiOrderInsert = Tables<"production", "t_produksi_order">["Insert"];
 export type TQCInboundInsert = Tables<"production", "t_qc_inbound">["Insert"];
 export type TQCOutboundInsert = Tables<"production", "t_qc_outbound">["Insert"];
 export type MBahanBakuInsert = Tables<"production", "m_bahan_baku">["Insert"];
 export type TStokMutasiInsert = Tables<"production", "t_stok_mutasi">["Insert"];
 export type TProduksiBahanInsert = Tables<"production", "t_produksi_bahan">["Insert"];
+export type MBomInsert = Tables<"production", "m_bom">["Insert"];
+export type TBomItemInsert = Tables<"production", "t_bom_item">["Insert"];
 
 // logistics
 export type TLogistikManifest = Tables<"logistics", "t_logistik_manifest">["Row"];

@@ -41,3 +41,6 @@ export { useBukuTamu, useInsertBukuTamu, useUpdateBukuTamu, useDeleteBukuTamu } 
 // ── Bahan Baku (Production) ──
 export { useBahanBaku, useInsertBahanBaku, useUpdateBahanBaku, useDeleteBahanBaku, useMutasiStok, useInsertMutasiStok, useTrackingBahanBaku } from "./use-bahan-baku";
 
+// ── BOM / Resep (Production) ──
+export { useBom, useBomDetail, useInsertBom, useUpdateBom, useDeleteBom, useCalculateBom } from "./use-bom";
+

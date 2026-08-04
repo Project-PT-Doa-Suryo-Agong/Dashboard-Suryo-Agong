@@ -230,12 +230,12 @@ export default function FinanceUtangPage() {
     }
   };
 
+  // Filter COA untuk Utang (menggunakan kelompok akun Hutang: 21xx)
   const filteredCoas = useMemo(() => {
-    const parent = coas.find((c) => c.kode_akun === "2101");
-    return coas.filter((c) => 
-      c.kode_akun.startsWith("2101.") || 
-      (parent && c.parent_id === parent.id)
-    );
+    return coas.filter((c) => {
+      const code = String(c.kode_akun ?? "");
+      return code.startsWith("21");
+    });
   }, [coas]);
 
   const exportRows = filteredItems;

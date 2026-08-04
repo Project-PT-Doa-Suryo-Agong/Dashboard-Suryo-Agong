@@ -27,6 +27,7 @@ const navItems = [
       { label: 'Pelacakan Penggunaan', href: '/produksi/tracking', icon: 'Activity' },
     ],
   },
+  { label: 'BOM / Resep', href: '/produksi/bom', icon: 'FileText' },
   { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
   { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
 ];
