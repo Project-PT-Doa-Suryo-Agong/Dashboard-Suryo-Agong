@@ -158,11 +158,6 @@ function findCoaByExactName(coaList: MCOA[], name: string): MCOA | undefined {
   return coaList.find((coa) => normalizeCoaName(coa.nama_akun) === target);
 }
 
-function findCoaByNameContains(coaList: MCOA[], keyword: string): MCOA | undefined {
-  const target = normalizeCoaName(keyword);
-  return coaList.find((coa) => normalizeCoaName(coa.nama_akun).includes(target));
-}
-
 function getOrderQuantity(order: Pick<TSalesOrder, "quantity" | "total_item"> & { items?: Array<{ qty?: number | string }> } | null | undefined): number {
   if (!order) return 0;
 
@@ -383,20 +378,18 @@ export default function SalesOrderPage() {
   const printRef = useRef<HTMLDivElement>(null);
 
   const bankOptionsMeta = useMemo(() => {
-    const cashParent = findCoaByExactName(coaOptions, "Kas Penjualan");
-    const creditParent = findCoaByExactName(coaOptions, "Piutang Usaha");
+    const cashParent = coaOptions.find((coa) => coa.kode_akun === "1100");
+    const creditParent = coaOptions.find((coa) => coa.kode_akun === "1200");
 
     const cashBanks = cashParent ? coaOptions.filter((coa) => coa.parent_id === cashParent.id) : [];
     const creditBanks = creditParent ? coaOptions.filter((coa) => coa.parent_id === creditParent.id) : [];
 
     const preferredCash =
-      findCoaByNameContains(cashBanks, "Bank BCA") ??
-      findCoaByNameContains(cashBanks, "BCA") ??
+      findCoaByExactName(cashBanks, "Kas Operasional") ??
       cashBanks[0];
 
     const preferredCredit =
-      findCoaByNameContains(creditBanks, "Bank Dummy") ??
-      findCoaByNameContains(creditBanks, "Dummy") ??
+      findCoaByExactName(creditBanks, "Piutang Usaha") ??
       creditBanks[0];
 
     return {
