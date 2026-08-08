@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { updateBudgetRequest, deleteBudgetRequest } from "@/lib/services/management.service";
+import { getCoa, cleanupJournalByReferensi } from "@/lib/services/finance.service";
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import { ErrorCode } from "@/lib/http/error-codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -61,6 +62,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if ("coa_id" in input) {
     const coaId = requireUUID(input, "coa_id", { optional: true });
     if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+
+    // [FASE 8] Budget wajib COA kategori Beban (jurnal: Dr Beban / Cr Kas)
+    if (!coaId.data) {
+      return fail(ErrorCode.VALIDATION_ERROR, "COA (coa_id) wajib diisi dan harus ber-kategori Beban.", 400);
+    }
+    const { data: coaData, error: coaError } = await getCoa(auth.ctx.supabase, coaId.data);
+    if (coaError) return fail(ErrorCode.DB_ERROR, "Gagal memvalidasi COA.", 500, coaError.message);
+    if (!coaData) return fail(ErrorCode.NOT_FOUND, "COA tidak ditemukan.", 404);
+    if (!(coaData.kategori ?? "").startsWith("Beban")) {
+      return fail(
+        ErrorCode.VALIDATION_ERROR,
+        `COA ${coaData.kode_akun} (${coaData.kategori}) bukan kategori Beban. Pilih akun ber-kategori Beban (mis. Beban Operasional).`,
+        400,
+      );
+    }
   }
 
   const { data, error } = await updateBudgetRequest(auth.ctx.supabase, id, input);
@@ -77,5 +93,12 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { error, deleted } = await deleteBudgetRequest(auth.ctx.supabase, id);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal hapus budget request.", 500, error.message);
   if (!deleted) return fail(ErrorCode.NOT_FOUND, "Data budget request tidak ditemukan.", 404);
+
+  // [FASE 8] Cleanup orphan: hapus jurnal BGT (no_bukti BGT-<id>) + cashflow terkait
+  const cleanup = await cleanupJournalByReferensi(auth.ctx.supabase, id);
+  if (cleanup.error) {
+    console.error("BUDGET DELETE cleanup error:", cleanup.error);
+  }
+
   return ok(null, "Budget request berhasil dihapus.");
 }

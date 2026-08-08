@@ -54,7 +54,9 @@ export async function GET(request: Request) {
     for (const item of items) {
       const coa = item.m_coa;
       if (!coa || !coa.kategori) continue;
-      if (!["Pendapatan", "Beban", "Beban Lain-lain"].includes(coa.kategori)) continue;
+      if (!["Pendapatan", "Pendapatan Lain-lain", "Beban", "Beban Lain-lain"].includes(coa.kategori)) continue;
+
+      const isPendapatan = coa.kategori === "Pendapatan" || coa.kategori === "Pendapatan Lain-lain";
 
       const key = coa.kode_akun;
       if (!grouped[key]) {
@@ -65,11 +67,13 @@ export async function GET(request: Request) {
           saldo: 0,
         };
       }
-      grouped[key].saldo += Number(item.kredit ?? 0) - Number(item.debit ?? 0);
+      grouped[key].saldo += isPendapatan
+        ? Number(item.kredit ?? 0) - Number(item.debit ?? 0)
+        : Number(item.debit ?? 0) - Number(item.kredit ?? 0);
     }
 
     const allItems = Object.values(grouped);
-    const pendapatan = allItems.filter((i) => i.kategori === "Pendapatan");
+    const pendapatan = allItems.filter((i) => i.kategori === "Pendapatan" || i.kategori === "Pendapatan Lain-lain");
     const beban = allItems.filter((i) => i.kategori === "Beban" || i.kategori === "Beban Lain-lain");
 
     const totalPendapatan = pendapatan.reduce((s, i) => s + i.saldo, 0);
@@ -80,7 +84,7 @@ export async function GET(request: Request) {
       beban,
       total_pendapatan: totalPendapatan,
       total_beban: totalBeban,
-      laba_bersih: totalPendapatan + totalBeban,
+      laba_bersih: totalPendapatan - totalBeban,
     };
 
     return ok(response);

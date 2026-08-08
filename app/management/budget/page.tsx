@@ -251,6 +251,11 @@ export default function ManagementBudgetPage() {
       alert("Nominal harus berupa angka lebih dari 0.");
       return;
     }
+    // [FASE 8] Budget wajib COA kategori Beban
+    if (!formData.coa_id) {
+      alert("COA wajib diisi (kategori Beban).");
+      return;
+    }
     if (maxBudget && parsedAmount > maxBudget.max_amount) {
       alert(`Nominal melebihi Max Budget Perusahaan (${formatRupiah(maxBudget.max_amount)}).`);
       return;
@@ -647,19 +652,26 @@ export default function ManagementBudgetPage() {
             ))}
           </select>
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">COA</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              COA <span className="text-red-500">*</span>
+            </label>
             <select
+              required
               value={formData.coa_id ?? ""}
               onChange={(event) => setFormData((prev) => ({ ...prev, coa_id: event.target.value || null }))}
               className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
               disabled={isSubmitting}
             >
-              <option value="">-- Pilih COA (opsional) --</option>
-              {coaOptions.map((coa) => (
-                <option key={coa.id} value={coa.id}>
-                  {coa.kode_akun} - {coa.nama_akun}
-                </option>
-              ))}
+              <option value="" disabled>
+                -- Pilih COA (wajib: kategori Beban) --
+              </option>
+              {coaOptions
+                .filter((coa) => (coa.kategori ?? "").startsWith("Beban"))
+                .map((coa) => (
+                  <option key={coa.id} value={coa.id}>
+                    {coa.kode_akun} - {coa.nama_akun}
+                  </option>
+                ))}
             </select>
           </div>
           <input

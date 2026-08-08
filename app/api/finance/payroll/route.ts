@@ -2,6 +2,7 @@ import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listPayroll, createPayroll, listKasbonByEmployee, updateUtangPiutang, replacePayrollItems } from "@/lib/services/finance.service";
 import { calculatePayroll, buildManualItems, type PayrollItem } from "@/lib/services/payroll.service";
+import { PAYROLL_COMPONENT } from "@/lib/constants/payroll";
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import type { TPayrollHistoryInsert, TPayrollItemInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
@@ -59,6 +60,20 @@ export async function POST(request: Request) {
   const normalizedBulan = bulan.data ? normalizePayrollMonth(bulan.data) : null;
   if (!normalizedBulan) {
     return fail(ErrorCode.VALIDATION_ERROR, "bulan harus berupa tanggal valid.", 400);
+  }
+
+  // [FASE 8] Guard: tolak payroll untuk periode di masa depan
+  const now = new Date();
+  const lastDayCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const endOfCurrentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    lastDayCurrentMonth,
+  ).padStart(2, "0")}`;
+  if (normalizedBulan > endOfCurrentMonth) {
+    return fail(
+      ErrorCode.VALIDATION_ERROR,
+      `Periode payroll masih di masa depan (maksimal ${endOfCurrentMonth}). Hanya periode berjalan atau sebelumnya yang dapat diproses.`,
+      400,
+    );
   }
 
   // Total dapat di-set eksplisit (backward-compatible legacy: dipakai sebagai
@@ -186,10 +201,20 @@ export async function POST(request: Request) {
       return fail(ErrorCode.DB_ERROR, "Gagal menyimpan detail komponen payroll.", 500, itemsError.message);
     }
 
-    // Jika ada potongan kasbon, tandai kasbon sebagai lunas
+    // [FASE 8] Kasbon ditandai lunas HANYA jika sisa = 0
+    // (potongan yang diterapkan ke kasbon tersebut == nominal penuhnya).
     if (summary.potongan_kasbon > 0 && kasbonList) {
+      const potonganPerKasbon = new Map<string, number>();
+      for (const item of result.items) {
+        if (item.kode_komponen === PAYROLL_COMPONENT.KASBON && item.kasbon_id) {
+          potonganPerKasbon.set(item.kasbon_id, (potonganPerKasbon.get(item.kasbon_id) ?? 0) + item.jumlah);
+        }
+      }
       for (const kasbonRow of kasbonList) {
-        await updateUtangPiutang(auth.ctx.supabase, kasbonRow.id, { kas: "kas tunai" });
+        const potongan = potonganPerKasbon.get(kasbonRow.id) ?? 0;
+        if (potongan >= Number(kasbonRow.nominal)) {
+          await updateUtangPiutang(auth.ctx.supabase, kasbonRow.id, { kas: "kas tunai" });
+        }
       }
     }
   }

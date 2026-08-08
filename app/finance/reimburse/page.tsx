@@ -314,6 +314,11 @@ export default function FinanceReimbursePage() {
       alert("Nominal reimburse harus berupa angka lebih dari 0.");
       return;
     }
+    // [FASE 8] Reimburse wajib COA kategori Beban
+    if (!formData.coa_id) {
+      alert("COA wajib diisi (kategori Beban).");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -677,18 +682,25 @@ export default function FinanceReimbursePage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">COA</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              COA <span className="text-red-500">*</span>
+            </label>
             <select
+              required
               value={formData.coa_id ?? ""}
               onChange={(event) => setFormData((prev) => ({ ...prev, coa_id: event.target.value || null }))}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
             >
-              <option value="">-- Pilih COA (opsional) --</option>
-              {coaOptions.map((coa) => (
-                <option key={coa.id} value={coa.id}>
-                  {coa.kode_akun} - {coa.nama_akun}
-                </option>
-              ))}
+              <option value="" disabled>
+                -- Pilih COA (wajib: kategori Beban) --
+              </option>
+              {coaOptions
+                .filter((coa) => (coa.kategori ?? "").startsWith("Beban"))
+                .map((coa) => (
+                  <option key={coa.id} value={coa.id}>
+                    {coa.kode_akun} - {coa.nama_akun}
+                  </option>
+                ))}
             </select>
           </div>
 

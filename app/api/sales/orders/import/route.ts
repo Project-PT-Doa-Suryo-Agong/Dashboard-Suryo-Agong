@@ -262,18 +262,21 @@ export async function POST(request: Request) {
   let defaultCreditCoaId: string | null = null;
 
   if (coaList) {
-    const cashParent = coaList.find((c: any) => c.nama_akun?.trim().toLowerCase() === "kas penjualan");
-    const creditParent = coaList.find((c: any) => c.nama_akun?.trim().toLowerCase() === "piutang usaha");
+    // Lookup berbasis kode_akun (mirror logika form) agar selalu cocok dengan
+    // COA existing: 1100 "Kas dan Bank" -> anak "Kas Operasional" ?? anak pertama,
+    // 1200 "Piutang" -> anak "Piutang Usaha" ?? anak pertama.
+    const cashParent = coaList.find((c: any) => c.kode_akun === "1100");
+    const creditParent = coaList.find((c: any) => c.kode_akun === "1200");
 
     if (cashParent) {
       const cashChildren = coaList.filter((c: any) => c.parent_id === cashParent.id);
-      const bcaChild = cashChildren.find((c: any) => c.nama_akun?.toLowerCase().includes("bca"));
-      defaultCashCoaId = bcaChild?.id ?? cashChildren[0]?.id ?? null;
+      const operationalChild = cashChildren.find((c: any) => c.nama_akun?.toLowerCase().includes("kas operasional"));
+      defaultCashCoaId = operationalChild?.id ?? cashChildren[0]?.id ?? null;
     }
     if (creditParent) {
       const creditChildren = coaList.filter((c: any) => c.parent_id === creditParent.id);
-      const dummyChild = creditChildren.find((c: any) => c.nama_akun?.toLowerCase().includes("dummy"));
-      defaultCreditCoaId = dummyChild?.id ?? creditChildren[0]?.id ?? null;
+      const receivableChild = creditChildren.find((c: any) => c.nama_akun?.toLowerCase().includes("piutang usaha"));
+      defaultCreditCoaId = receivableChild?.id ?? creditChildren[0]?.id ?? null;
     }
   }
 

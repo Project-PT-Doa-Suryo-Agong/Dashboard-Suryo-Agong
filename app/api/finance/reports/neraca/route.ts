@@ -77,7 +77,9 @@ export async function GET(request: Request) {
 
     const netIncome = totalPendapatan - totalBeban;
 
-    const allItems = Object.values(grouped).filter((i) => i.saldo !== 0);
+    const allItems = Object.values(grouped)
+      .filter((i) => i.saldo !== 0)
+      .sort((a, b) => a.kode_akun.localeCompare(b.kode_akun));
     const aset: NeracaItem[] = allItems.filter((i) => i.kategori === "Aset");
     const liabilitas: NeracaItem[] = allItems.filter((i) => i.kategori === "Liabilitas");
     const ekuitas: NeracaItem[] = allItems.filter((i) => i.kategori === "Ekuitas");

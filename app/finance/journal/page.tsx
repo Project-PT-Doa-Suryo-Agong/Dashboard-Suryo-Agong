@@ -113,6 +113,14 @@ export default function FinanceJournalPage() {
     keterangan: "",
   });
 
+  // [FASE 8] Warning backdate jurnal
+  const todayStr = (() => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  })();
+  const isBackdated = formData.tanggal !== "" && formData.tanggal < todayStr;
+
   const fetchJournals = async () => {
     setIsLoading(true);
     try {
@@ -313,6 +321,13 @@ export default function FinanceJournalPage() {
     }
     if (!formData.tanggal) {
       alert("Tanggal wajib diisi.");
+      return;
+    }
+    // [FASE 8] Konfirmasi saat mencatat jurnal di masa lalu (backdate)
+    if (
+      isBackdated &&
+      !window.confirm("Tanggal jurnal berada di masa lalu (backdate). Lanjutkan menyimpan jurnal ini?")
+    ) {
       return;
     }
     if (journalItems.length === 0) {
@@ -631,6 +646,11 @@ export default function FinanceJournalPage() {
                 onChange={(event) => setFormData((prev) => ({ ...prev, tanggal: event.target.value }))}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-300/20"
               />
+              {isBackdated && (
+                <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                  Tanggal jurnal di masa lalu (backdate) — pastikan periode laporan benar.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Keterangan</label>

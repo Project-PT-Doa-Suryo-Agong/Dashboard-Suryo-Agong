@@ -68,6 +68,18 @@ export async function POST(request: Request) {
 
   const dbKas = kas.data === "ya" ? "kas tunai" : "tidak";
 
+  // [FASE 8] Default kasbon -> COA 1202 Piutang Karyawan bila tidak diinput
+  let coaFinal = coa.data ?? null;
+  if ((tipe.data ?? "utang") === "kasbon" && !coaFinal) {
+    const { data: defaultCoa } = await supabaseAdmin
+      .schema("finance")
+      .from("m_coa")
+      .select("id")
+      .eq("kode_akun", "1202")
+      .maybeSingle();
+    if (defaultCoa) coaFinal = defaultCoa.id;
+  }
+
   const payload = {
     klien: klien.data as string,
     employee_id: employeeId.data,
@@ -77,7 +89,7 @@ export async function POST(request: Request) {
     jatuh_tempo: jatuh_tempo.data,
     kas: dbKas,
     tipe: (tipe.data as FinanceUtangPiutangTipe) ?? "utang",
-    coa: coa.data,
+    coa: coaFinal,
   };
 
   const { data, error } = await createUtangPiutang(supabaseAdmin as any, payload);

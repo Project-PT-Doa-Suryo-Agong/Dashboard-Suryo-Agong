@@ -54,6 +54,14 @@ function formatDate(dateValue: string): string {
   }).format(new Date(dateValue));
 }
 
+function getEndOfCurrentMonth(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  return `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+}
+
 function getDivisi(keterangan: string | null): string {
   if (!keterangan) return "-";
   const match = keterangan.match(/^\[DIVISI: (.*?)\]\s*/);
@@ -160,6 +168,8 @@ export default function AssetManagementPage() {
   
   // Posting journal loading states
   const [postingId, setPostingId] = useState<string | null>(null);
+  const [isAcquisitionPosting, setIsAcquisitionPosting] = useState(false);
+  const [acquisitionKasId, setAcquisitionKasId] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -197,6 +207,15 @@ export default function AssetManagementPage() {
     };
     fetchCoa();
   }, []);
+
+  // Akun kas untuk jurnal akuisisi (anak parent 1100, default Kas Operasional)
+  const kasOptions = useMemo(() => {
+    const cashParent = coaOptions.find((coa) => coa.kode_akun === "1100");
+    const children = cashParent ? coaOptions.filter((coa) => coa.parent_id === cashParent.id) : [];
+    const preferred =
+      children.find((coa) => coa.nama_akun?.toLowerCase().includes("kas operasional")) ?? children[0];
+    return { children, preferredId: preferred?.id ?? null };
+  }, [coaOptions]);
 
   // Filtered Assets
   const filteredAssets = useMemo(() => {
@@ -256,6 +275,7 @@ export default function AssetManagementPage() {
 
   const handleOpenViewSchedule = (asset: TAsset) => {
     setViewAsset(asset);
+    setAcquisitionKasId(kasOptions.preferredId);
     setIsViewScheduleModalOpen(true);
   };
 
@@ -398,6 +418,39 @@ export default function AssetManagementPage() {
       alert(err.message || "Gagal memposting jurnal.");
     } finally {
       setPostingId(null);
+    }
+  };
+
+  // Post Acquisition Journal for Asset — atomic via RPC
+  const handlePostAcquisition = async () => {
+    if (!viewAsset || !acquisitionKasId || isAcquisitionPosting) return;
+    setIsAcquisitionPosting(true);
+
+    try {
+      const res = await apiFetch("/api/finance/asset/acquisition/post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ asset_id: viewAsset.id, coa_kas_id: acquisitionKasId }),
+      });
+
+      const payload = (await res.json()) as any;
+
+      if (!payload.success) {
+        if (res.status === 409) {
+          refreshAssets();
+          alert("Aset ini sudah memiliki jurnal akuisisi.");
+        } else {
+          throw new Error(payload.message || "Gagal memposting jurnal akuisisi.");
+        }
+        return;
+      }
+
+      refreshAssets();
+      alert(payload.message || "Jurnal akuisisi aset berhasil diposting!");
+    } catch (err: any) {
+      alert(err.message || "Gagal memposting jurnal akuisisi.");
+    } finally {
+      setIsAcquisitionPosting(false);
     }
   };
 
@@ -1043,6 +1096,48 @@ export default function AssetManagementPage() {
                 </div>
               </div>
 
+              {viewAsset.journal_id ? (
+                <div className="mb-5 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <div>
+                    <p className="text-xs font-bold text-emerald-700">Jurnal Akuisisi Sudah Terposting</p>
+                    <p className="text-xs font-mono text-emerald-600">No Jurnal: {viewAsset.journal_id}</p>
+                  </div>
+                  <CheckCircle size={18} className="text-emerald-500" />
+                </div>
+              ) : (
+                <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-dashed border-[#BC934B]/60 bg-amber-50/60 p-4">
+                  <div className="min-w-[220px] flex-1">
+                    <p className="text-xs font-bold text-slate-700">Posting Jurnal Akuisisi Aset</p>
+                    <p className="text-xs text-slate-500">
+                      Dr {(coaOptions.find((c) => c.id === viewAsset.coa_asset_id)?.kode_akun) || "Aset Tetap"} /
+                      Cr Kas sebesar {formatRupiah(viewAsset.nilai_perolehan || 0)} (tanggal {viewAsset.tanggal_perolehan})
+                    </p>
+                  </div>
+                  <select
+                    value={acquisitionKasId ?? ""}
+                    onChange={(event) => setAcquisitionKasId(event.target.value || null)}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#BC934B]/40"
+                  >
+                    {kasOptions.children.length === 0 ? (
+                      <option value="">Tidak ada akun kas</option>
+                    ) : (
+                      kasOptions.children.map((coa) => (
+                        <option key={coa.id} value={coa.id}>
+                          {coa.kode_akun} - {coa.nama_akun}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <button
+                    onClick={handlePostAcquisition}
+                    disabled={isAcquisitionPosting || !acquisitionKasId || kasOptions.children.length === 0}
+                    className="inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {isAcquisitionPosting ? "Memproses..." : "Posting Akuisisi"}
+                  </button>
+                </div>
+              )}
+
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <div className="max-h-[60vh] overflow-y-auto">
                   <table className="w-full text-left text-sm">
@@ -1083,13 +1178,19 @@ export default function AssetManagementPage() {
                               {item.is_posted ? (
                                 <span className="text-xs text-slate-400 font-medium">No Jurnal: {item.journal_id || "-"}</span>
                               ) : (
-                                <button
-                                  onClick={() => handlePostJournal(item)}
-                                  disabled={postingId === item.id}
-                                  className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#BC934B] px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-[#A88444] disabled:opacity-50"
-                                >
-                                  {postingId === item.id ? "Memproses..." : "Posting Jurnal"}
-                                </button>
+                                (() => {
+                                  const isFuture = (item.periode ?? "") > getEndOfCurrentMonth();
+                                  return (
+                                    <button
+                                      onClick={() => handlePostJournal(item)}
+                                      disabled={postingId === item.id || isFuture}
+                                      title={isFuture ? "Periode masih di masa depan, belum dapat diposting." : undefined}
+                                      className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#BC934B] px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-[#A88444] disabled:opacity-50"
+                                    >
+                                      {postingId === item.id ? "Memproses..." : isFuture ? "Masa Depan" : "Posting Jurnal"}
+                                    </button>
+                                  );
+                                })()
                               )}
                             </td>
                           </tr>

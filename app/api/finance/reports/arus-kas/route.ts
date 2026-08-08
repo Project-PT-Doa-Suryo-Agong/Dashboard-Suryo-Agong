@@ -41,8 +41,8 @@ export async function GET(request: Request) {
   try {
     const financeDb = (supabaseAdmin as any).schema("finance");
 
-    const formatStart = startDate.length === 10 ? `${startDate}T00:00:00.000Z` : startDate;
-    const formatEnd = endDate.length === 10 ? `${endDate}T23:59:59.999Z` : endDate;
+    const formatStart = new Date(`${startDate}T00:00:00+07:00`).toISOString();
+    const formatEnd = new Date(`${endDate}T23:59:59.999+07:00`).toISOString();
 
     const { data, error } = await financeDb
       .from("t_cashflow")
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
       return fail(ErrorCode.DB_ERROR, "Gagal mengambil data arus kas.", 500, error.message);
     }
 
-    const rows = (data ?? []) as any[];
+    const rows = ((data ?? []) as any[]).filter((r) => Number(r.amount ?? 0) > 0);
     let totalPemasukan = 0;
     let totalPengeluaran = 0;
     const kasBesar: ArusKasGroup = { pemasukan: 0, pengeluaran: 0 };
@@ -64,11 +64,13 @@ export async function GET(request: Request) {
     const detail: ArusKasDetail[] = rows.map((r: any) => {
       const amount = Number(r.amount ?? 0);
       const isIncome = r.tipe === "income";
-      const isBesar = isIncome || (amount > 1000000);
+      const tipeKas = r.tipe_kas as string | null;
+      const isBesar = tipeKas === "besar" || (!tipeKas && (isIncome || amount > 1000000));
 
       if (isIncome) {
         totalPemasukan += amount;
-        kasBesar.pemasukan += amount;
+        if (isBesar) kasBesar.pemasukan += amount;
+        else kasKecil.pemasukan += amount;
       } else {
         totalPengeluaran += amount;
         if (isBesar) kasBesar.pengeluaran += amount;

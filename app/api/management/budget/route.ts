@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
 import { listBudgetRequest, createBudgetRequest } from "@/lib/services/management.service";
+import { getCoa } from "@/lib/services/finance.service";
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import type { TBudgetRequestInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
@@ -39,6 +40,21 @@ export async function POST(request: Request) {
 
   const coaId = requireUUID(input, "coa_id", { optional: true });
   if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+
+  // [FASE 8] Budget wajib COA kategori Beban (jurnal: Dr Beban / Cr Kas)
+  if (!coaId.data) {
+    return fail(ErrorCode.VALIDATION_ERROR, "COA (coa_id) wajib diisi untuk pengajuan budget.", 400);
+  }
+  const { data: coaData, error: coaError } = await getCoa(auth.ctx.supabase, coaId.data);
+  if (coaError) return fail(ErrorCode.DB_ERROR, "Gagal memvalidasi COA.", 500, coaError.message);
+  if (!coaData) return fail(ErrorCode.NOT_FOUND, "COA tidak ditemukan.", 404);
+  if (!(coaData.kategori ?? "").startsWith("Beban")) {
+    return fail(
+      ErrorCode.VALIDATION_ERROR,
+      `COA ${coaData.kode_akun} (${coaData.kategori}) bukan kategori Beban. Pilih akun ber-kategori Beban (mis. Beban Operasional).`,
+      400,
+    );
+  }
 
   const budgetNumber = requireString(input, "budget_number", { optional: true });
   if (!budgetNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, budgetNumber.message, 400);

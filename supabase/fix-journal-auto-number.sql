@@ -6,6 +6,11 @@ BEGIN;
 -- 1. UPDATE: finance.fn_create_journal_entry()
 --    Tambah auto-generate journal_number dengan format JRN-MMYY-NNNNN
 --    dan idempotency check (skip jika jurnal referensi_id sudah ada)
+-- [FASE 8 AMEND] Payroll: split bruto/neto kasbon.
+--    Beban gaji dicatat BRUTO (total + potongan_kasbon), kas keluar NETO
+--    (total), dan potongan kasbon di-kredit ke COA 1202 Piutang Karyawan
+--    (menutup jurnal pencairan kasbon). Cashflow tetap jumlah neto.
+--    Bila COA 1202 tidak ditemukan, fallback ke jurnal neto (perilaku lama).
 -- ============================================================================
 CREATE OR REPLACE FUNCTION finance.fn_create_journal_entry()
 RETURNS TRIGGER
@@ -26,6 +31,9 @@ DECLARE
     v_yy            text;
     v_start_month   timestamptz;
     v_next_month    timestamptz;
+    -- [FASE 8] Split bruto/neto kasbon payroll
+    v_potongan_kasbon numeric;
+    v_coa_kasbon      uuid;
 BEGIN
 
     -- -----------------------------------------------------------------------
@@ -37,6 +45,9 @@ BEGIN
         v_coa_kredit := (SELECT id FROM finance.m_coa WHERE kode_akun = '1101');
         v_amount     := NEW.total;
         v_ref_id     := NEW.employee_id;
+        -- [FASE 8] Split bruto/neto: beban = total + potongan kasbon
+        v_potongan_kasbon := COALESCE(NEW.potongan_kasbon, 0);
+        v_coa_kasbon      := (SELECT id FROM finance.m_coa WHERE kode_akun = '1202');
 
     ELSIF (TG_TABLE_NAME = 't_reimbursement') THEN
         IF (TG_OP = 'INSERT' AND NEW.status = 'approved') OR
@@ -124,11 +135,23 @@ BEGIN
 
     -- -----------------------------------------------------------------------
     -- STEP 7: Insert jurnal item (debit/kredit)
+    --         [FASE 8] Payroll berpotongan kasbon: Dr beban BRUTO,
+    --         Cr kas NETO, Cr 1202 potongan kasbon (menutup pencairan kasbon).
     -- -----------------------------------------------------------------------
-    INSERT INTO finance.t_journal_item (journal_id, coa_id, debit, kredit)
-    VALUES
-        (v_journal_id, v_coa_debit,  v_amount, 0),
-        (v_journal_id, v_coa_kredit, 0, v_amount);
+    IF TG_TABLE_NAME = 't_payroll_history'
+       AND COALESCE(v_potongan_kasbon, 0) > 0
+       AND v_coa_kasbon IS NOT NULL THEN
+        INSERT INTO finance.t_journal_item (journal_id, coa_id, debit, kredit)
+        VALUES
+            (v_journal_id, v_coa_debit,   v_amount + v_potongan_kasbon, 0),
+            (v_journal_id, v_coa_kredit,  0, v_amount),
+            (v_journal_id, v_coa_kasbon,  0, v_potongan_kasbon);
+    ELSE
+        INSERT INTO finance.t_journal_item (journal_id, coa_id, debit, kredit)
+        VALUES
+            (v_journal_id, v_coa_debit,  v_amount, 0),
+            (v_journal_id, v_coa_kredit, 0, v_amount);
+    END IF;
 
     -- -----------------------------------------------------------------------
     -- STEP 8: Insert cashflow otomatis

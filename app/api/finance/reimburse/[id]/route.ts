@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
-import { updateReimbursement, deleteReimbursement } from "@/lib/services/finance.service";
+import { updateReimbursement, deleteReimbursement, getCoa, cleanupJournalByReferensi } from "@/lib/services/finance.service";
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import { ErrorCode } from "@/lib/http/error-codes";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -72,6 +72,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if ("coa_id" in input) {
     const coaId = requireUUID(input, "coa_id", { optional: true });
     if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+
+    // [FASE 8] Reimburse wajib COA kategori Beban
+    if (!coaId.data) {
+      return fail(ErrorCode.VALIDATION_ERROR, "COA (coa_id) wajib diisi dan harus ber-kategori Beban.", 400);
+    }
+    const { data: coaData, error: coaError } = await getCoa(auth.ctx.supabase, coaId.data);
+    if (coaError) return fail(ErrorCode.DB_ERROR, "Gagal memvalidasi COA.", 500, coaError.message);
+    if (!coaData) return fail(ErrorCode.NOT_FOUND, "COA tidak ditemukan.", 404);
+    if (!(coaData.kategori ?? "").startsWith("Beban")) {
+      return fail(
+        ErrorCode.VALIDATION_ERROR,
+        `COA ${coaData.kode_akun} (${coaData.kategori}) bukan kategori Beban. Pilih akun ber-kategori Beban (mis. Beban Reimbursement).`,
+        400,
+      );
+    }
     payload.coa_id = coaId.data;
   }
   if ("status" in input) {
@@ -97,5 +112,12 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { error, deleted } = await deleteReimbursement(auth.ctx.supabase, id);
   if (error) return fail(ErrorCode.DB_ERROR, "Gagal hapus reimburse.", 500, error.message);
   if (!deleted) return fail(ErrorCode.NOT_FOUND, "Data reimburse tidak ditemukan.", 404);
+
+  // [FASE 8] Cleanup orphan: hapus jurnal reimburse (referensi_id) + cashflow terkait
+  const cleanup = await cleanupJournalByReferensi(auth.ctx.supabase, id);
+  if (cleanup.error) {
+    console.error("REIMBURSE DELETE cleanup error:", cleanup.error);
+  }
+
   return ok(null, "Data reimburse berhasil dihapus.");
 }

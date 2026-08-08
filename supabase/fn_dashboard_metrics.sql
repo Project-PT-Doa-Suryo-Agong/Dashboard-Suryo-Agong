@@ -1,17 +1,3 @@
--- ============================================================================
--- fn_dashboard_metrics — RPC untuk agregasi Dashboard Laporan Keuangan
---
--- Fungsi ini menggantikan query agregasi di endpoint dashboard.
--- Response endpoint tetap identik, hanya sumber data berubah dari query
--- langsung (supabaseAdmin.from().select()) menjadi RPC.
---
--- Cara deploy:
---   1. Jalankan di Supabase SQL Editor
---   2. Validasi hasil: panggil SELECT * FROM fn_dashboard_metrics('2026-01-01', '2026-12-31');
---
--- Migration bersifat idempotent (CREATE OR REPLACE).
--- ============================================================================
-
 CREATE OR REPLACE FUNCTION public.fn_dashboard_metrics(
     p_start_date date,
     p_end_date date
@@ -71,23 +57,23 @@ BEGIN
     FROM finance.t_asset
     WHERE status = 'active';
 
-    -- Total Piutang belum lunas
+    -- Total Piutang belum lunas (termasuk piutang otomatis Sales dengan kas = NULL)
     SELECT COALESCE(SUM(nominal), 0) INTO v_piutang
     FROM finance.t_utang_piutang
     WHERE tipe = 'piutang'
-      AND kas = 'tidak';
+      AND (kas IS NULL OR kas = 'tidak');
 
-    -- Total Utang belum lunas
+    -- Total Utang belum lunas (kas = NULL dianggap belum lunas)
     SELECT COALESCE(SUM(nominal), 0) INTO v_utang
     FROM finance.t_utang_piutang
     WHERE tipe = 'utang'
-      AND kas = 'tidak';
+      AND (kas IS NULL OR kas = 'tidak');
 
-    -- Total Kasbon belum lunas
+    -- Total Kasbon belum lunas (kas = NULL dianggap belum lunas)
     SELECT COALESCE(SUM(nominal), 0) INTO v_kasbon
     FROM finance.t_utang_piutang
     WHERE tipe = 'kasbon'
-      AND kas = 'tidak';
+      AND (kas IS NULL OR kas = 'tidak');
 
     RETURN QUERY
     SELECT
@@ -108,17 +94,3 @@ $$;
 -- Grant permission ke role yang membutuhkan
 GRANT EXECUTE ON FUNCTION public.fn_dashboard_metrics TO authenticated, service_role;
 
--- ============================================================================
--- Cara refactor endpoint dashboard setelah RPC tervalidasi:
---
--- BEFORE (Phase 2 — query langsung):
---   const data = await getDashboardMetrics(startDate, endDate);
---
--- AFTER (Phase 5 — via RPC):
---   const { data, error } = await supabaseAdmin.rpc("fn_dashboard_metrics", {
---     p_start_date: startDate,
---     p_end_date: endDate,
---   });
---   const metrics = (data ?? [])[0] || {};
---   const response = { ...metrics };
--- ============================================================================

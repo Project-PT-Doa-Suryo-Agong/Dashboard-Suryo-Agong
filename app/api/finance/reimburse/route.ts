@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/http/response";
 import { requireLevel } from "@/lib/guards/auth.guard";
-import { listReimbursement, createReimbursement } from "@/lib/services/finance.service";
+import { listReimbursement, createReimbursement, getCoa } from "@/lib/services/finance.service";
 import { requireNumber, requireString, requireUUID } from "@/lib/validation/body-validator";
 import type { TReimbursementInsert } from "@/types/supabase";
 import { ErrorCode } from "@/lib/http/error-codes";
@@ -121,6 +121,21 @@ export async function POST(request: Request) {
 
   const coaId = requireUUID(input, "coa_id", { optional: true });
   if (!coaId.ok) return fail(ErrorCode.VALIDATION_ERROR, coaId.message, 400);
+
+  // [FASE 8] Reimburse wajib COA kategori Beban (jurnal: Dr Beban / Cr Kas)
+  if (!coaId.data) {
+    return fail(ErrorCode.VALIDATION_ERROR, "COA (coa_id) wajib diisi untuk pengajuan reimburse.", 400);
+  }
+  const { data: coaData, error: coaError } = await getCoa(auth.ctx.supabase, coaId.data);
+  if (coaError) return fail(ErrorCode.DB_ERROR, "Gagal memvalidasi COA.", 500, coaError.message);
+  if (!coaData) return fail(ErrorCode.NOT_FOUND, "COA tidak ditemukan.", 404);
+  if (!(coaData.kategori ?? "").startsWith("Beban")) {
+    return fail(
+      ErrorCode.VALIDATION_ERROR,
+      `COA ${coaData.kode_akun} (${coaData.kategori}) bukan kategori Beban. Pilih akun ber-kategori Beban (mis. Beban Reimbursement).`,
+      400,
+    );
+  }
 
   const reimbursementNumber = requireString(input, "reimbursement_number", { optional: true });
   if (!reimbursementNumber.ok) return fail(ErrorCode.VALIDATION_ERROR, reimbursementNumber.message, 400);

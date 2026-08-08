@@ -24,6 +24,44 @@ async function cleanupSalesOrderDependencies(orderId: string) {
   return { error: firstError ?? null };
 }
 
+// [FASE 8] Cleanup orphan finance saat order dihapus:
+// jurnal order + cashflow terkait + piutang auto (dan jurnal pelunasannya).
+async function cleanupFinanceByOrder(orderId: string, orderNumber: string) {
+  const financeDb = (supabaseAdmin as any).schema("finance");
+
+  const { data: journals } = await financeDb
+    .from("t_journal")
+    .select("id")
+    .or(`referensi_id.eq.${orderId},no_bukti.eq.${orderNumber}`);
+
+  const journalIds = ((journals ?? []) as { id: string }[]).map((j) => j.id);
+
+  // Cashflow orphan (belum ter-link jurnal) milik order ini
+  await financeDb.from("t_cashflow").delete().is("journal_id", null).ilike("keterangan", `%${orderNumber}%`);
+  await financeDb.from("t_cashflow").delete().is("journal_id", null).ilike("keterangan", `%${orderId}%`);
+
+  if (journalIds.length > 0) {
+    await financeDb.from("t_cashflow").delete().in("journal_id", journalIds);
+    await financeDb.from("t_journal").delete().in("id", journalIds);
+  }
+
+  // Piutang yang digenerate trigger dari order ini + jurnal pelunasannya
+  const { data: piutangRows } = await financeDb
+    .from("t_utang_piutang")
+    .select("id")
+    .ilike("deskripsi", `Piutang dari Sales Order: ${orderNumber}%`);
+
+  for (const p of (piutangRows ?? []) as { id: string }[]) {
+    const { data: pelunasan } = await financeDb.from("t_journal").select("id").eq("referensi_id", p.id);
+    const pids = ((pelunasan ?? []) as { id: string }[]).map((j) => j.id);
+    if (pids.length > 0) {
+      await financeDb.from("t_cashflow").delete().in("journal_id", pids);
+      await financeDb.from("t_journal").delete().in("id", pids);
+    }
+    await financeDb.from("t_utang_piutang").delete().eq("id", p.id);
+  }
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireLevel("strategic", "managerial", "operational");
   if (!auth.ok) return auth.response;
@@ -114,6 +152,15 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   if (!id) return fail(ErrorCode.VALIDATION_ERROR, "ID wajib diisi.", 400);
 
+  // Ambil nomor order untuk cleanup finance (jurnal/cashflow/piutang)
+  const { data: orderRow } = await (supabaseAdmin as any)
+    .schema("sales")
+    .from("t_sales_order")
+    .select("order_number")
+    .eq("id", id)
+    .maybeSingle();
+  const orderNumber = (orderRow as { order_number?: string } | null)?.order_number ?? null;
+
   let { error, deleted } = await deleteSalesOrder(auth.ctx.supabase, id);
 
   // RLS pada tabel sales order bisa mengembalikan deleted=false (tanpa error)
@@ -143,5 +190,15 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return fail(ErrorCode.DB_ERROR, `Gagal hapus sales order. Detail: ${detail}`, 500, detail);
   }
   if (!deleted) return fail(ErrorCode.NOT_FOUND, "Sales order tidak ditemukan.", 404);
+
+  // [FASE 8] Cleanup orphan finance: jurnal + cashflow + piutang auto
+  if (orderNumber) {
+    try {
+      await cleanupFinanceByOrder(id, orderNumber);
+    } catch (cleanupError) {
+      console.error("SALES ORDER DELETE finance cleanup error:", cleanupError);
+    }
+  }
+
   return ok(null, "Sales order berhasil dihapus.");
 }

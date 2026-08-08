@@ -114,11 +114,20 @@ export async function GET(request: Request) {
         .from("t_journal_item")
         .select(`
           coa_id, debit, kredit,
-          t_journal!inner(tanggal, journal_number, no_bukti, keterangan)
+          t_journal!inner(
+            tanggal,
+            journal_number,
+            no_bukti,
+            keterangan,
+            id,
+            created_at
+          )
         `)
         .gte("t_journal.tanggal", startDate)
         .lte("t_journal.tanggal", endDate)
-        .order("t_journal.tanggal", { ascending: true }),
+        .order("t_journal(tanggal)", { ascending: true })
+        .order("t_journal(created_at)", { ascending: true })
+        .order("t_journal(id)", { ascending: true }),
     ]);
 
     if (openingResult.error) {

@@ -72,6 +72,33 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
   return payload;
 }
 
+/** Ambil SELURUH halaman dari satu endpoint report (khusus export).
+ *  Tidak mengubah API; hanya me-loop page hingga seluruh data terkumpul. */
+async function fetchAllPages<T>(
+  basePath: string,
+  query: Record<string, string>,
+  extract: (data: any) => T[]
+): Promise<T[]> {
+  const all: T[] = [];
+  let page = 1;
+  for (;;) {
+    const params = new URLSearchParams(query);
+    params.set("page", String(page));
+    params.set("limit", "100");
+    const res = await apiFetch(`${basePath}?${params.toString()}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    const payload = await parseJsonResponse<any>(res);
+    const rows = extract(payload.data) ?? [];
+    all.push(...rows);
+    const total = Number(payload.data?.meta?.total ?? 0);
+    if (rows.length === 0 || page * 100 >= total) break;
+    page += 1;
+  }
+  return all;
+}
+
 function formatRupiah(value: number): string {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -107,7 +134,8 @@ function getDateRange(periode: string, customStart?: string, customEnd?: string)
   const m = now.getMonth();
   const d = now.getDate();
 
-  const toDateStr = (dt: Date) => dt.toISOString().slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const toDateStr = (dt: Date) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
 
   switch (periode) {
     case "hariIni": {
@@ -348,7 +376,7 @@ export default function LaporanKeuanganPage() {
     ];
   }, [dashboardData, dateRange]);
 
-  const handleExportPDF = useCallback(() => {
+  const handleExportPDF = useCallback(async () => {
     const { start_date, end_date } = dateRange;
 
     if (activeTab === "ringkasan" && dashboardData) {
@@ -446,34 +474,48 @@ export default function LaporanKeuanganPage() {
       return;
     }
 
-    if (activeTab === "buku-besar" && bukuBesarData) {
-      for (const item of bukuBesarData.items) {
-        const rows = item.mutasi.map((m: any) => [
-          formatDate(m.tanggal),
-          m.journal_number || "-",
-          m.no_bukti,
-          m.keterangan || "-",
-          formatRupiah(m.debit),
-          formatRupiah(m.kredit),
-          formatRupiah(m.saldo),
-        ]);
-        exportToPDF({
-          title: `Buku Besar - ${item.kode_akun} ${item.nama_akun}`,
-          subtitle: `Periode: ${formatDateLong(start_date)} - ${formatDateLong(end_date)}`,
-          headers: ["Tanggal", "No Jurnal", "No Bukti", "Keterangan", "Debit", "Kredit", "Saldo"],
-          rows,
-          fileName: `${item.kode_akun}_${exportFileName("buku-besar", start_date, end_date, "pdf")}`,
-          summary: [
-            { label: "Saldo Awal", value: formatRupiah(item.opening_balance) },
-            { label: "Saldo Akhir", value: formatRupiah(item.closing_balance) },
-          ],
-        });
+    if (activeTab === "buku-besar") {
+      const allItems = await fetchAllPages<any>(
+        "/api/finance/reports/buku-besar",
+        { start_date, end_date },
+        (data) => data.items,
+      );
+      const rows: any[][] = [];
+      for (const item of allItems) {
+        rows.push([item.kode_akun, item.nama_akun, "Saldo Awal", "", "", "", "", "", item.opening_balance]);
+        for (const m of item.mutasi) {
+          rows.push([
+            item.kode_akun,
+            item.nama_akun,
+            formatDate(m.tanggal),
+            m.journal_number || "-",
+            m.no_bukti,
+            m.keterangan || "-",
+            formatRupiah(m.debit),
+            formatRupiah(m.kredit),
+            formatRupiah(m.saldo),
+          ]);
+        }
+        rows.push([item.kode_akun, item.nama_akun, "Saldo Akhir", "", "", "", "", "", item.closing_balance]);
       }
+      exportToPDF({
+        title: "Buku Besar",
+        subtitle: `Periode: ${formatDateLong(start_date)} - ${formatDateLong(end_date)}`,
+        headers: ["Kode Akun", "Nama Akun", "Tanggal", "No Jurnal", "No Bukti", "Keterangan", "Debit", "Kredit", "Saldo"],
+        rows,
+        fileName: exportFileName("buku-besar", start_date, end_date, "pdf"),
+        orientation: "landscape",
+      });
       return;
     }
 
-    if (activeTab === "jurnal-umum" && jurnalData) {
-      const rows = (jurnalData.jurnal ?? []).map((j: any) => [
+    if (activeTab === "jurnal-umum") {
+      const allJurnal = await fetchAllPages(
+        "/api/finance/jurnal",
+        { start_date, end_date },
+        (data) => data.jurnal,
+      );
+      const rows = (allJurnal ?? []).map((j: any) => [
         j.journal_number || "-",
         formatDate(j.tanggal),
         j.no_bukti,
@@ -558,18 +600,28 @@ export default function LaporanKeuanganPage() {
         i.tipe === "income" ? "Pemasukan" : "Pengeluaran", i.tipe_kas || "-",
         i.amount, i.keterangan,
       ]);
-    } else if (activeTab === "buku-besar" && bukuBesarData) {
+    } else if (activeTab === "buku-besar") {
       headers = ["Kode Akun", "Nama Akun", "Tanggal", "No Jurnal", "No Bukti", "Keterangan", "Debit", "Kredit", "Saldo"];
-      for (const item of bukuBesarData.items) {
+      const allItems = await fetchAllPages<any>(
+        "/api/finance/reports/buku-besar",
+        { start_date, end_date },
+        (data) => data.items,
+      );
+      for (const item of allItems) {
         dataRows.push([item.kode_akun, item.nama_akun, "Saldo Awal", "", "", "", "", "", item.opening_balance]);
         for (const m of item.mutasi) {
           dataRows.push([item.kode_akun, item.nama_akun, formatDate(m.tanggal), m.journal_number || "-", m.no_bukti, m.keterangan || "-", m.debit, m.kredit, m.saldo]);
         }
         dataRows.push([item.kode_akun, item.nama_akun, "Saldo Akhir", "", "", "", "", "", item.closing_balance]);
       }
-    } else if (activeTab === "jurnal-umum" && jurnalData) {
+    } else if (activeTab === "jurnal-umum") {
       headers = ["No Jurnal", "Tanggal", "No Bukti", "Keterangan", "Jumlah Item"];
-      dataRows = (jurnalData.jurnal ?? []).map((j: any) => [
+      const allJurnal = await fetchAllPages(
+        "/api/finance/jurnal",
+        { start_date, end_date },
+        (data) => data.jurnal,
+      );
+      dataRows = (allJurnal ?? []).map((j: any) => [
         j.journal_number || "-", formatDate(j.tanggal), j.no_bukti, j.keterangan || "-",
         j.t_journal_item?.length ?? 0,
       ]);
