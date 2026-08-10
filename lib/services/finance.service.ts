@@ -229,7 +229,49 @@ export async function deleteJurnal(client: DbClient, id: string) {
   return { error, deleted: (count ?? 0) > 0 };
 }
 
+// [FASE 8] Cleanup orphan: hapus cashflow + jurnal (beserta item ter-cascade)
+// yang merujuk ke satu sumber (budget/reimburse/kasbon via referensi_id).
+export async function cleanupJournalByReferensi(client: DbClient, referensiId: string) {
+  const { data, error } = await db(client).from("t_journal").select("id").eq("referensi_id", referensiId);
+  if (error) return { error };
+  const ids = ((data ?? []) as { id: string }[]).map((j) => j.id);
+  if (ids.length === 0) return { error: null };
+
+  const { error: cashError } = await db(client).from("t_cashflow").delete().in("journal_id", ids);
+  if (cashError) return { error: cashError };
+
+  const { error: jError } = await db(client).from("t_journal").delete().in("id", ids);
+  return { error: jError };
+}
+
 // t_journal_item
+
+export async function jurnalExists(client: DbClient, journalId: string) {
+  const { data, error } = await db(client)
+    .from("t_journal")
+    .select("id")
+    .eq("id", journalId)
+    .maybeSingle();
+  return { exists: Boolean(data), error };
+}
+
+export async function coaExists(client: DbClient, coaId: string) {
+  const { data, error } = await db(client)
+    .from("m_coa")
+    .select("id")
+    .eq("id", coaId)
+    .maybeSingle();
+  return { exists: Boolean(data), error };
+}
+
+export async function getCoa(client: DbClient, coaId: string) {
+  const { data, error } = await db(client)
+    .from("m_coa")
+    .select("id, kode_akun, kategori")
+    .eq("id", coaId)
+    .maybeSingle();
+  return { data: data as Pick<MCoa, "id" | "kode_akun" | "kategori"> | null, error };
+}
 
 export async function listJurnalItem(client: DbClient, journalId: string) {
   const { data, error } = await db(client)
