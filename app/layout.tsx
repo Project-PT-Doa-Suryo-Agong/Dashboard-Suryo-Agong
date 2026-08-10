@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/supabase/auth-context";
+import { getBrandingConfig } from "@/lib/services/branding.service";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,21 +14,57 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Suryo Agong",
-  description: "Unified Enterprise Dashboard",
-  icons: {
-    icon: "/icon.png",
-  },
-};
+// Branding adalah konfigurasi runtime dari database — halaman harus dirender
+// per request agar CSS variables/metadata selalu mengambil konfigurasi
+// tersimpan terbaru (bukan dibekukan saat build).
+export const dynamic = "force-dynamic";
 
-export default function RootLayout({
+/**
+ * Metadata dinamis dari konfigurasi branding (single source of truth).
+ * Fallback ke default saat database kosong/error — halaman tidak pernah
+ * gagal render.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const branding = await getBrandingConfig();
+    return {
+      title: branding.appName,
+      description: "Unified Enterprise Dashboard",
+      icons: {
+        icon: branding.faviconUrl,
+      },
+    };
+  } catch {
+    return {
+      title: "Suryo Agong",
+      description: "Unified Enterprise Dashboard",
+      icons: {
+        icon: "/icon.png",
+      },
+    };
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Nilai branding dirender server-side sebagai CSS variables.
+  // Payload RSC mengirim nilai yang sama ke client → aman dari hydration error.
+  let brandCssVars: React.CSSProperties = {};
+  try {
+    const branding = await getBrandingConfig();
+    brandCssVars = {
+      "--brand-primary": branding.primaryColor,
+      "--brand-secondary": branding.secondaryColor,
+    } as React.CSSProperties;
+  } catch {
+    brandCssVars = {};
+  }
+
   return (
-    <html lang="en">
+    <html lang="en" style={brandCssVars}>
       <head>
         <meta name="color-scheme" content="light" />
       </head>

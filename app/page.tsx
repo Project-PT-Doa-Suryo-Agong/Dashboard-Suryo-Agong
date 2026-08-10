@@ -12,6 +12,7 @@ import {
   Palette,
 } from "lucide-react";
 import type { ApiError, ApiSuccess } from "@/types/api";
+import { useBranding } from "@/hooks/use-branding";
 
 const departments = [
   {
@@ -62,14 +63,15 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
 }
 
 export default function LandingPage() {
+  const { logoUrl, appName } = useBranding();
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#33465c] text-slate-100 font-sans antialiased">
       <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-slate-900/60 px-4 py-4 backdrop-blur-lg md:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Image
-              src="/logo.png"
-              alt="Suryo Agong Logo"
+              src={logoUrl}
+              alt={`${appName} Logo`}
               width={130}
               height={38}
               className="h-9 w-auto md:h-10 lg:h-11"

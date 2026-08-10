@@ -75,6 +75,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      app_settings: {
+        Row: {
+          id: number;
+          company_name: string | null;
+          app_name: string | null;
+          primary_color: string | null;
+          secondary_color: string | null;
+          logo_url: string | null;
+          favicon_url: string | null;
+          updated_by: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          company_name?: string | null;
+          app_name?: string | null;
+          primary_color?: string | null;
+          secondary_color?: string | null;
+          logo_url?: string | null;
+          favicon_url?: string | null;
+          updated_by?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: number;
+          company_name?: string | null;
+          app_name?: string | null;
+          primary_color?: string | null;
+          secondary_color?: string | null;
+          logo_url?: string | null;
+          favicon_url?: string | null;
+          updated_by?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
       m_produk: {
         Row: {
           id: string;
@@ -1638,6 +1674,7 @@ export interface Database {
 
 // core
 export type Profile   = Tables<"core", "profiles">["Row"];
+export type AppSettings = Tables<"core", "app_settings">["Row"];
 export type MProduk   = Tables<"core", "m_produk">["Row"];
 export type MVarian   = Tables<"core", "m_varian">["Row"];
 export type MVendor   = Tables<"core", "m_vendor">["Row"];

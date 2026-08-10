@@ -113,7 +113,8 @@ const navItems = [
     ]
   },
   { label: 'Penilaian Karyawan', href: '/penilaian-karyawan', icon: 'FileUser' },
-  { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' }
+  { label: 'Buku Tamu', href: '/buku-tamu', icon: 'ClipboardList' },
+  { label: 'Web Customization', href: '/super-admin/customization', icon: 'Palette' }
 ];
 
 export default function SuperAdminLayout({

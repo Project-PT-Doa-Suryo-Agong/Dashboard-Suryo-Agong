@@ -4,11 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ShieldCheck, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { useBranding } from "@/hooks/use-branding";
 
 export default function LoginPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
+	const { logoUrl, appName } = useBranding();
 
 	type LoginResponse = {
 		redirectUrl?: string;
@@ -66,8 +68,8 @@ export default function LoginPage() {
 				<div className="mx-auto w-full max-w-md space-y-8">
 					<div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-6">
 						<Image
-							src="/logo.png"
-							alt="Suryo Agong Logo"
+							src={logoUrl}
+							alt={`${appName} Logo`}
 							width={170}
 							height={50}
 							className="h-15 w-auto"

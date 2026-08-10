@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { useBranding } from "@/hooks/use-branding";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -162,6 +163,7 @@ export default function Sidebar(props: SidebarProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const { logoUrl, appName } = useBranding();
   const mobileIsOpen = isOpen ?? isMobileOpen;
   const handleClose = onClose ?? onCloseMobile;
 
@@ -264,8 +266,8 @@ export default function Sidebar(props: SidebarProps) {
             {/* Logo & Title */}
             <div className="mb-4 flex flex-col items-start gap-2 md:mb-5">
               <Image
-                src="/logo.png"
-                alt="logo"
+                src={logoUrl}
+                alt={appName}
                 width={100}
                 height={28}
                 className="h-9 w-auto md:h-10"

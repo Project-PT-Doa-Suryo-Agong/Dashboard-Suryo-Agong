@@ -16,8 +16,10 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { useBranding } from "@/hooks/use-branding";
 
 export default function PublicBukuTamuPage() {
+  const { logoUrl, appName } = useBranding();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -132,8 +134,8 @@ export default function PublicBukuTamuPage() {
         {/* Logo & Header */}
         <div className="flex flex-col items-center text-center space-y-4 mb-8">
           <Image
-            src="/logo.png"
-            alt="Suryo Agong Logo"
+            src={logoUrl}
+            alt={`${appName} Logo`}
             width={180}
             height={52}
             className="h-12 w-auto"
