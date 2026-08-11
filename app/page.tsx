@@ -63,7 +63,7 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
 }
 
 export default function LandingPage() {
-  const { logoUrl, appName } = useBranding();
+  const { logoUrl, appName, companyName } = useBranding();
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#33465c] text-slate-100 font-sans antialiased">
       <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-slate-900/60 px-4 py-4 backdrop-blur-lg md:px-6">
@@ -147,7 +147,7 @@ export default function LandingPage() {
 
       <footer className="w-full bg-slate-950/60 border-t border-white/5 py-6 text-slate-400 md:py-8">
         <div className="mx-auto max-w-7xl px-4 text-center">
-          <p className="text-xs md:text-sm">&copy; {new Date().getFullYear()} PT DOA SURYO AGONG. All rights reserved.</p>
+          <p className="text-xs md:text-sm">&copy; {new Date().getFullYear()} {companyName}. All rights reserved.</p>
         </div>
       </footer>
     </div>

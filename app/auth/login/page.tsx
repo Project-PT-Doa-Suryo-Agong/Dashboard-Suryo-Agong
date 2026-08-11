@@ -10,7 +10,7 @@ export default function LoginPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
-	const { logoUrl, appName } = useBranding();
+	const { logoUrl, appName, companyName } = useBranding();
 
 	type LoginResponse = {
 		redirectUrl?: string;
@@ -74,6 +74,7 @@ export default function LoginPage() {
 							height={50}
 							className="h-15 w-auto"
 						/>
+						<p className="text-sm font-semibold text-slate-200">{companyName}</p>
 						<div>
 							<h1 className="text-3xl font-bold tracking-tight text-slate-100">Masuk</h1>
 							<p className="mt-2 text-sm text-slate-300">

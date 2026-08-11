@@ -19,7 +19,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useBranding } from "@/hooks/use-branding";
 
 export default function PublicBukuTamuPage() {
-  const { logoUrl, appName } = useBranding();
+  const { logoUrl, appName, companyName } = useBranding();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -433,7 +433,7 @@ export default function PublicBukuTamuPage() {
         )}
 
         <div className="mt-8 text-center text-xs text-slate-500">
-          &copy; {new Date().getFullYear()} PT DOA SURYO AGONG. All rights reserved.
+          &copy; {new Date().getFullYear()} {companyName}. All rights reserved.
         </div>
       </div>
     </div>

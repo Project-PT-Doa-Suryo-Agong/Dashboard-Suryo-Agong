@@ -163,7 +163,7 @@ export default function Sidebar(props: SidebarProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const { logoUrl, appName } = useBranding();
+  const { logoUrl, appName, companyName } = useBranding();
   const mobileIsOpen = isOpen ?? isMobileOpen;
   const handleClose = onClose ?? onCloseMobile;
 
@@ -257,7 +257,7 @@ export default function Sidebar(props: SidebarProps) {
   return (
     <>
       <aside
-        className={`fixed inset-y-0 left-0 z-50 h-screen w-64 shrink-0 bg-[#1e293b] text-slate-100 transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 h-screen w-64 shrink-0 bg-secondary text-slate-100 transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:translate-x-0 ${
           mobileIsOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -272,6 +272,7 @@ export default function Sidebar(props: SidebarProps) {
                 height={28}
                 className="h-9 w-auto md:h-10"
               />
+              <p className="text-xs font-semibold text-slate-200">{companyName}</p>
               <p className="text-xs text-slate-400">{subtitle}</p>
             </div>
 
