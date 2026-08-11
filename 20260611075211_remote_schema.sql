@@ -90,8 +90,9 @@ CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
-
-
+-- ============================================================================
+-- ENUMS (dari live; values diverifikasi via PostgREST spec)
+-- ============================================================================
 
 
 CREATE TYPE "core"."user_role" AS ENUM (
@@ -317,12 +318,14 @@ CREATE TYPE "sales"."content_type" AS ENUM (
 ALTER TYPE "sales"."content_type" OWNER TO "postgres";
 
 
+-- ============================================================================
+-- FUNCTIONS (dari snapshot + fungsi baru yang terverifikasi live)
+-- ============================================================================
+
+
 CREATE OR REPLACE FUNCTION "core"."get_user_role"() RETURNS "core"."user_role"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     AS $$select role from core.profiles where id = auth.uid() limit 1;$$;
-
-
-ALTER FUNCTION "core"."get_user_role"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "core"."get_user_role_safe"() RETURNS "core"."user_role"
@@ -333,18 +336,12 @@ CREATE OR REPLACE FUNCTION "core"."get_user_role_safe"() RETURNS "core"."user_ro
 $$;
 
 
-ALTER FUNCTION "core"."get_user_role_safe"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "core"."is_admin"() RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     AS $$
     -- Menambahkan 'Admin' ke dalam daftar validasi
     select core.get_user_role() in ('Developer', 'Management & Strategy', 'Admin');
 $$;
-
-
-ALTER FUNCTION "core"."is_admin"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "core"."prevent_role_escalation"() RETURNS "trigger"
@@ -359,9 +356,6 @@ END;
 $$;
 
 
-ALTER FUNCTION "core"."prevent_role_escalation"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "core"."update_timestamp"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -370,9 +364,6 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
-
-ALTER FUNCTION "core"."update_timestamp"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "finance"."fn_auto_generate_asset_schedules"() RETURNS "trigger"
@@ -421,9 +412,6 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
-
-ALTER FUNCTION "finance"."fn_auto_generate_asset_schedules"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "finance"."fn_create_journal_entry"() RETURNS "trigger"
@@ -501,9 +489,6 @@ BEGIN
 END;$$;
 
 
-ALTER FUNCTION "finance"."fn_create_journal_entry"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "finance"."fn_create_monetization_journal"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -559,9 +544,6 @@ END;
 $$;
 
 
-ALTER FUNCTION "finance"."fn_create_monetization_journal"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "finance"."fn_payroll_to_cashflow"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'finance'
@@ -578,9 +560,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
-
-ALTER FUNCTION "finance"."fn_payroll_to_cashflow"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "finance"."fn_reimburse_to_cashflow"() RETURNS "trigger"
@@ -605,9 +584,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
-
-ALTER FUNCTION "finance"."fn_reimburse_to_cashflow"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "finance"."generate_depreciation_schedule"("p_periode" "date") RETURNS TABLE("asset_id" "uuid", "periode" "date", "jumlah_penyusutan" numeric)
@@ -770,108 +746,6 @@ END;
 $$;
 
 
-ALTER FUNCTION "finance"."handle_pelunasan_piutang_to_journal"() OWNER TO "postgres";
-
-
-CREATE PROCEDURE "finance"."sp_generate_monthly_depreciation_journal"()
-    LANGUAGE "plpgsql"
-    AS $$
-DECLARE
-    v_journal_id UUID;
-    v_journal_no VARCHAR;
-    v_periode_str VARCHAR;
-    
-    -- Ambil waktu hari ini berdasarkan timezone aplikasi Anda
-    v_hari_ini DATE := (NOW() AT TIME ZONE 'Asia/Jakarta')::DATE;
-    v_akhir_bulan DATE := (DATE_TRUNC('MONTH', v_hari_ini) + INTERVAL '1 MONTH - 1 DAY')::DATE;
-    
-    v_schedule RECORD;
-BEGIN
-    v_periode_str := TO_CHAR(v_hari_ini, 'MMYY');
-    
-    -- PENGAMAN: Prosedur ini hanya akan mengeksekusi postingan pada hari terakhir di bulan berjalan
-    IF v_hari_ini != v_akhir_bulan THEN
-        RAISE NOTICE 'Prosedur diabaikan. Posting jurnal depresiasi otomatis hanya diproses pada akhir bulan (%).', v_akhir_bulan;
-        RETURN;
-    END IF;
-
-    -- Ambil seluruh jadwal bulan berjalan yang BERSTATUS AKTIF dan BELUM DIPOSTING
-    FOR v_schedule IN 
-        SELECT 
-            sch.id AS schedule_id,
-            sch.jumlah_penyusutan, -- Menggunakan nilai asli dari sistem Anda, tanpa modifikasi matematika
-            sch.periode,
-            a.nama_aset,
-            a.coa_depr_expense_id,       
-            a.coa_depr_accumulation_id   
-        FROM finance.t_asset_depreciation_schedule sch
-        JOIN finance.t_asset a ON sch.asset_id = a.id
-        WHERE a.status = 'active'
-          AND sch.journal_id IS NULL 
-          AND EXTRACT(MONTH FROM sch.periode) = EXTRACT(MONTH FROM v_hari_ini)
-          AND EXTRACT(YEAR FROM sch.periode) = EXTRACT(YEAR FROM v_hari_ini)
-    LOOP
-        
-        -- Jalankan posting hanya jika nilai depresiasi dari sistem Anda di atas 0
-        IF v_schedule.jumlah_penyusutan > 0 THEN
-            
-            -- Generate Nomor Jurnal Unik per aset
-            v_journal_no := 'JRN-' || v_periode_str || '-' || LPAD(NEXTVAL('finance.seq_journal_no')::TEXT, 5, '0');
-
-            -- 1. INSERT Header Jurnal (Tanggal dipatok di hari terakhir bulan berjalan)
-            INSERT INTO finance.t_journal (id, journal_number, no_bukti, tanggal, keterangan, created_at, updated_at)
-            VALUES (
-                gen_random_uuid(), 
-                v_journal_no, 
-                LEFT('BKT-DEPR-' || v_journal_no, 50),
-                v_akhir_bulan, -- Tanggal Jurnal (Akhir Bulan)
-                LEFT('Penyusutan Aset - ' || v_schedule.nama_aset, 100),
-                NOW(),
-                NOW()
-            )
-            RETURNING id INTO v_journal_id;
-
-            -- 2. INSERT Rincian Debit: Beban Penyusutan
-            INSERT INTO finance.t_journal_item (id, journal_id, coa_id, debit, kredit, created_at, updated_at)
-            VALUES (
-                gen_random_uuid(), 
-                v_journal_id, 
-                v_schedule.coa_depr_expense_id, 
-                v_schedule.jumlah_penyusutan, -- Nilai flat murni dari tabel schedule
-                0, 
-                NOW(), 
-                NOW()
-            );
-
-            -- 3. INSERT Rincian Kredit: Akumulasi Penyusutan
-            INSERT INTO finance.t_journal_item (id, journal_id, coa_id, debit, kredit, created_at, updated_at)
-            VALUES (
-                gen_random_uuid(), 
-                v_journal_id, 
-                v_schedule.coa_depr_accumulation_id, 
-                0, 
-                v_schedule.jumlah_penyusutan, -- Nilai flat murni dari tabel schedule
-                NOW(), 
-                NOW()
-            );
-            
-            -- 4. UPDATE Hubungkan tabel Schedule dengan Jurnal ID yang baru terbentuk (Status berubah jadi Terposting)
-            UPDATE finance.t_asset_depreciation_schedule
-            SET journal_id = v_journal_id,
-                is_posted = TRUE,
-                updated_at = NOW()
-            WHERE id = v_schedule.schedule_id;
-            
-        END IF;
-
-    END LOOP;
-END;
-$$;
-
-
-ALTER PROCEDURE "finance"."sp_generate_monthly_depreciation_journal"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "finance"."update_overdue_daily"() RETURNS "void"
     LANGUAGE "plpgsql"
     AS $$
@@ -881,9 +755,6 @@ BEGIN
     WHERE status != 'lunas'; -- Ganti 'lunas' sesuai dengan string status yang Anda gunakan (case-sensitive)
 END;
 $$;
-
-
-ALTER FUNCTION "finance"."update_overdue_daily"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "logistics"."fn_auto_insert_manifest"() RETURNS "trigger"
@@ -903,9 +774,6 @@ END;
 $$;
 
 
-ALTER FUNCTION "logistics"."fn_auto_insert_manifest"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "logistics"."fn_auto_insert_packing"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -915,9 +783,6 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
-
-ALTER FUNCTION "logistics"."fn_auto_insert_packing"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."count_budget_requests_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
@@ -930,9 +795,6 @@ CREATE OR REPLACE FUNCTION "public"."count_budget_requests_this_month"("start_of
 $$;
 
 
-ALTER FUNCTION "public"."count_budget_requests_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."count_cashflow_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
@@ -943,17 +805,11 @@ CREATE OR REPLACE FUNCTION "public"."count_cashflow_this_month"("start_of_month"
 $$;
 
 
-ALTER FUNCTION "public"."count_cashflow_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."count_content_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
   SELECT COUNT(*)::bigint FROM sales.t_content_planner WHERE created_at >= start_of_month AND created_at < start_of_next_month;
 $$;
-
-
-ALTER FUNCTION "public"."count_content_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."count_invoices_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
@@ -966,9 +822,6 @@ CREATE OR REPLACE FUNCTION "public"."count_invoices_this_month"("start_of_month"
 $$;
 
 
-ALTER FUNCTION "public"."count_invoices_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."count_journals_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
@@ -977,9 +830,6 @@ CREATE OR REPLACE FUNCTION "public"."count_journals_this_month"("start_of_month"
   WHERE created_at >= start_of_month
   AND created_at < start_of_next_month;
 $$;
-
-
-ALTER FUNCTION "public"."count_journals_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."count_kpi_weekly_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
@@ -992,17 +842,11 @@ CREATE OR REPLACE FUNCTION "public"."count_kpi_weekly_this_month"("start_of_mont
 $$;
 
 
-ALTER FUNCTION "public"."count_kpi_weekly_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."count_live_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
   SELECT COUNT(*)::bigint FROM sales.t_live_performance WHERE created_at >= start_of_month AND created_at < start_of_next_month;
 $$;
-
-
-ALTER FUNCTION "public"."count_live_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."count_manifest_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
@@ -1012,9 +856,6 @@ CREATE OR REPLACE FUNCTION "public"."count_manifest_this_month"("start_of_month"
 $$;
 
 
-ALTER FUNCTION "public"."count_manifest_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."count_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
@@ -1022,17 +863,11 @@ CREATE OR REPLACE FUNCTION "public"."count_orders_this_month"("start_of_month" t
 $$;
 
 
-ALTER FUNCTION "public"."count_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."count_packing_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
   SELECT COUNT(*)::bigint FROM logistics.t_packing WHERE created_at >= start_of_month AND created_at < start_of_next_month;
 $$;
-
-
-ALTER FUNCTION "public"."count_packing_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."count_produksi_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
@@ -1045,9 +880,6 @@ CREATE OR REPLACE FUNCTION "public"."count_produksi_orders_this_month"("start_of
 $$;
 
 
-ALTER FUNCTION "public"."count_produksi_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."count_qc_inbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
@@ -1056,9 +888,6 @@ CREATE OR REPLACE FUNCTION "public"."count_qc_inbound_this_month"("start_of_mont
   WHERE created_at >= start_of_month
   AND created_at < start_of_next_month;
 $$;
-
-
-ALTER FUNCTION "public"."count_qc_inbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."count_qc_outbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
@@ -1071,9 +900,6 @@ CREATE OR REPLACE FUNCTION "public"."count_qc_outbound_this_month"("start_of_mon
 $$;
 
 
-ALTER FUNCTION "public"."count_qc_outbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."count_reimbursements_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
@@ -1084,17 +910,11 @@ CREATE OR REPLACE FUNCTION "public"."count_reimbursements_this_month"("start_of_
 $$;
 
 
-ALTER FUNCTION "public"."count_reimbursements_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."count_returns_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
   SELECT COUNT(*)::bigint FROM logistics.t_return_order WHERE created_at >= start_of_month AND created_at < start_of_next_month;
 $$;
-
-
-ALTER FUNCTION "public"."count_returns_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."fn_budget_to_cashflow"() RETURNS "trigger"
@@ -1123,9 +943,6 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."fn_budget_to_cashflow"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_return_status_enum_values"() RETURNS "text"[]
     LANGUAGE "sql" STABLE SECURITY DEFINER
     AS $$
@@ -1139,9 +956,6 @@ CREATE OR REPLACE FUNCTION "public"."get_return_status_enum_values"() RETURNS "t
     ORDER BY e.enumsortorder
   );
 $$;
-
-
-ALTER FUNCTION "public"."get_return_status_enum_values"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_sales_order_to_cashflow"() RETURNS "trigger"
@@ -1194,9 +1008,6 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."handle_sales_order_to_cashflow"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "sales"."fill_item_price"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -1214,9 +1025,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
-
-ALTER FUNCTION "sales"."fill_item_price"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "sales"."handle_item_to_invoice"() RETURNS "trigger"
@@ -1275,9 +1083,6 @@ END;
 $$;
 
 
-ALTER FUNCTION "sales"."handle_item_to_invoice"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "sales"."handle_sales_order_to_cashflow"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1323,9 +1128,6 @@ BEGIN
     RETURN NULL; -- Menggunakan NULL karena ini AFTER trigger
 END;
 $$;
-
-
-ALTER FUNCTION "sales"."handle_sales_order_to_cashflow"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "sales"."handle_sales_order_to_journal"() RETURNS "trigger"
@@ -1470,9 +1272,6 @@ END;
 $$;
 
 
-ALTER FUNCTION "sales"."handle_sales_order_to_journal"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "sales"."sync_order_total_item"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -1502,9 +1301,6 @@ END;
 $$;
 
 
-ALTER FUNCTION "sales"."sync_order_total_item"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "sales"."trg_create_content_statistic"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -1520,11 +1316,272 @@ END;
 $$;
 
 
-ALTER FUNCTION "sales"."trg_create_content_statistic"() OWNER TO "postgres";
+CREATE OR REPLACE FUNCTION "finance"."fn_delete_journal_entry_on_payroll_delete"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_no_bukti varchar;
+BEGIN
+    v_no_bukti := 'PAY-' || OLD.employee_id || '-' || TO_CHAR(OLD.bulan, 'YYYYMM');
+    DELETE FROM "finance"."t_journal" WHERE "no_bukti" = v_no_bukti;
+    RETURN OLD;
+END;
+$$;
 
-SET default_tablespace = '';
 
-SET default_table_access_method = "heap";
+-- ----------------------------------------------------------------------------
+-- Fungsi baru (DB-ONLY yang ditemukan audit / migration live)
+-- ----------------------------------------------------------------------------
+
+
+CREATE OR REPLACE FUNCTION core.is_developer()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM core.profiles
+    WHERE id = auth.uid()
+    AND role = 'Developer'
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+
+CREATE OR REPLACE FUNCTION core.is_strategic()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM core.profiles 
+    WHERE id = auth.uid() 
+    AND role IN ('Developer', 'Super Admin', 'Admin')
+  );
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+
+CREATE OR REPLACE FUNCTION public.set_max_budget(
+    p_amount numeric,
+    p_updated_by uuid
+) RETURNS management.t_max_budget
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'management', 'core'
+    AS $$
+DECLARE
+    v_row management.t_max_budget;
+BEGIN
+    IF p_amount < 0 THEN
+        RAISE EXCEPTION 'Max budget tidak boleh negatif.';
+    END IF;
+
+    UPDATE management.t_max_budget
+    SET is_active = false
+    WHERE is_active = true;
+
+    INSERT INTO management.t_max_budget (max_amount, updated_by)
+    VALUES (p_amount, p_updated_by)
+    RETURNING * INTO v_row;
+
+    RETURN v_row;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION public.fn_dashboard_metrics(
+    p_start_date date,
+    p_end_date date
+) RETURNS TABLE(
+    total_pendapatan   numeric,
+    total_pengeluaran  numeric,
+    saldo_bersih       numeric,
+    total_budget       numeric,
+    budget_terserap    numeric,
+    budget_percentage  numeric,
+    total_payroll      numeric,
+    total_aset         numeric,
+    total_piutang      numeric,
+    total_utang        numeric,
+    total_kasbon       numeric
+)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'finance', 'management', 'public'
+AS $$
+DECLARE
+    v_pendapatan  numeric;
+    v_pengeluaran numeric;
+    v_budget      numeric;
+    v_payroll     numeric;
+    v_aset        numeric;
+    v_piutang     numeric;
+    v_utang       numeric;
+    v_kasbon      numeric;
+BEGIN
+    -- Total Pendapatan dari cashflow income
+    SELECT COALESCE(SUM(amount), 0) INTO v_pendapatan
+    FROM finance.t_cashflow
+    WHERE tipe = 'income'
+      AND created_at::date >= p_start_date
+      AND created_at::date <= p_end_date;
+
+    -- Total Pengeluaran dari cashflow expense
+    SELECT COALESCE(SUM(amount), 0) INTO v_pengeluaran
+    FROM finance.t_cashflow
+    WHERE tipe = 'expense'
+      AND created_at::date >= p_start_date
+      AND created_at::date <= p_end_date;
+
+    -- Total Budget yang sudah disetujui
+    SELECT COALESCE(SUM(amount), 0) INTO v_budget
+    FROM management.t_budget_request
+    WHERE status = 'approved';
+
+    -- Total Payroll periode
+    SELECT COALESCE(SUM(total), 0) INTO v_payroll
+    FROM finance.t_payroll_history
+    WHERE bulan >= p_start_date
+      AND bulan <= p_end_date;
+
+    -- Total Aset aktif
+    SELECT COALESCE(SUM(nilai_perolehan), 0) INTO v_aset
+    FROM finance.t_asset
+    WHERE status = 'active';
+
+    -- Total Piutang belum lunas (termasuk piutang otomatis Sales dengan kas = NULL)
+    SELECT COALESCE(SUM(nominal), 0) INTO v_piutang
+    FROM finance.t_utang_piutang
+    WHERE tipe = 'piutang'
+      AND (kas IS NULL OR kas = 'tidak');
+
+    -- Total Utang belum lunas (kas = NULL dianggap belum lunas)
+    SELECT COALESCE(SUM(nominal), 0) INTO v_utang
+    FROM finance.t_utang_piutang
+    WHERE tipe = 'utang'
+      AND (kas IS NULL OR kas = 'tidak');
+
+    -- Total Kasbon belum lunas (kas = NULL dianggap belum lunas)
+    SELECT COALESCE(SUM(nominal), 0) INTO v_kasbon
+    FROM finance.t_utang_piutang
+    WHERE tipe = 'kasbon'
+      AND (kas IS NULL OR kas = 'tidak');
+
+    RETURN QUERY
+    SELECT
+        v_pendapatan,
+        v_pengeluaran,
+        v_pendapatan - v_pengeluaran,
+        v_budget,
+        v_pengeluaran,
+        CASE WHEN v_budget > 0 THEN ROUND((v_pengeluaran / v_budget) * 100, 2) ELSE 0 END,
+        v_payroll,
+        v_aset,
+        v_piutang,
+        v_utang,
+        v_kasbon;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION production.create_production_order_with_materials(
+  p_vendor_id UUID,
+  p_product_id UUID,
+  p_quantity INT,
+  p_status production.production_status,
+  p_produksi_number TEXT,
+  p_materials JSONB, -- [{"bahan_baku_id": "...", "jumlah": 10}]
+  p_operator TEXT
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_produksi_order_id UUID;
+  v_item JSONB;
+  v_bahan_id UUID;
+  v_jumlah numeric;
+  v_res JSONB;
+BEGIN
+  -- A. Insert order produksi
+  INSERT INTO production.t_produksi_order (
+    vendor_id, product_id, quantity, status, produksi_number
+  ) VALUES (
+    p_vendor_id, p_product_id, p_quantity, p_status, p_produksi_number
+  ) RETURNING id INTO v_produksi_order_id;
+
+  -- B. Loop untuk menyimpan alokasi bahan baku dan mengurangi stok
+  IF p_materials IS NOT NULL AND jsonb_array_length(p_materials) > 0 THEN
+    FOR v_item IN SELECT * FROM jsonb_array_elements(p_materials) LOOP
+      v_bahan_id := (v_item->>'bahan_baku_id')::UUID;
+      v_jumlah := (v_item->>'jumlah')::numeric;
+
+      -- Validasi kecukupan stok
+      IF (SELECT stok FROM production.m_bahan_baku WHERE id = v_bahan_id) < v_jumlah THEN
+        RAISE EXCEPTION 'Stok bahan baku % tidak mencukupi.', (SELECT nama_bahan FROM production.m_bahan_baku WHERE id = v_bahan_id);
+      END IF;
+
+      -- Simpan ke tabel detail alokasi
+      INSERT INTO production.t_produksi_bahan (
+        produksi_order_id, bahan_baku_id, jumlah
+      ) VALUES (
+        v_produksi_order_id, v_bahan_id, v_jumlah
+      );
+
+      -- Log mutasi (tr_update_bahan_baku_stok akan otomatis mengurangi stok di m_bahan_baku)
+      INSERT INTO production.t_stok_mutasi (
+        bahan_baku_id, produksi_order_id, tipe, jumlah, keterangan, operator
+      ) VALUES (
+        v_bahan_id, v_produksi_order_id, 'produksi', v_jumlah, 'Alokasi Produksi ' || p_produksi_number, p_operator
+      );
+    END LOOP;
+  END IF;
+
+  SELECT json_build_object(
+    'success', true,
+    'id', v_produksi_order_id,
+    'produksi_number', p_produksi_number
+  ) INTO v_res;
+
+  RETURN v_res;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION production.tr_update_bahan_baku_stok()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.tipe = 'masuk' THEN
+    UPDATE production.m_bahan_baku
+    SET stok = stok + NEW.jumlah,
+        updated_at = now()
+    WHERE id = NEW.bahan_baku_id;
+  ELSIF NEW.tipe IN ('keluar', 'produksi') THEN
+    UPDATE production.m_bahan_baku
+    SET stok = stok - NEW.jumlah,
+        updated_at = now()
+    WHERE id = NEW.bahan_baku_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION production.tr_restore_bahan_baku_stok()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO production.t_stok_mutasi (bahan_baku_id, tipe, jumlah, keterangan, operator)
+  VALUES (OLD.bahan_baku_id, 'masuk', OLD.jumlah, 'Pengembalian Stok (Alokasi Produksi Batal/Dihapus)', 'System');
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION "public"."count_sales_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
+    LANGUAGE "sql" SECURITY DEFINER
+    AS $$
+  SELECT COUNT(*)::bigint FROM sales.t_sales_order WHERE created_at >= start_of_month AND created_at < start_of_next_month;
+$$;
+
+
+-- ============================================================================
+-- TABLES
+-- ============================================================================
+
+
+-- ------------------------- SCHEMA: core -------------------------
 
 
 CREATE TABLE IF NOT EXISTS "core"."m_produk" (
@@ -1581,6 +1638,26 @@ CREATE TABLE IF NOT EXISTS "core"."profiles" (
 ALTER TABLE "core"."profiles" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "core"."app_settings" (
+    id integer DEFAULT 1 NOT NULL,
+    company_name "text",
+    app_name "text",
+    primary_color "text",
+    secondary_color "text",
+    logo_url "text",
+    favicon_url "text",
+    updated_by "uuid" REFERENCES core.profiles(id) ON DELETE SET NULL,
+    updated_at timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT app_settings_pkey PRIMARY KEY (id),
+    CONSTRAINT app_settings_single_row CHECK (id = 1)
+);
+
+ALTER TABLE "core"."app_settings" OWNER TO postgres;
+
+
+-- ------------------------- SCHEMA: finance -------------------------
+
+
 CREATE TABLE IF NOT EXISTS "finance"."m_coa" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "kode_akun" character varying(20) NOT NULL,
@@ -1594,17 +1671,6 @@ CREATE TABLE IF NOT EXISTS "finance"."m_coa" (
 
 
 ALTER TABLE "finance"."m_coa" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "finance"."seq_journal_no"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "finance"."seq_journal_no" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "finance"."t_asset" (
@@ -1728,11 +1794,57 @@ CREATE TABLE IF NOT EXISTS "finance"."t_payroll_history" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "coa_id" "uuid",
     "updated_at" timestamp with time zone DEFAULT "now"(),
+    "gaji_pokok" numeric,
+    "potongan_kasbon" numeric DEFAULT 0,
+    "gaji_bersih" numeric,
+    "status" "text" DEFAULT 'paid'::"text",
+    "tanggal_pay" "date",
+    "gaji_kotor" numeric,
+    "tunjangan" numeric DEFAULT 0,
+    "lembur" numeric DEFAULT 0,
+    "bonus" numeric DEFAULT 0,
+    "insentif" numeric DEFAULT 0,
+    "potongan_manual" numeric DEFAULT 0,
+    "bpjs_jht" numeric DEFAULT 0,
+    "bpjs_jp" numeric DEFAULT 0,
+    "bpjs_jkk_jkm" numeric DEFAULT 0,
+    "keterangan" "text",
     CONSTRAINT "t_payroll_history_total_check" CHECK (("total" >= (0)::numeric))
 );
 
 
 ALTER TABLE "finance"."t_payroll_history" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "finance"."t_payroll_item" (
+    id "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    employee_id "uuid" NOT NULL,
+    bulan "date" NOT NULL,
+    kode_komponen "text" NOT NULL,
+    nama_komponen "text" NOT NULL,
+    kategori "text" NOT NULL CHECK (kategori IN ('pendapatan', 'potongan')),
+    tipe "text" NOT NULL DEFAULT 'auto' CHECK (tipe IN ('auto', 'manual')),
+    jumlah numeric NOT NULL DEFAULT 0 CHECK (jumlah >= 0),
+    kasbon_id "uuid",
+    coa_id "uuid",
+    created_at timestamp with time zone DEFAULT "now"(),
+    updated_at timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT t_payroll_item_pkey PRIMARY KEY (id),
+    CONSTRAINT t_payroll_item_payroll_fkey
+        FOREIGN KEY (employee_id, bulan)
+        REFERENCES finance.t_payroll_history (employee_id, bulan)
+        ON DELETE CASCADE,
+    CONSTRAINT t_payroll_item_kasbon_fkey
+        FOREIGN KEY (kasbon_id)
+        REFERENCES finance.t_utang_piutang (id)
+        ON DELETE SET NULL,
+    CONSTRAINT t_payroll_item_coa_fkey
+        FOREIGN KEY (coa_id)
+        REFERENCES finance.m_coa (id)
+        ON DELETE SET NULL
+);
+
+ALTER TABLE "finance"."t_payroll_item" OWNER TO postgres;
 
 
 CREATE TABLE IF NOT EXISTS "finance"."t_reimbursement" (
@@ -1769,19 +1881,7 @@ CREATE TABLE IF NOT EXISTS "finance"."t_utang_piutang" (
 ALTER TABLE "finance"."t_utang_piutang" OWNER TO "postgres";
 
 
-CREATE OR REPLACE VIEW "finance"."v_laba_rugi" AS
- SELECT "c"."kode_akun",
-    "c"."nama_akun",
-    "c"."kategori",
-    "sum"(("ji"."kredit" - "ji"."debit")) AS "saldo"
-   FROM (("finance"."m_coa" "c"
-     JOIN "finance"."t_journal_item" "ji" ON (("c"."id" = "ji"."coa_id")))
-     JOIN "finance"."t_journal" "j" ON (("ji"."journal_id" = "j"."id")))
-  WHERE ("c"."kategori" = ANY (ARRAY['Pendapatan'::"finance"."coa_category", 'Beban'::"finance"."coa_category", 'Beban Lain-lain'::"finance"."coa_category"]))
-  GROUP BY "c"."id", "c"."kode_akun", "c"."nama_akun", "c"."kategori";
-
-
-ALTER VIEW "finance"."v_laba_rugi" OWNER TO "postgres";
+-- ------------------------- SCHEMA: hr -------------------------
 
 
 CREATE TABLE IF NOT EXISTS "hr"."m_karyawan" (
@@ -1879,6 +1979,9 @@ CREATE TABLE IF NOT EXISTS "hr"."t_pkwt" (
 ALTER TABLE "hr"."t_pkwt" OWNER TO "postgres";
 
 
+-- ------------------------- SCHEMA: logistics -------------------------
+
+
 CREATE TABLE IF NOT EXISTS "logistics"."t_logistik_manifest" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "order_id" "uuid",
@@ -1918,6 +2021,9 @@ CREATE TABLE IF NOT EXISTS "logistics"."t_return_order" (
 ALTER TABLE "logistics"."t_return_order" OWNER TO "postgres";
 
 
+-- ------------------------- SCHEMA: management -------------------------
+
+
 CREATE TABLE IF NOT EXISTS "management"."penilaian_kerja" (
     "id" integer NOT NULL,
     "penilai" "uuid" NOT NULL,
@@ -1943,22 +2049,6 @@ CREATE TABLE IF NOT EXISTS "management"."penilaian_kerja" (
 
 
 ALTER TABLE "management"."penilaian_kerja" OWNER TO "postgres";
-
-
-CREATE SEQUENCE IF NOT EXISTS "management"."penilaian_kerja_id_seq"
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE "management"."penilaian_kerja_id_seq" OWNER TO "postgres";
-
-
-ALTER SEQUENCE "management"."penilaian_kerja_id_seq" OWNED BY "management"."penilaian_kerja"."id";
-
 
 
 CREATE TABLE IF NOT EXISTS "management"."t_budget_request" (
@@ -1991,50 +2081,117 @@ CREATE TABLE IF NOT EXISTS "management"."t_kpi_weekly" (
 ALTER TABLE "management"."t_kpi_weekly" OWNER TO "postgres";
 
 
-CREATE OR REPLACE VIEW "management"."view_rekap_penilaian" AS
- SELECT "k"."nama" AS "nama_karyawan",
-    "count"("p"."penilai") AS "jumlah_penilai",
-    EXTRACT(month FROM "p"."tanggal_penilaian") AS "bulan",
-    EXTRACT(year FROM "p"."tanggal_penilaian") AS "tahun",
-    "round"("avg"(((("p"."kepribadian_sikap")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_kepribadian_persen",
-    "round"("avg"(((("p"."teamwork")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_teamwork_persen",
-    "round"("avg"(((("p"."pengetahuan_wawasan")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_wawasan_persen",
-    "round"("avg"(((("p"."komunikasi_pemasaran")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_komunikasi_persen",
-    "round"("avg"(((("p"."networking_data")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_networking_persen",
-    "round"("avg"(((("p"."produktivitas")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_produktivitas_persen",
-    "round"("avg"(((("p"."problem_solving")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_problem_solving_persen",
-    "round"("avg"(((("p"."leadership")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_leadership_persen",
-    "round"("avg"((((((((((("p"."kepribadian_sikap" + "p"."teamwork") + "p"."pengetahuan_wawasan") + "p"."komunikasi_pemasaran") + "p"."networking_data") + "p"."produktivitas") + "p"."problem_solving") + "p"."leadership"))::numeric / 32.0) * (100)::numeric)), 2) AS "skor_akhir_total"
-   FROM ("management"."penilaian_kerja" "p"
-     JOIN "hr"."m_karyawan" "k" ON (("p"."dinilai" = "k"."id")))
-  GROUP BY "k"."nama", "p"."dinilai", (EXTRACT(month FROM "p"."tanggal_penilaian")), (EXTRACT(year FROM "p"."tanggal_penilaian"))
-  ORDER BY (EXTRACT(year FROM "p"."tanggal_penilaian")) DESC, (EXTRACT(month FROM "p"."tanggal_penilaian")) DESC, ("round"("avg"((((((((((("p"."kepribadian_sikap" + "p"."teamwork") + "p"."pengetahuan_wawasan") + "p"."komunikasi_pemasaran") + "p"."networking_data") + "p"."produktivitas") + "p"."problem_solving") + "p"."leadership"))::numeric / 32.0) * (100)::numeric)), 2)) DESC;
+CREATE TABLE IF NOT EXISTS "management"."t_max_budget" (
+    id "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    max_amount numeric NOT NULL CHECK (max_amount >= 0),
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT "now"(),
+    updated_by "uuid" REFERENCES core.profiles(id) ON DELETE SET NULL,
+    CONSTRAINT t_max_budget_pkey PRIMARY KEY (id)
+);
+
+ALTER TABLE "management"."t_max_budget" OWNER TO postgres;
 
 
-ALTER VIEW "management"."view_rekap_penilaian" OWNER TO "postgres";
+-- ------------------------- SCHEMA: production -------------------------
 
 
-CREATE TABLE IF NOT EXISTS "production"."t_produksi_order" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "vendor_id" "uuid",
-    "product_id" "uuid",
-    "quantity" integer,
-    "status" "production"."production_status" DEFAULT 'draft'::"production"."production_status",
+CREATE TABLE IF NOT EXISTS "production"."m_bom" (
+    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
+    "product_id" ""uuid"" NOT NULL,
+    "nama_resep" ""text"",
+    "status_aktif" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "produksi_number" "text",
-    CONSTRAINT "t_produksi_order_quantity_check" CHECK (("quantity" > 0))
+    CONSTRAINT "m_bom_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "m_bom_product_id_key" UNIQUE ("product_id"),
+    CONSTRAINT "m_bom_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "core"."m_produk"("id") ON DELETE CASCADE
 );
 
 
-ALTER TABLE "production"."t_produksi_order" OWNER TO "postgres";
+ALTER TABLE "production"."m_bom" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "production"."t_bom_item" (
+    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
+    "bom_id" ""uuid"" NOT NULL,
+    "bahan_baku_id" ""uuid"" NOT NULL,
+    "qty_per_unit" numeric NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "t_bom_item_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "t_bom_item_bom_id_fkey" FOREIGN KEY ("bom_id") REFERENCES "production"."m_bom"("id") ON DELETE CASCADE,
+    CONSTRAINT "t_bom_item_bahan_baku_id_fkey" FOREIGN KEY ("bahan_baku_id") REFERENCES "production"."m_bahan_baku"("id") ON DELETE RESTRICT,
+    CONSTRAINT "t_bom_item_qty_per_unit_check" CHECK (("qty_per_unit" > 0))
+);
+
+
+ALTER TABLE "production"."t_bom_item" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "production"."m_bahan_baku" (
+    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
+    "kode_bahan" ""text"" NOT NULL,
+    "nama_bahan" ""text"" NOT NULL,
+    "kategori" ""text"",
+    "satuan" ""text"" NOT NULL,
+    "stok" numeric DEFAULT 0 NOT NULL,
+    "minimum_stok" numeric DEFAULT 0 NOT NULL,
+    "status_aktif" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "m_bahan_baku_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "m_bahan_baku_kode_bahan_key" UNIQUE ("kode_bahan"),
+    CONSTRAINT "m_bahan_baku_stok_check" CHECK (("stok" >= 0)),
+    CONSTRAINT "m_bahan_baku_minimum_stok_check" CHECK (("minimum_stok" >= 0))
+);
+
+
+ALTER TABLE "production"."m_bahan_baku" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "production"."t_produksi_bahan" (
+    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
+    "produksi_order_id" ""uuid"" NOT NULL,
+    "bahan_baku_id" ""uuid"" NOT NULL,
+    "jumlah" numeric NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "t_produksi_bahan_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "t_produksi_bahan_bahan_baku_id_fkey" FOREIGN KEY ("bahan_baku_id") REFERENCES "production"."m_bahan_baku"("id") ON DELETE RESTRICT,
+    CONSTRAINT "t_produksi_bahan_jumlah_check" CHECK (("jumlah" > 0))
+);
+
+
+ALTER TABLE "production"."t_produksi_bahan" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "production"."t_stok_mutasi" (
+    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
+    "bahan_baku_id" ""uuid"" NOT NULL,
+    "produksi_order_id" ""uuid"", -- Hubungan ke order produksi jika tipe = 'produksi'
+    "tipe" ""text"" NOT NULL,
+    "jumlah" numeric NOT NULL,
+    "keterangan" ""text"",
+    "operator" ""text"" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "t_stok_mutasi_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "t_stok_mutasi_bahan_baku_id_fkey" FOREIGN KEY ("bahan_baku_id") REFERENCES "production"."m_bahan_baku"("id") ON DELETE RESTRICT,
+    CONSTRAINT "t_stok_mutasi_tipe_check" CHECK (("tipe" IN ('masuk', 'keluar', 'produksi'))),
+    CONSTRAINT "t_stok_mutasi_jumlah_check" CHECK (("jumlah" > 0))
+);
+
+
+ALTER TABLE "production"."t_stok_mutasi" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "production"."t_qc_inbound" (
-    "produksi_order_id" "uuid" NOT NULL,
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "hasil" "production"."qc_result",
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "qc_in_number" "text"
+    "qc_in_number" "text",
+    "bahan_baku_id" "uuid",
+    "jumlah" numeric,
+    "mutasi_stok_id" "uuid",
+    CONSTRAINT "t_qc_inbound_jumlah_check" CHECK (("jumlah" IS NULL OR ("jumlah" > (0)::numeric)))
 );
 
 
@@ -2042,14 +2199,19 @@ ALTER TABLE "production"."t_qc_inbound" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "production"."t_qc_outbound" (
-    "produksi_order_id" "uuid" NOT NULL,
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "hasil" "production"."qc_result",
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "qc_out_number" "text"
+    "qc_out_number" "text",
+    "quantity" integer,
+    CONSTRAINT "t_qc_outbound_quantity_check" CHECK (("quantity" IS NULL OR ("quantity" > 0)))
 );
 
 
 ALTER TABLE "production"."t_qc_outbound" OWNER TO "postgres";
+
+
+-- ------------------------- SCHEMA: public -------------------------
 
 
 CREATE TABLE IF NOT EXISTS "public"."buku_tamu" (
@@ -2067,6 +2229,9 @@ CREATE TABLE IF NOT EXISTS "public"."buku_tamu" (
 
 
 ALTER TABLE "public"."buku_tamu" OWNER TO "postgres";
+
+
+-- ------------------------- SCHEMA: sales -------------------------
 
 
 CREATE TABLE IF NOT EXISTS "sales"."m_affiliator" (
@@ -2167,677 +2332,905 @@ CREATE TABLE IF NOT EXISTS "sales"."t_sales_order" (
 ALTER TABLE "sales"."t_sales_order" OWNER TO "postgres";
 
 
-ALTER TABLE ONLY "management"."penilaian_kerja" ALTER COLUMN "id" SET DEFAULT "nextval"('"management"."penilaian_kerja_id_seq"'::"regclass");
+-- ============================================================================
+-- SEQUENCES
+-- ============================================================================
 
+
+CREATE SEQUENCE IF NOT EXISTS "finance"."seq_journal_no"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+CREATE SEQUENCE IF NOT EXISTS "management"."penilaian_kerja_id_seq"
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+-- ============================================================================
+-- VIEWS
+-- ============================================================================
+
+
+CREATE OR REPLACE VIEW "finance"."v_laba_rugi" AS
+ SELECT "c"."kode_akun",
+    "c"."nama_akun",
+    "c"."kategori",
+    "sum"(("ji"."kredit" - "ji"."debit")) AS "saldo"
+   FROM (("finance"."m_coa" "c"
+     JOIN "finance"."t_journal_item" "ji" ON (("c"."id" = "ji"."coa_id")))
+     JOIN "finance"."t_journal" "j" ON (("ji"."journal_id" = "j"."id")))
+  WHERE ("c"."kategori" = ANY (ARRAY['Pendapatan'::"finance"."coa_category", 'Beban'::"finance"."coa_category", 'Beban Lain-lain'::"finance"."coa_category"]))
+  GROUP BY "c"."id", "c"."kode_akun", "c"."nama_akun", "c"."kategori";
+
+
+ALTER VIEW "finance"."v_laba_rugi" OWNER TO "postgres";
+
+
+CREATE OR REPLACE VIEW "management"."view_rekap_penilaian" AS
+ SELECT "k"."nama" AS "nama_karyawan",
+    "count"("p"."penilai") AS "jumlah_penilai",
+    EXTRACT(month FROM "p"."tanggal_penilaian") AS "bulan",
+    EXTRACT(year FROM "p"."tanggal_penilaian") AS "tahun",
+    "round"("avg"(((("p"."kepribadian_sikap")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_kepribadian_persen",
+    "round"("avg"(((("p"."teamwork")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_teamwork_persen",
+    "round"("avg"(((("p"."pengetahuan_wawasan")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_wawasan_persen",
+    "round"("avg"(((("p"."komunikasi_pemasaran")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_komunikasi_persen",
+    "round"("avg"(((("p"."networking_data")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_networking_persen",
+    "round"("avg"(((("p"."produktivitas")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_produktivitas_persen",
+    "round"("avg"(((("p"."problem_solving")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_problem_solving_persen",
+    "round"("avg"(((("p"."leadership")::numeric / 4.0) * (100)::numeric)), 2) AS "avg_leadership_persen",
+    "round"("avg"((((((((((("p"."kepribadian_sikap" + "p"."teamwork") + "p"."pengetahuan_wawasan") + "p"."komunikasi_pemasaran") + "p"."networking_data") + "p"."produktivitas") + "p"."problem_solving") + "p"."leadership"))::numeric / 32.0) * (100)::numeric)), 2) AS "skor_akhir_total"
+   FROM ("management"."penilaian_kerja" "p"
+     JOIN "hr"."m_karyawan" "k" ON (("p"."dinilai" = "k"."id")))
+  GROUP BY "k"."nama", "p"."dinilai", (EXTRACT(month FROM "p"."tanggal_penilaian")), (EXTRACT(year FROM "p"."tanggal_penilaian"))
+  ORDER BY (EXTRACT(year FROM "p"."tanggal_penilaian")) DESC, (EXTRACT(month FROM "p"."tanggal_penilaian")) DESC, ("round"("avg"((((((((((("p"."kepribadian_sikap" + "p"."teamwork") + "p"."pengetahuan_wawasan") + "p"."komunikasi_pemasaran") + "p"."networking_data") + "p"."produktivitas") + "p"."problem_solving") + "p"."leadership"))::numeric / 32.0) * (100)::numeric)), 2)) DESC;
+
+
+ALTER VIEW "management"."view_rekap_penilaian" OWNER TO "postgres";
+
+
+-- ============================================================================
+-- PRIMARY KEY CONSTRAINTS
+-- ============================================================================
 
 
 ALTER TABLE ONLY "core"."m_produk"
     ADD CONSTRAINT "m_produk_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "core"."m_varian"
     ADD CONSTRAINT "m_varian_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "core"."m_varian"
-    ADD CONSTRAINT "m_varian_sku_key" UNIQUE ("sku");
-
 
 
 ALTER TABLE ONLY "core"."m_vendor"
     ADD CONSTRAINT "m_vendor_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "core"."profiles"
     ADD CONSTRAINT "profiles_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "finance"."m_coa"
-    ADD CONSTRAINT "m_coa_kode_akun_key" UNIQUE ("kode_akun");
-
 
 
 ALTER TABLE ONLY "finance"."m_coa"
     ADD CONSTRAINT "m_coa_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "finance"."t_asset_depreciation_schedule"
     ADD CONSTRAINT "t_asset_depreciation_schedule_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "finance"."t_asset"
-    ADD CONSTRAINT "t_asset_kode_aset_key" UNIQUE ("kode_aset");
-
 
 
 ALTER TABLE ONLY "finance"."t_asset"
     ADD CONSTRAINT "t_asset_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "finance"."t_cashflow"
     ADD CONSTRAINT "t_cashflow_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "finance"."t_invoice"
     ADD CONSTRAINT "t_invoice_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "finance"."t_journal_item"
     ADD CONSTRAINT "t_journal_item_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "finance"."t_journal"
-    ADD CONSTRAINT "t_journal_no_bukti_key" UNIQUE ("no_bukti");
-
 
 
 ALTER TABLE ONLY "finance"."t_journal"
     ADD CONSTRAINT "t_journal_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "finance"."t_payroll_history"
     ADD CONSTRAINT "t_payroll_history_pkey" PRIMARY KEY ("employee_id", "bulan");
-
 
 
 ALTER TABLE ONLY "finance"."t_reimbursement"
     ADD CONSTRAINT "t_reimbursement_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "finance"."t_utang_piutang"
     ADD CONSTRAINT "t_utang_piutang_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "finance"."t_asset_depreciation_schedule"
-    ADD CONSTRAINT "unique_asset_period" UNIQUE ("asset_id", "periode");
-
-
-
-ALTER TABLE ONLY "hr"."m_karyawan"
-    ADD CONSTRAINT "m_karyawan_nik_key" UNIQUE ("nik");
-
-
-
-ALTER TABLE ONLY "hr"."m_karyawan"
-    ADD CONSTRAINT "m_karyawan_nip_key" UNIQUE ("nip");
-
 
 
 ALTER TABLE ONLY "hr"."m_karyawan"
     ADD CONSTRAINT "m_karyawan_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "hr"."m_sop"
     ADD CONSTRAINT "m_sop_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "hr"."t_attendance"
     ADD CONSTRAINT "t_attendance_pkey" PRIMARY KEY ("employee_id", "tanggal");
 
 
-
 ALTER TABLE ONLY "hr"."t_employee_warning"
     ADD CONSTRAINT "t_employee_warning_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "hr"."t_pkwt"
     ADD CONSTRAINT "t_pkwt_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "logistics"."t_logistik_manifest"
     ADD CONSTRAINT "t_logistik_manifest_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "logistics"."t_logistik_manifest"
-    ADD CONSTRAINT "t_logistik_manifest_resi_key" UNIQUE ("resi");
-
 
 
 ALTER TABLE ONLY "logistics"."t_packing"
     ADD CONSTRAINT "t_packing_pkey" PRIMARY KEY ("order_id");
 
 
-
 ALTER TABLE ONLY "logistics"."t_return_order"
     ADD CONSTRAINT "t_return_order_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "management"."penilaian_kerja"
     ADD CONSTRAINT "penilaian_kerja_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "management"."t_budget_request"
     ADD CONSTRAINT "t_budget_request_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "management"."t_kpi_weekly"
     ADD CONSTRAINT "t_kpi_weekly_pkey" PRIMARY KEY ("id");
 
 
-
-ALTER TABLE ONLY "production"."t_produksi_order"
-    ADD CONSTRAINT "t_produksi_order_pkey" PRIMARY KEY ("id");
-
-
-
 ALTER TABLE ONLY "production"."t_qc_inbound"
     ADD CONSTRAINT "t_qc_inbound_pkey" PRIMARY KEY ("produksi_order_id");
-
 
 
 ALTER TABLE ONLY "production"."t_qc_outbound"
     ADD CONSTRAINT "t_qc_outbound_pkey" PRIMARY KEY ("produksi_order_id");
 
 
-
 ALTER TABLE ONLY "public"."buku_tamu"
     ADD CONSTRAINT "buku_tamu_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "sales"."m_affiliator"
     ADD CONSTRAINT "m_affiliator_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "sales"."t_content_planner"
     ADD CONSTRAINT "t_content_planner_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "sales"."t_content_statistic"
-    ADD CONSTRAINT "t_content_statistic_content_planner_id_key" UNIQUE ("content_planner_id");
-
 
 
 ALTER TABLE ONLY "sales"."t_content_statistic"
     ADD CONSTRAINT "t_content_statistic_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "sales"."t_item"
     ADD CONSTRAINT "t_item_pkey" PRIMARY KEY ("id_order", "id_varian");
-
 
 
 ALTER TABLE ONLY "sales"."t_live_performance"
     ADD CONSTRAINT "t_live_performance_pkey" PRIMARY KEY ("id");
 
 
-
 ALTER TABLE ONLY "sales"."t_membership"
     ADD CONSTRAINT "t_membership_pkey" PRIMARY KEY ("id");
-
 
 
 ALTER TABLE ONLY "sales"."t_sales_order"
     ADD CONSTRAINT "t_sales_order_pkey" PRIMARY KEY ("id");
 
 
-
-CREATE UNIQUE INDEX "idx_id_invoice" ON "finance"."t_invoice" USING "btree" ("id_invoice");
-
-
-
-CREATE UNIQUE INDEX "idx_journal_number" ON "finance"."t_journal" USING "btree" ("journal_number");
-
-
-
-CREATE UNIQUE INDEX "idx_reimbursement_number" ON "finance"."t_reimbursement" USING "btree" ("reimbursement_number");
-
-
-
-CREATE UNIQUE INDEX "idx_manifest_number" ON "logistics"."t_logistik_manifest" USING "btree" ("manifest_number");
-
-
-
-CREATE UNIQUE INDEX "idx_packing_number" ON "logistics"."t_packing" USING "btree" ("packing_number");
-
-
-
-CREATE UNIQUE INDEX "idx_return_number" ON "logistics"."t_return_order" USING "btree" ("return_number");
-
-
-
-CREATE UNIQUE INDEX "idx_budget_number" ON "management"."t_budget_request" USING "btree" ("budget_number");
-
-
-
-CREATE UNIQUE INDEX "idx_kpi_number" ON "management"."t_kpi_weekly" USING "btree" ("kpi_number");
-
-
-
-CREATE UNIQUE INDEX "idx_penilaian_bulanan" ON "management"."penilaian_kerja" USING "btree" ("penilai", "dinilai", EXTRACT(month FROM "tanggal_penilaian"), EXTRACT(year FROM "tanggal_penilaian"));
-
-
-
-CREATE UNIQUE INDEX "idx_produksi_number" ON "production"."t_produksi_order" USING "btree" ("produksi_number");
-
-
-
-CREATE UNIQUE INDEX "idx_qc_in_number" ON "production"."t_qc_inbound" USING "btree" ("qc_in_number");
-
-
-
-CREATE UNIQUE INDEX "idx_qc_out_number" ON "production"."t_qc_outbound" USING "btree" ("qc_out_number");
-
-
-
-CREATE UNIQUE INDEX "idx_affiliator_number" ON "sales"."m_affiliator" USING "btree" ("affiliator_number");
-
-
-
-CREATE UNIQUE INDEX "idx_content_planner_number" ON "sales"."t_content_planner" USING "btree" ("content_number");
-
-
-
-CREATE UNIQUE INDEX "idx_live_performance_number" ON "sales"."t_live_performance" USING "btree" ("live_number");
-
-
-
-CREATE UNIQUE INDEX "idx_sales_order_number" ON "sales"."t_sales_order" USING "btree" ("order_number");
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_core_m_produk" BEFORE UPDATE ON "core"."m_produk" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_core_m_varian" BEFORE UPDATE ON "core"."m_varian" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_core_m_vendor" BEFORE UPDATE ON "core"."m_vendor" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_core_profiles" BEFORE UPDATE ON "core"."profiles" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_finance_m_coa" BEFORE UPDATE ON "finance"."m_coa" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_finance_t_cashflow" BEFORE UPDATE ON "finance"."t_cashflow" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_finance_t_journal" BEFORE UPDATE ON "finance"."t_journal" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_finance_t_journal_item" BEFORE UPDATE ON "finance"."t_journal_item" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_finance_t_payroll_history" BEFORE UPDATE ON "finance"."t_payroll_history" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_finance_t_reimbursement" BEFORE UPDATE ON "finance"."t_reimbursement" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_after_asset_insert" AFTER INSERT ON "finance"."t_asset" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_auto_generate_asset_schedules"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_auto_journal_payroll" AFTER INSERT ON "finance"."t_payroll_history" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_create_journal_entry"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_auto_journal_reimburse" AFTER INSERT OR UPDATE ON "finance"."t_reimbursement" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_create_journal_entry"();
-
-
-
-CREATE OR REPLACE TRIGGER "trigger_pelunasan_piutang_to_journal" AFTER UPDATE ON "finance"."t_utang_piutang" FOR EACH ROW EXECUTE FUNCTION "finance"."handle_pelunasan_piutang_to_journal"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_hr_m_karyawan" BEFORE UPDATE ON "hr"."m_karyawan" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_logistics_t_packing" BEFORE UPDATE ON "logistics"."t_packing" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_logistics_t_return_order" BEFORE UPDATE ON "logistics"."t_return_order" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_after_packing_update_shipped" AFTER INSERT OR UPDATE OF "status" ON "logistics"."t_packing" FOR EACH ROW EXECUTE FUNCTION "logistics"."fn_auto_insert_manifest"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_management_t_budget_request" BEFORE UPDATE ON "management"."t_budget_request" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_auto_journal_budget" AFTER INSERT OR UPDATE ON "management"."t_budget_request" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_create_journal_entry"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_production_t_produksi_order" BEFORE UPDATE ON "production"."t_produksi_order" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_sales_t_content_statistic" BEFORE UPDATE ON "sales"."t_content_statistic" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "tr_upd_sales_t_sales_order" BEFORE UPDATE ON "sales"."t_sales_order" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_after_sales_order_insert" AFTER INSERT ON "sales"."t_sales_order" FOR EACH ROW EXECUTE FUNCTION "logistics"."fn_auto_insert_packing"();
-
-
-
-CREATE OR REPLACE TRIGGER "trg_monetisasi_journal" AFTER INSERT OR UPDATE OF "monetasi" ON "sales"."t_content_statistic" FOR EACH ROW WHEN (("new"."monetasi" > (0)::numeric)) EXECUTE FUNCTION "finance"."fn_create_monetization_journal"();
-
-
-
-CREATE OR REPLACE TRIGGER "trigger_after_upload" AFTER UPDATE ON "sales"."t_content_planner" FOR EACH ROW EXECUTE FUNCTION "sales"."trg_create_content_statistic"();
-
-
-
-CREATE OR REPLACE TRIGGER "trigger_fill_item_price" BEFORE INSERT ON "sales"."t_item" FOR EACH ROW EXECUTE FUNCTION "sales"."fill_item_price"();
-
-
-
-CREATE CONSTRAINT TRIGGER "trigger_item_to_invoice" AFTER INSERT ON "sales"."t_item" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "sales"."handle_item_to_invoice"();
-
-
-
-CREATE CONSTRAINT TRIGGER "trigger_sales_order_to_cashflow" AFTER INSERT ON "sales"."t_sales_order" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "sales"."handle_sales_order_to_cashflow"();
-
-
-
-CREATE CONSTRAINT TRIGGER "trigger_sales_order_to_journal" AFTER INSERT ON "sales"."t_sales_order" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "sales"."handle_sales_order_to_journal"();
-
-
-
-CREATE OR REPLACE TRIGGER "trigger_sync_total_item" AFTER INSERT OR DELETE OR UPDATE ON "sales"."t_item" FOR EACH ROW EXECUTE FUNCTION "sales"."sync_order_total_item"();
-
+-- ============================================================================
+-- FOREIGN KEY CONSTRAINTS
+-- ============================================================================
 
 
 ALTER TABLE ONLY "core"."m_varian"
     ADD CONSTRAINT "m_varian_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "core"."m_produk"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "core"."profiles"
     ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "finance"."m_coa"
     ADD CONSTRAINT "m_coa_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "finance"."m_coa"("id");
 
 
-
 ALTER TABLE ONLY "finance"."t_asset"
     ADD CONSTRAINT "t_asset_coa_asset_id_fkey" FOREIGN KEY ("coa_asset_id") REFERENCES "finance"."m_coa"("id");
-
 
 
 ALTER TABLE ONLY "finance"."t_asset"
     ADD CONSTRAINT "t_asset_coa_depr_accumulation_id_fkey" FOREIGN KEY ("coa_depr_accumulation_id") REFERENCES "finance"."m_coa"("id");
 
 
-
 ALTER TABLE ONLY "finance"."t_asset"
     ADD CONSTRAINT "t_asset_coa_depr_expense_id_fkey" FOREIGN KEY ("coa_depr_expense_id") REFERENCES "finance"."m_coa"("id");
-
 
 
 ALTER TABLE ONLY "finance"."t_asset_depreciation_schedule"
     ADD CONSTRAINT "t_asset_depreciation_schedule_asset_id_fkey" FOREIGN KEY ("asset_id") REFERENCES "finance"."t_asset"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "finance"."t_asset_depreciation_schedule"
     ADD CONSTRAINT "t_asset_depreciation_schedule_journal_id_fkey" FOREIGN KEY ("journal_id") REFERENCES "finance"."t_journal"("id") ON DELETE SET NULL;
-
 
 
 ALTER TABLE ONLY "finance"."t_asset"
     ADD CONSTRAINT "t_asset_journal_id_fkey" FOREIGN KEY ("journal_id") REFERENCES "finance"."t_journal"("id") ON DELETE SET NULL;
 
 
-
 ALTER TABLE ONLY "finance"."t_cashflow"
     ADD CONSTRAINT "t_cashflow_coa_id_fkey" FOREIGN KEY ("coa_id") REFERENCES "finance"."m_coa"("id");
-
 
 
 ALTER TABLE ONLY "finance"."t_cashflow"
     ADD CONSTRAINT "t_cashflow_journal_id_fkey" FOREIGN KEY ("journal_id") REFERENCES "finance"."t_journal"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "finance"."t_invoice_item"
     ADD CONSTRAINT "t_invoice_item_id_invoice_fkey" FOREIGN KEY ("id_invoice") REFERENCES "finance"."t_invoice"("id_invoice") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "finance"."t_invoice_item"
     ADD CONSTRAINT "t_invoice_item_id_sales_order_fkey" FOREIGN KEY ("id_sales_order") REFERENCES "sales"."t_sales_order"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "finance"."t_journal_item"
     ADD CONSTRAINT "t_journal_item_coa_id_fkey" FOREIGN KEY ("coa_id") REFERENCES "finance"."m_coa"("id");
-
 
 
 ALTER TABLE ONLY "finance"."t_journal_item"
     ADD CONSTRAINT "t_journal_item_journal_id_fkey" FOREIGN KEY ("journal_id") REFERENCES "finance"."t_journal"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "finance"."t_payroll_history"
     ADD CONSTRAINT "t_payroll_history_coa_id_fkey" FOREIGN KEY ("coa_id") REFERENCES "finance"."m_coa"("id");
-
 
 
 ALTER TABLE ONLY "finance"."t_payroll_history"
     ADD CONSTRAINT "t_payroll_history_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "hr"."m_karyawan"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "finance"."t_reimbursement"
     ADD CONSTRAINT "t_reimbursement_coa_id_fkey" FOREIGN KEY ("coa_id") REFERENCES "finance"."m_coa"("id");
-
 
 
 ALTER TABLE ONLY "finance"."t_reimbursement"
     ADD CONSTRAINT "t_reimbursement_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "hr"."m_karyawan"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "finance"."t_utang_piutang"
     ADD CONSTRAINT "t_utang_piutang_coa_fkey" FOREIGN KEY ("coa") REFERENCES "finance"."m_coa"("id");
-
 
 
 ALTER TABLE ONLY "hr"."m_karyawan"
     ADD CONSTRAINT "m_karyawan_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "core"."profiles"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "hr"."t_attendance"
     ADD CONSTRAINT "t_attendance_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "hr"."m_karyawan"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "hr"."t_employee_warning"
     ADD CONSTRAINT "t_employee_warning_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "hr"."m_karyawan"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "logistics"."t_logistik_manifest"
     ADD CONSTRAINT "t_logistik_manifest_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "sales"."t_sales_order"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "logistics"."t_packing"
     ADD CONSTRAINT "t_packing_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "sales"."t_sales_order"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "logistics"."t_return_order"
     ADD CONSTRAINT "t_return_order_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "sales"."t_sales_order"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "management"."penilaian_kerja"
     ADD CONSTRAINT "fk_dinilai" FOREIGN KEY ("dinilai") REFERENCES "hr"."m_karyawan"("id");
 
 
-
 ALTER TABLE ONLY "management"."penilaian_kerja"
     ADD CONSTRAINT "fk_penilai" FOREIGN KEY ("penilai") REFERENCES "hr"."m_karyawan"("id");
-
 
 
 ALTER TABLE ONLY "management"."t_budget_request"
     ADD CONSTRAINT "t_budget_request_coa_id_fkey" FOREIGN KEY ("coa_id") REFERENCES "finance"."m_coa"("id");
 
 
-
-ALTER TABLE ONLY "production"."t_produksi_order"
-    ADD CONSTRAINT "t_produksi_order_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "core"."m_produk"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "production"."t_produksi_order"
-    ADD CONSTRAINT "t_produksi_order_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "core"."m_vendor"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "production"."t_qc_inbound"
-    ADD CONSTRAINT "t_qc_inbound_produksi_order_id_fkey" FOREIGN KEY ("produksi_order_id") REFERENCES "production"."t_produksi_order"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "production"."t_qc_outbound"
-    ADD CONSTRAINT "t_qc_outbound_produksi_order_id_fkey" FOREIGN KEY ("produksi_order_id") REFERENCES "production"."t_produksi_order"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "sales"."t_content_planner"
     ADD CONSTRAINT "t_content_planner_affiliator_id_fkey" FOREIGN KEY ("affiliator_id") REFERENCES "sales"."m_affiliator"("id");
-
 
 
 ALTER TABLE ONLY "sales"."t_content_statistic"
     ADD CONSTRAINT "t_content_statistic_content_planner_id_fkey" FOREIGN KEY ("content_planner_id") REFERENCES "sales"."t_content_planner"("id") ON DELETE CASCADE;
 
 
-
 ALTER TABLE ONLY "sales"."t_item"
     ADD CONSTRAINT "t_item_id_order_fkey" FOREIGN KEY ("id_order") REFERENCES "sales"."t_sales_order"("id") ON DELETE CASCADE;
-
 
 
 ALTER TABLE ONLY "sales"."t_item"
     ADD CONSTRAINT "t_item_id_varian_fkey" FOREIGN KEY ("id_varian") REFERENCES "core"."m_varian"("id");
 
 
-
 ALTER TABLE ONLY "sales"."t_sales_order"
     ADD CONSTRAINT "t_sales_order_coa_cash_fkey" FOREIGN KEY ("coa_cash_id") REFERENCES "finance"."m_coa"("id");
-
 
 
 ALTER TABLE ONLY "sales"."t_sales_order"
     ADD CONSTRAINT "t_sales_order_coa_credit_fkey" FOREIGN KEY ("coa_credit_id") REFERENCES "finance"."m_coa"("id");
 
 
-
 ALTER TABLE ONLY "sales"."t_sales_order"
     ADD CONSTRAINT "t_sales_order_id_pelanggan_fkey" FOREIGN KEY ("id_pelanggan") REFERENCES "sales"."t_membership"("id") ON DELETE SET NULL;
 
+
+ALTER TABLE ONLY "production"."t_qc_inbound"
+    ADD CONSTRAINT "t_qc_inbound_bahan_baku_id_fkey" FOREIGN KEY ("bahan_baku_id") REFERENCES "production"."m_bahan_baku"("id") ON DELETE RESTRICT;
+
+ALTER TABLE ONLY "production"."t_qc_inbound"
+    ADD CONSTRAINT "t_qc_inbound_mutasi_stok_id_fkey" FOREIGN KEY ("mutasi_stok_id") REFERENCES "production"."t_stok_mutasi"("id") ON DELETE SET NULL;
+
+-- ============================================================================
+-- UNIQUE CONSTRAINTS
+-- ============================================================================
+
+ALTER TABLE ONLY "core"."m_varian"
+    ADD CONSTRAINT "m_varian_sku_key" UNIQUE ("sku");
+
+
+ALTER TABLE ONLY "finance"."m_coa"
+    ADD CONSTRAINT "m_coa_kode_akun_key" UNIQUE ("kode_akun");
+
+
+ALTER TABLE ONLY "finance"."t_asset"
+    ADD CONSTRAINT "t_asset_kode_aset_key" UNIQUE ("kode_aset");
+
+
+ALTER TABLE ONLY "finance"."t_journal"
+    ADD CONSTRAINT "t_journal_no_bukti_key" UNIQUE ("no_bukti");
+
+
+ALTER TABLE ONLY "finance"."t_asset_depreciation_schedule"
+    ADD CONSTRAINT "unique_asset_period" UNIQUE ("asset_id", "periode");
+
+
+ALTER TABLE ONLY "hr"."m_karyawan"
+    ADD CONSTRAINT "m_karyawan_nik_key" UNIQUE ("nik");
+
+
+ALTER TABLE ONLY "hr"."m_karyawan"
+    ADD CONSTRAINT "m_karyawan_nip_key" UNIQUE ("nip");
+
+
+ALTER TABLE ONLY "logistics"."t_logistik_manifest"
+    ADD CONSTRAINT "t_logistik_manifest_resi_key" UNIQUE ("resi");
+
+
+ALTER TABLE ONLY "sales"."t_content_statistic"
+    ADD CONSTRAINT "t_content_statistic_content_planner_id_key" UNIQUE ("content_planner_id");
+
+
+-- ============================================================================
+-- INDEXES
+-- ============================================================================
+
+
+CREATE UNIQUE INDEX "idx_id_invoice" ON "finance"."t_invoice" USING "btree" ("id_invoice");
+
+
+CREATE UNIQUE INDEX "idx_journal_number" ON "finance"."t_journal" USING "btree" ("journal_number");
+
+
+CREATE UNIQUE INDEX "idx_reimbursement_number" ON "finance"."t_reimbursement" USING "btree" ("reimbursement_number");
+
+
+CREATE UNIQUE INDEX "idx_manifest_number" ON "logistics"."t_logistik_manifest" USING "btree" ("manifest_number");
+
+
+CREATE UNIQUE INDEX "idx_packing_number" ON "logistics"."t_packing" USING "btree" ("packing_number");
+
+
+CREATE UNIQUE INDEX "idx_return_number" ON "logistics"."t_return_order" USING "btree" ("return_number");
+
+
+CREATE UNIQUE INDEX "idx_budget_number" ON "management"."t_budget_request" USING "btree" ("budget_number");
+
+
+CREATE UNIQUE INDEX "idx_kpi_number" ON "management"."t_kpi_weekly" USING "btree" ("kpi_number");
+
+
+CREATE UNIQUE INDEX "idx_penilaian_bulanan" ON "management"."penilaian_kerja" USING "btree" ("penilai", "dinilai", EXTRACT(month FROM "tanggal_penilaian"), EXTRACT(year FROM "tanggal_penilaian"));
+
+
+CREATE UNIQUE INDEX "idx_qc_in_number" ON "production"."t_qc_inbound" USING "btree" ("qc_in_number");
+
+
+CREATE UNIQUE INDEX "idx_qc_out_number" ON "production"."t_qc_outbound" USING "btree" ("qc_out_number");
+
+
+CREATE UNIQUE INDEX "idx_affiliator_number" ON "sales"."m_affiliator" USING "btree" ("affiliator_number");
+
+
+CREATE UNIQUE INDEX "idx_content_planner_number" ON "sales"."t_content_planner" USING "btree" ("content_number");
+
+
+CREATE UNIQUE INDEX "idx_live_performance_number" ON "sales"."t_live_performance" USING "btree" ("live_number");
+
+
+CREATE UNIQUE INDEX "idx_sales_order_number" ON "sales"."t_sales_order" USING "btree" ("order_number");
+
+
+CREATE INDEX IF NOT EXISTS idx_t_payroll_item_payroll
+    ON finance.t_payroll_item (employee_id, bulan);
+
+
+CREATE INDEX IF NOT EXISTS idx_t_payroll_item_kasbon
+    ON finance.t_payroll_item (kasbon_id);
+
+-- ============================================================================
+-- TRIGGERS
+-- ============================================================================
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_core_m_produk" BEFORE UPDATE ON "core"."m_produk" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_core_m_varian" BEFORE UPDATE ON "core"."m_varian" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_core_m_vendor" BEFORE UPDATE ON "core"."m_vendor" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_core_profiles" BEFORE UPDATE ON "core"."profiles" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_finance_m_coa" BEFORE UPDATE ON "finance"."m_coa" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_finance_t_cashflow" BEFORE UPDATE ON "finance"."t_cashflow" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_finance_t_journal" BEFORE UPDATE ON "finance"."t_journal" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_finance_t_journal_item" BEFORE UPDATE ON "finance"."t_journal_item" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_finance_t_payroll_history" BEFORE UPDATE ON "finance"."t_payroll_history" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_finance_t_reimbursement" BEFORE UPDATE ON "finance"."t_reimbursement" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "trg_after_asset_insert" AFTER INSERT ON "finance"."t_asset" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_auto_generate_asset_schedules"();
+
+
+CREATE OR REPLACE TRIGGER "trg_auto_journal_payroll" AFTER INSERT ON "finance"."t_payroll_history" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_create_journal_entry"();
+
+
+CREATE OR REPLACE TRIGGER "trg_auto_journal_reimburse" AFTER INSERT OR UPDATE ON "finance"."t_reimbursement" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_create_journal_entry"();
+
+
+CREATE OR REPLACE TRIGGER "trigger_pelunasan_piutang_to_journal" AFTER UPDATE ON "finance"."t_utang_piutang" FOR EACH ROW EXECUTE FUNCTION "finance"."handle_pelunasan_piutang_to_journal"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_hr_m_karyawan" BEFORE UPDATE ON "hr"."m_karyawan" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_logistics_t_packing" BEFORE UPDATE ON "logistics"."t_packing" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_logistics_t_return_order" BEFORE UPDATE ON "logistics"."t_return_order" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "trg_after_packing_update_shipped" AFTER INSERT OR UPDATE OF "status" ON "logistics"."t_packing" FOR EACH ROW EXECUTE FUNCTION "logistics"."fn_auto_insert_manifest"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_management_t_budget_request" BEFORE UPDATE ON "management"."t_budget_request" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "trg_auto_journal_budget" AFTER INSERT OR UPDATE ON "management"."t_budget_request" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_create_journal_entry"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_sales_t_content_statistic" BEFORE UPDATE ON "sales"."t_content_statistic" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_sales_t_sales_order" BEFORE UPDATE ON "sales"."t_sales_order" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
+
+
+CREATE OR REPLACE TRIGGER "trg_after_sales_order_insert" AFTER INSERT ON "sales"."t_sales_order" FOR EACH ROW EXECUTE FUNCTION "logistics"."fn_auto_insert_packing"();
+
+
+CREATE OR REPLACE TRIGGER "trg_monetisasi_journal" AFTER INSERT OR UPDATE OF "monetasi" ON "sales"."t_content_statistic" FOR EACH ROW WHEN (("new"."monetasi" > (0)::numeric)) EXECUTE FUNCTION "finance"."fn_create_monetization_journal"();
+
+
+CREATE OR REPLACE TRIGGER "trigger_after_upload" AFTER UPDATE ON "sales"."t_content_planner" FOR EACH ROW EXECUTE FUNCTION "sales"."trg_create_content_statistic"();
+
+
+CREATE OR REPLACE TRIGGER "trigger_fill_item_price" BEFORE INSERT ON "sales"."t_item" FOR EACH ROW EXECUTE FUNCTION "sales"."fill_item_price"();
+
+
+CREATE OR REPLACE TRIGGER "trigger_sync_total_item" AFTER INSERT OR DELETE OR UPDATE ON "sales"."t_item" FOR EACH ROW EXECUTE FUNCTION "sales"."sync_order_total_item"();
+
+
+CREATE OR REPLACE TRIGGER "trg_delete_journal_payroll" BEFORE DELETE ON "finance"."t_payroll_history" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_delete_journal_entry_on_payroll_delete"();
+
+
+CREATE OR REPLACE TRIGGER tr_stok_mutasi_after_insert
+AFTER INSERT ON production.t_stok_mutasi
+FOR EACH ROW
+EXECUTE FUNCTION production.tr_update_bahan_baku_stok();
+
+
+CREATE OR REPLACE TRIGGER tr_produksi_bahan_after_delete
+AFTER DELETE ON production.t_produksi_bahan
+FOR EACH ROW
+EXECUTE FUNCTION production.tr_restore_bahan_baku_stok();
+
+
+CREATE OR REPLACE TRIGGER tr_upd_finance_t_payroll_item
+    BEFORE UPDATE ON finance.t_payroll_item
+    FOR EACH ROW
+    EXECUTE FUNCTION core.update_timestamp();
+
+-- ============================================================================
+-- RLS POLICIES
+-- ============================================================================
 
 
 CREATE POLICY "Allow Public Read Access" ON "core"."m_produk" FOR SELECT TO "authenticated", "anon" USING (true);
 
 
-
 CREATE POLICY "Allow Public Read Access" ON "core"."m_varian" FOR SELECT TO "authenticated", "anon" USING (true);
-
 
 
 CREATE POLICY "Allow Public Read Access" ON "core"."m_vendor" FOR SELECT TO "authenticated", "anon" USING (true);
 
 
-
 CREATE POLICY "Allow Public Read Access" ON "core"."profiles" FOR SELECT TO "authenticated", "anon" USING (true);
-
 
 
 CREATE POLICY "Master: Manage" ON "core"."m_produk" USING (("core"."is_admin"() OR ("core"."get_user_role"() = 'Produksi & Quality Control'::"core"."user_role") OR ("core"."get_user_role"() = 'Logistics & Packing'::"core"."user_role") OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
 
 
-
 CREATE POLICY "Master: Manage" ON "core"."m_varian" USING (("core"."is_admin"() OR ("core"."get_user_role"() = 'Produksi & Quality Control'::"core"."user_role") OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
-
 
 
 CREATE POLICY "Master: Read all" ON "core"."m_produk" FOR SELECT USING (true);
 
 
-
 CREATE POLICY "Master: Read all" ON "core"."m_varian" FOR SELECT USING (true);
-
 
 
 CREATE POLICY "Profiles: HR and Admin insert" ON "core"."profiles" FOR INSERT WITH CHECK (("core"."get_user_role_safe"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
 
 
-
 CREATE POLICY "Profiles: HR and Admin update" ON "core"."profiles" FOR UPDATE USING (("core"."get_user_role_safe"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
 
 
 CREATE POLICY "Profiles: Read all for admins" ON "core"."profiles" FOR SELECT USING ((("core"."get_user_role_safe"() = 'Super Admin'::"core"."user_role") OR ("core"."get_user_role_safe"() = 'HR & Operation Manager'::"core"."user_role")));
 
 
-
 CREATE POLICY "Profiles: Read own" ON "core"."profiles" FOR SELECT USING (("auth"."uid"() = "id"));
-
 
 
 CREATE POLICY "Vendor: Manage" ON "core"."m_vendor" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Produksi & Quality Control'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
 
 
-
 CREATE POLICY "Vendor: Read all" ON "core"."m_vendor" FOR SELECT USING (true);
 
+
+CREATE POLICY "Allow Public Read Access" ON "finance"."m_coa" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "finance"."t_cashflow" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "finance"."t_journal" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "finance"."t_journal_item" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "finance"."t_payroll_history" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "finance"."t_reimbursement" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "COA: All roles can read" ON "finance"."m_coa" FOR SELECT USING (true);
+
+
+CREATE POLICY "COA: Finance and Admin access" ON "finance"."m_coa" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "COA: Full access for Finance and Dev" ON "finance"."m_coa" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Developer'::"core"."user_role", 'Super Admin'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Developer'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "COA: Read access for all users" ON "finance"."m_coa" FOR SELECT TO "authenticated" USING (true);
+
+
+CREATE POLICY "Finance: Asset all" ON "finance"."t_asset" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Finance: Asset depreciation schedule all" ON "finance"."t_asset_depreciation_schedule" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Finance: Cashflow all" ON "finance"."t_cashflow" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Internal All" ON "finance"."t_invoice" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Internal All" ON "finance"."t_invoice_item" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Internal All" ON "finance"."t_utang_piutang" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Journal Item: Finance and Admin access" ON "finance"."t_journal_item" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "Journal Item: Full access for Finance and Dev" ON "finance"."t_journal_item" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Journal: Finance and Admin access" ON "finance"."t_journal" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "Journal: Full access for Finance and Dev" ON "finance"."t_journal" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Public Read" ON "finance"."t_invoice" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Public Read" ON "finance"."t_invoice_item" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Public Read" ON "finance"."t_utang_piutang" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "finance.t_payroll_history: Manage" ON "finance"."t_payroll_history" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
+
+
+CREATE POLICY "finance.t_payroll_history: Read all" ON "finance"."t_payroll_history" FOR SELECT USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "hr"."m_karyawan" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "hr"."m_sop" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "hr"."t_attendance" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "hr"."t_employee_warning" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Attendance: Manager all" ON "hr"."t_attendance" USING (("core"."get_user_role"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "HR and strategic can read all employees" ON "hr"."m_karyawan" FOR SELECT TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role", 'HR & Operation Manager'::"core"."user_role", 'Finance & Administration'::"core"."user_role"])));
+
+
+CREATE POLICY "HR: Manager all" ON "hr"."m_karyawan" USING (("core"."is_admin"() OR ("core"."get_user_role"() = 'HR & Operation Manager'::"core"."user_role") OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
+
+
+CREATE POLICY "HR: View self" ON "hr"."m_karyawan" FOR SELECT USING (("profile_id" = "auth"."uid"()));
+
+
+CREATE POLICY "PKWT: HR and Admin access" ON "hr"."t_pkwt" USING (("core"."get_user_role_safe"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "SOP: All roles can read" ON "hr"."m_sop" FOR SELECT USING (true);
+
+
+CREATE POLICY "SOP: HR and Admin access" ON "hr"."m_sop" USING (("core"."get_user_role_safe"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "SOP: Manager all" ON "hr"."m_sop" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Developer'::"core"."user_role"]))));
+
+
+CREATE POLICY "SOP: View all authenticated" ON "hr"."m_sop" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+CREATE POLICY "Warning: Manage" ON "hr"."t_employee_warning" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
+
+
+CREATE POLICY "Warning: Read all" ON "hr"."t_employee_warning" FOR SELECT USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "logistics"."t_logistik_manifest" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "logistics"."t_packing" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "logistics"."t_return_order" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Logistics: Manage returns" ON "logistics"."t_return_order" USING (("core"."get_user_role"() = ANY (ARRAY['Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Finance & Administration'::"core"."user_role"])));
+
+
+CREATE POLICY "Logistics: Staff access" ON "logistics"."t_packing" USING (("core"."get_user_role"() = ANY (ARRAY['Logistics & Packing'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "Logistics: View returns" ON "logistics"."t_return_order" FOR SELECT USING (true);
+
+
+CREATE POLICY "Manifest: Manage" ON "logistics"."t_logistik_manifest" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
+
+
+CREATE POLICY "Manifest: Read all" ON "logistics"."t_logistik_manifest" FOR SELECT USING (true);
+
+
+CREATE POLICY "Packing: Manage" ON "logistics"."t_packing" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Logistics & Packing'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
+
+
+CREATE POLICY "Packing: Read all" ON "logistics"."t_packing" FOR SELECT USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "management"."t_budget_request" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "management"."t_kpi_weekly" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Mgmt: Budget admin/finance" ON "management"."t_budget_request" USING (("core"."is_admin"() OR ("core"."get_user_role"() = 'Finance & Administration'::"core"."user_role") OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
+
+
+CREATE POLICY "Mgmt: KPI admin" ON "management"."t_kpi_weekly" USING (("core"."is_admin"() OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
+
+
+CREATE POLICY "Allow Public Read Access" ON "production"."t_qc_inbound" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "production"."t_qc_outbound" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Inbound: Read all" ON "production"."t_qc_inbound" FOR SELECT USING (true);
+
+
+CREATE POLICY "Inbpund: Manage" ON "production"."t_qc_inbound" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Produksi & Quality Control'::"core"."user_role"]))));
+
+
+CREATE POLICY "Outbound: Manage" ON "production"."t_qc_outbound" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Produksi & Quality Control'::"core"."user_role"]))));
+
+
+CREATE POLICY "Outbound: Read all" ON "production"."t_qc_outbound" FOR SELECT USING (true);
+
+
+CREATE POLICY "Allow authenticated read access" ON "public"."buku_tamu" FOR SELECT TO "authenticated" USING (true);
+
+
+CREATE POLICY "Allow authenticated users to delete buku_tamu" ON "public"."buku_tamu" FOR DELETE TO "authenticated" USING (true);
+
+
+CREATE POLICY "Allow authenticated users to select buku_tamu" ON "public"."buku_tamu" FOR SELECT TO "authenticated" USING (true);
+
+
+CREATE POLICY "Allow authenticated users to update buku_tamu" ON "public"."buku_tamu" FOR UPDATE TO "authenticated" USING (true);
+
+
+CREATE POLICY "Allow public anonymous insert to buku_tamu" ON "public"."buku_tamu" FOR INSERT WITH CHECK (true);
+
+
+CREATE POLICY "Allow public insert access" ON "public"."buku_tamu" FOR INSERT WITH CHECK (true);
+
+
+CREATE POLICY "Affiliator: Manage" ON "sales"."m_affiliator" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
+
+
+CREATE POLICY "Affiliator: Manage" ON "sales"."t_content_planner" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
+
+
+CREATE POLICY "Affiliator: Read all" ON "sales"."m_affiliator" FOR SELECT USING (true);
+
+
+CREATE POLICY "Affiliator: Read all" ON "sales"."t_content_planner" FOR SELECT USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "sales"."m_affiliator" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "sales"."t_content_planner" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "sales"."t_content_statistic" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "sales"."t_item" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "sales"."t_membership" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Allow Public Read Access" ON "sales"."t_sales_order" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Live: Staff access" ON "sales"."t_live_performance" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Finance & Administration'::"core"."user_role"])));
+
+
+CREATE POLICY "Live: Staff delete" ON "sales"."t_live_performance" FOR DELETE USING (("core"."get_user_role_safe"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "Live: Staff insert" ON "sales"."t_live_performance" FOR INSERT WITH CHECK (("core"."get_user_role_safe"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "Live: Staff update" ON "sales"."t_live_performance" FOR UPDATE USING (("core"."get_user_role_safe"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "Sales: Staff access" ON "sales"."t_item" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Sales: Staff access" ON "sales"."t_membership" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Sales: Staff access" ON "sales"."t_sales_order" FOR SELECT TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Sales: Staff access content statistic" ON "sales"."t_content_statistic" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "Sales: Staff delete" ON "sales"."t_sales_order" FOR DELETE TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Sales: Staff insert" ON "sales"."t_sales_order" FOR INSERT TO "authenticated" WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "Sales: Staff update" ON "sales"."t_sales_order" FOR UPDATE TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
+
+
+CREATE POLICY "App settings readable by all authenticated" ON "core"."app_settings" FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "App settings writable only by Developer" ON "core"."app_settings" FOR ALL TO "authenticated" USING (("core"."is_developer"())) WITH CHECK (("core"."is_developer"()));
+
+CREATE POLICY "Authenticated users can read max budget" ON "management"."t_max_budget" FOR SELECT TO "authenticated" USING (true);
+
+CREATE POLICY "Strategic can insert max budget" ON "management"."t_max_budget" FOR INSERT TO "authenticated" WITH CHECK (("core"."is_strategic"()));
+
+CREATE POLICY "Strategic can update max budget" ON "management"."t_max_budget" FOR UPDATE TO "authenticated" USING (("core"."is_strategic"())) WITH CHECK (("core"."is_strategic"()));
+
+CREATE POLICY "Allow all operations for authenticated users on m_bom" ON "production"."m_bom" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations for authenticated users on t_bom_item" ON "production"."t_bom_item" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations for authenticated users on m_bahan_baku" ON "production"."m_bahan_baku" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations for authenticated users on t_stok_mutasi" ON "production"."t_stok_mutasi" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations for authenticated users on t_produksi_bahan" ON "production"."t_produksi_bahan" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
+
+-- ============================================================================
+-- ROW LEVEL SECURITY ENABLE
+-- ============================================================================
 
 
 ALTER TABLE "core"."m_produk" ENABLE ROW LEVEL SECURITY;
@@ -2850,114 +3243,6 @@ ALTER TABLE "core"."m_vendor" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "core"."profiles" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "Allow Public Read Access" ON "finance"."m_coa" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "finance"."t_cashflow" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "finance"."t_journal" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "finance"."t_journal_item" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "finance"."t_payroll_history" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "finance"."t_reimbursement" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "COA: All roles can read" ON "finance"."m_coa" FOR SELECT USING (true);
-
-
-
-CREATE POLICY "COA: Finance and Admin access" ON "finance"."m_coa" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "COA: Full access for Finance and Dev" ON "finance"."m_coa" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Developer'::"core"."user_role", 'Super Admin'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Developer'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-CREATE POLICY "COA: Read access for all users" ON "finance"."m_coa" FOR SELECT TO "authenticated" USING (true);
-
-
-
-CREATE POLICY "Finance: Asset all" ON "finance"."t_asset" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Finance: Asset depreciation schedule all" ON "finance"."t_asset_depreciation_schedule" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Finance: Cashflow all" ON "finance"."t_cashflow" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Finance: Reimburse own/admin" ON "finance"."t_reimbursement" USING ((("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"])) OR ("employee_id" IN ( SELECT "m_karyawan"."id"
-   FROM "hr"."m_karyawan"
-  WHERE ("m_karyawan"."profile_id" = "auth"."uid"()))))) WITH CHECK ((("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"])) OR ("employee_id" IN ( SELECT "m_karyawan"."id"
-   FROM "hr"."m_karyawan"
-  WHERE ("m_karyawan"."profile_id" = "auth"."uid"())))));
-
-
-
-CREATE POLICY "Internal All" ON "finance"."t_invoice" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Internal All" ON "finance"."t_invoice_item" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Internal All" ON "finance"."t_utang_piutang" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Journal Item: Finance and Admin access" ON "finance"."t_journal_item" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Journal Item: Full access for Finance and Dev" ON "finance"."t_journal_item" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Journal: Finance and Admin access" ON "finance"."t_journal" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Journal: Full access for Finance and Dev" ON "finance"."t_journal" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Public Read" ON "finance"."t_invoice" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Public Read" ON "finance"."t_invoice_item" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Public Read" ON "finance"."t_utang_piutang" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "finance.t_payroll_history: Manage" ON "finance"."t_payroll_history" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
-
-
-
-CREATE POLICY "finance.t_payroll_history: Read all" ON "finance"."t_payroll_history" FOR SELECT USING (true);
-
 
 
 ALTER TABLE "finance"."m_coa" ENABLE ROW LEVEL SECURITY;
@@ -2993,72 +3278,6 @@ ALTER TABLE "finance"."t_reimbursement" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "finance"."t_utang_piutang" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "Allow Public Read Access" ON "hr"."m_karyawan" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "hr"."m_sop" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "hr"."t_attendance" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "hr"."t_employee_warning" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Attendance: Manager all" ON "hr"."t_attendance" USING (("core"."get_user_role"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Attendance: View self" ON "hr"."t_attendance" FOR SELECT USING ((("employee_id" IN ( SELECT "m_karyawan"."id"
-   FROM "hr"."m_karyawan"
-  WHERE ("m_karyawan"."profile_id" = "auth"."uid"()))) OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
-
-
-
-CREATE POLICY "HR and strategic can read all employees" ON "hr"."m_karyawan" FOR SELECT TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role", 'HR & Operation Manager'::"core"."user_role", 'Finance & Administration'::"core"."user_role"])));
-
-
-
-CREATE POLICY "HR: Manager all" ON "hr"."m_karyawan" USING (("core"."is_admin"() OR ("core"."get_user_role"() = 'HR & Operation Manager'::"core"."user_role") OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
-
-
-
-CREATE POLICY "HR: View self" ON "hr"."m_karyawan" FOR SELECT USING (("profile_id" = "auth"."uid"()));
-
-
-
-CREATE POLICY "PKWT: HR and Admin access" ON "hr"."t_pkwt" USING (("core"."get_user_role_safe"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "SOP: All roles can read" ON "hr"."m_sop" FOR SELECT USING (true);
-
-
-
-CREATE POLICY "SOP: HR and Admin access" ON "hr"."m_sop" USING (("core"."get_user_role_safe"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "SOP: Manager all" ON "hr"."m_sop" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Developer'::"core"."user_role"]))));
-
-
-
-CREATE POLICY "SOP: View all authenticated" ON "hr"."m_sop" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
-
-
-
-CREATE POLICY "Warning: Manage" ON "hr"."t_employee_warning" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
-
-
-
-CREATE POLICY "Warning: Read all" ON "hr"."t_employee_warning" FOR SELECT USING (true);
-
-
-
 ALTER TABLE "hr"."m_karyawan" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3074,46 +3293,6 @@ ALTER TABLE "hr"."t_employee_warning" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "hr"."t_pkwt" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "Allow Public Read Access" ON "logistics"."t_logistik_manifest" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "logistics"."t_packing" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "logistics"."t_return_order" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Logistics: Manage returns" ON "logistics"."t_return_order" USING (("core"."get_user_role"() = ANY (ARRAY['Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Finance & Administration'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Logistics: Staff access" ON "logistics"."t_packing" USING (("core"."get_user_role"() = ANY (ARRAY['Logistics & Packing'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Logistics: View returns" ON "logistics"."t_return_order" FOR SELECT USING (true);
-
-
-
-CREATE POLICY "Manifest: Manage" ON "logistics"."t_logistik_manifest" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
-
-
-
-CREATE POLICY "Manifest: Read all" ON "logistics"."t_logistik_manifest" FOR SELECT USING (true);
-
-
-
-CREATE POLICY "Packing: Manage" ON "logistics"."t_packing" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Logistics & Packing'::"core"."user_role", 'Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
-
-
-
-CREATE POLICY "Packing: Read all" ON "logistics"."t_packing" FOR SELECT USING (true);
-
-
-
 ALTER TABLE "logistics"."t_logistik_manifest" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3121,22 +3300,6 @@ ALTER TABLE "logistics"."t_packing" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "logistics"."t_return_order" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "Allow Public Read Access" ON "management"."t_budget_request" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "management"."t_kpi_weekly" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Mgmt: Budget admin/finance" ON "management"."t_budget_request" USING (("core"."is_admin"() OR ("core"."get_user_role"() = 'Finance & Administration'::"core"."user_role") OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
-
-
-
-CREATE POLICY "Mgmt: KPI admin" ON "management"."t_kpi_weekly" USING (("core"."is_admin"() OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
-
 
 
 ALTER TABLE "management"."penilaian_kerja" ENABLE ROW LEVEL SECURITY;
@@ -3148,156 +3311,13 @@ ALTER TABLE "management"."t_budget_request" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "management"."t_kpi_weekly" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "Allow Public Read Access" ON "production"."t_produksi_order" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "production"."t_qc_inbound" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "production"."t_qc_outbound" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Inbound: Read all" ON "production"."t_qc_inbound" FOR SELECT USING (true);
-
-
-
-CREATE POLICY "Inbpund: Manage" ON "production"."t_qc_inbound" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Produksi & Quality Control'::"core"."user_role"]))));
-
-
-
-CREATE POLICY "Outbound: Manage" ON "production"."t_qc_outbound" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Produksi & Quality Control'::"core"."user_role"]))));
-
-
-
-CREATE POLICY "Outbound: Read all" ON "production"."t_qc_outbound" FOR SELECT USING (true);
-
-
-
-CREATE POLICY "Prod: Staff access" ON "production"."t_produksi_order" USING (("core"."get_user_role"() = ANY (ARRAY['Produksi & Quality Control'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-ALTER TABLE "production"."t_produksi_order" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "production"."t_qc_inbound" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "production"."t_qc_outbound" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "Allow authenticated read access" ON "public"."buku_tamu" FOR SELECT TO "authenticated" USING (true);
-
-
-
-CREATE POLICY "Allow authenticated users to delete buku_tamu" ON "public"."buku_tamu" FOR DELETE TO "authenticated" USING (true);
-
-
-
-CREATE POLICY "Allow authenticated users to select buku_tamu" ON "public"."buku_tamu" FOR SELECT TO "authenticated" USING (true);
-
-
-
-CREATE POLICY "Allow authenticated users to update buku_tamu" ON "public"."buku_tamu" FOR UPDATE TO "authenticated" USING (true);
-
-
-
-CREATE POLICY "Allow public anonymous insert to buku_tamu" ON "public"."buku_tamu" FOR INSERT WITH CHECK (true);
-
-
-
-CREATE POLICY "Allow public insert access" ON "public"."buku_tamu" FOR INSERT WITH CHECK (true);
-
-
-
 ALTER TABLE "public"."buku_tamu" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "Affiliator: Manage" ON "sales"."m_affiliator" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
-
-
-
-CREATE POLICY "Affiliator: Manage" ON "sales"."t_content_planner" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
-
-
-
-CREATE POLICY "Affiliator: Read all" ON "sales"."m_affiliator" FOR SELECT USING (true);
-
-
-
-CREATE POLICY "Affiliator: Read all" ON "sales"."t_content_planner" FOR SELECT USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "sales"."m_affiliator" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "sales"."t_content_planner" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "sales"."t_content_statistic" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "sales"."t_item" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "sales"."t_membership" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Allow Public Read Access" ON "sales"."t_sales_order" FOR SELECT TO "authenticated", "anon" USING (true);
-
-
-
-CREATE POLICY "Live: Staff access" ON "sales"."t_live_performance" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Finance & Administration'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Live: Staff delete" ON "sales"."t_live_performance" FOR DELETE USING (("core"."get_user_role_safe"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Live: Staff insert" ON "sales"."t_live_performance" FOR INSERT WITH CHECK (("core"."get_user_role_safe"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Live: Staff update" ON "sales"."t_live_performance" FOR UPDATE USING (("core"."get_user_role_safe"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Sales: Staff access" ON "sales"."t_item" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Sales: Staff access" ON "sales"."t_membership" TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Sales: Staff access" ON "sales"."t_sales_order" FOR SELECT TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Logistics & Packing'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Sales: Staff access content statistic" ON "sales"."t_content_statistic" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Sales: Staff delete" ON "sales"."t_sales_order" FOR DELETE TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Sales: Staff insert" ON "sales"."t_sales_order" FOR INSERT TO "authenticated" WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
-
-
-CREATE POLICY "Sales: Staff update" ON "sales"."t_sales_order" FOR UPDATE TO "authenticated" USING (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"]))) WITH CHECK (("core"."get_user_role"() = ANY (ARRAY['Creative & Sales'::"core"."user_role", 'Super Admin'::"core"."user_role", 'Developer'::"core"."user_role", 'Management & Strategy'::"core"."user_role"])));
-
 
 
 ALTER TABLE "sales"."m_affiliator" ENABLE ROW LEVEL SECURITY;
@@ -3321,6 +3341,23 @@ ALTER TABLE "sales"."t_membership" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "sales"."t_sales_order" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "core"."app_settings" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "management"."t_max_budget" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "production"."m_bom" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "production"."t_bom_item" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "production"."m_bahan_baku" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "production"."t_stok_mutasi" ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE "production"."t_produksi_bahan" ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- REALTIME PUBLICATION
+-- ============================================================================
 
 
 ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
@@ -3329,674 +3366,526 @@ ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "finance"."t_reimbursement";
 
 
-
 ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "logistics"."t_packing";
 
 
-
-ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "production"."t_produksi_order";
-
+-- ============================================================================
+-- GRANTS
+-- ============================================================================
 
 
 GRANT USAGE ON SCHEMA "core" TO "authenticated";
+
+
 GRANT USAGE ON SCHEMA "core" TO "anon";
+
+
 GRANT USAGE ON SCHEMA "core" TO "service_role";
 
 
-
-
-
-
 GRANT USAGE ON SCHEMA "finance" TO "authenticated";
+
+
 GRANT USAGE ON SCHEMA "finance" TO "service_role";
+
+
 GRANT USAGE ON SCHEMA "finance" TO "anon";
 
 
-
 GRANT USAGE ON SCHEMA "hr" TO "authenticated";
+
+
 GRANT USAGE ON SCHEMA "hr" TO "service_role";
 
 
-
 GRANT USAGE ON SCHEMA "logistics" TO "authenticated";
-GRANT USAGE ON SCHEMA "logistics" TO "anon";
-GRANT USAGE ON SCHEMA "logistics" TO "service_role";
 
+
+GRANT USAGE ON SCHEMA "logistics" TO "anon";
+
+
+GRANT USAGE ON SCHEMA "logistics" TO "service_role";
 
 
 GRANT USAGE ON SCHEMA "management" TO "authenticated";
 
 
-
 GRANT USAGE ON SCHEMA "production" TO "authenticated";
 
 
-
 GRANT USAGE ON SCHEMA "public" TO "postgres";
+
+
 GRANT USAGE ON SCHEMA "public" TO "anon";
+
+
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
+
+
 GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
-
 GRANT USAGE ON SCHEMA "sales" TO "authenticated";
+
+
 GRANT USAGE ON SCHEMA "sales" TO "anon";
+
+
 GRANT USAGE ON SCHEMA "sales" TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "core"."get_user_role"() TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "core"."get_user_role"() TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "core"."is_admin"() TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "core"."is_admin"() TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "core"."prevent_role_escalation"() TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "core"."prevent_role_escalation"() TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "core"."update_timestamp"() TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "core"."update_timestamp"() TO "service_role";
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 GRANT ALL ON FUNCTION "public"."count_budget_requests_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_budget_requests_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_budget_requests_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_cashflow_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_cashflow_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_cashflow_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_content_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_content_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_content_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_invoices_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_invoices_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_invoices_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_journals_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_journals_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_journals_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_kpi_weekly_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_kpi_weekly_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_kpi_weekly_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_live_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_live_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_live_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_manifest_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_manifest_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_manifest_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_packing_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_packing_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_packing_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_produksi_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_produksi_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_produksi_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_qc_inbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_qc_inbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_qc_inbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_qc_outbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_qc_outbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_qc_outbound_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_reimbursements_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_reimbursements_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_reimbursements_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."count_returns_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."count_returns_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."count_returns_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."fn_budget_to_cashflow"() TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."fn_budget_to_cashflow"() TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."fn_budget_to_cashflow"() TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."get_return_status_enum_values"() TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."get_return_status_enum_values"() TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."get_return_status_enum_values"() TO "service_role";
 
 
-
 GRANT ALL ON FUNCTION "public"."handle_sales_order_to_cashflow"() TO "anon";
+
+
 GRANT ALL ON FUNCTION "public"."handle_sales_order_to_cashflow"() TO "authenticated";
+
+
 GRANT ALL ON FUNCTION "public"."handle_sales_order_to_cashflow"() TO "service_role";
 
 
-
-
-
-
-
-
-
-
-
-
 GRANT ALL ON TABLE "core"."m_produk" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "core"."m_produk" TO "service_role";
+
+
 GRANT SELECT ON TABLE "core"."m_produk" TO "anon";
 
 
-
 GRANT ALL ON TABLE "core"."m_varian" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "core"."m_varian" TO "service_role";
+
+
 GRANT SELECT ON TABLE "core"."m_varian" TO "anon";
 
 
-
 GRANT ALL ON TABLE "core"."m_vendor" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "core"."m_vendor" TO "anon";
+
+
 GRANT SELECT ON TABLE "core"."m_vendor" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "core"."profiles" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "core"."profiles" TO "anon";
+
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "core"."profiles" TO "service_role";
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."m_coa" TO "authenticated";
+
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."m_coa" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "finance"."t_asset" TO "service_role";
+
+
 GRANT ALL ON TABLE "finance"."t_asset" TO "authenticated";
 
 
-
 GRANT ALL ON TABLE "finance"."t_asset_depreciation_schedule" TO "service_role";
+
+
 GRANT ALL ON TABLE "finance"."t_asset_depreciation_schedule" TO "authenticated";
 
 
-
 GRANT ALL ON TABLE "finance"."t_cashflow" TO "authenticated";
+
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."t_cashflow" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "finance"."t_invoice" TO "authenticated";
+
+
 GRANT ALL ON TABLE "finance"."t_invoice" TO "anon";
+
+
 GRANT ALL ON TABLE "finance"."t_invoice" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "finance"."t_invoice_item" TO "authenticated";
+
+
 GRANT ALL ON TABLE "finance"."t_invoice_item" TO "anon";
+
+
 GRANT ALL ON TABLE "finance"."t_invoice_item" TO "service_role";
 
 
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."t_journal" TO "authenticated";
+
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."t_journal" TO "service_role";
 
 
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."t_journal_item" TO "authenticated";
+
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."t_journal_item" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "finance"."t_payroll_history" TO "authenticated";
+
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."t_payroll_history" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "finance"."t_reimbursement" TO "authenticated";
+
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."t_reimbursement" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "finance"."t_utang_piutang" TO "authenticated";
+
+
 GRANT ALL ON TABLE "finance"."t_utang_piutang" TO "anon";
+
+
 GRANT ALL ON TABLE "finance"."t_utang_piutang" TO "service_role";
 
 
-
 GRANT SELECT,INSERT,UPDATE ON TABLE "finance"."v_laba_rugi" TO "authenticated";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."v_laba_rugi" TO "service_role";
 
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "finance"."v_laba_rugi" TO "service_role";
 
 
 GRANT ALL ON TABLE "hr"."m_karyawan" TO "authenticated";
 
 
-
 GRANT ALL ON TABLE "hr"."m_sop" TO "authenticated";
-GRANT ALL ON TABLE "hr"."m_sop" TO "service_role";
 
+
+GRANT ALL ON TABLE "hr"."m_sop" TO "service_role";
 
 
 GRANT ALL ON TABLE "hr"."t_attendance" TO "authenticated";
 
 
-
 GRANT ALL ON TABLE "hr"."t_employee_warning" TO "authenticated";
-
 
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "hr"."t_pkwt" TO "authenticated";
 
 
-
 GRANT ALL ON TABLE "logistics"."t_logistik_manifest" TO "authenticated";
+
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "logistics"."t_logistik_manifest" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "logistics"."t_packing" TO "authenticated";
+
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "logistics"."t_packing" TO "service_role";
 
 
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "logistics"."t_return_order" TO "authenticated";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "logistics"."t_return_order" TO "service_role";
 
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "logistics"."t_return_order" TO "service_role";
 
 
 GRANT ALL ON TABLE "management"."penilaian_kerja" TO "authenticated";
 
 
-
 GRANT ALL ON TABLE "management"."t_budget_request" TO "authenticated";
-
 
 
 GRANT ALL ON TABLE "management"."t_kpi_weekly" TO "authenticated";
 
 
-
 GRANT SELECT ON TABLE "management"."view_rekap_penilaian" TO "authenticated";
-
-
-
-GRANT ALL ON TABLE "production"."t_produksi_order" TO "authenticated";
-
 
 
 GRANT ALL ON TABLE "production"."t_qc_inbound" TO "authenticated";
 
 
-
 GRANT ALL ON TABLE "production"."t_qc_outbound" TO "authenticated";
 
 
-
 GRANT ALL ON TABLE "public"."buku_tamu" TO "anon";
+
+
 GRANT ALL ON TABLE "public"."buku_tamu" TO "authenticated";
+
+
 GRANT ALL ON TABLE "public"."buku_tamu" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "sales"."m_affiliator" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "sales"."m_affiliator" TO "anon";
+
+
 GRANT SELECT ON TABLE "sales"."m_affiliator" TO "service_role";
 
 
-
 GRANT ALL ON TABLE "sales"."t_content_planner" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "sales"."t_content_planner" TO "anon";
+
+
 GRANT SELECT ON TABLE "sales"."t_content_planner" TO "service_role";
 
 
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "sales"."t_content_statistic" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "sales"."t_content_statistic" TO "service_role";
 
 
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "sales"."t_item" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "sales"."t_item" TO "service_role";
+
+
 GRANT SELECT ON TABLE "sales"."t_item" TO "anon";
 
 
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "sales"."t_live_performance" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "sales"."t_live_performance" TO "service_role";
 
 
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE "sales"."t_membership" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "sales"."t_membership" TO "service_role";
+
+
 GRANT SELECT ON TABLE "sales"."t_membership" TO "anon";
 
 
-
 GRANT ALL ON TABLE "sales"."t_sales_order" TO "authenticated";
+
+
 GRANT SELECT ON TABLE "sales"."t_sales_order" TO "anon";
+
+
 GRANT SELECT,INSERT ON TABLE "sales"."t_sales_order" TO "service_role";
 
 
+GRANT ALL ON TABLE "core"."app_settings" TO "authenticated", "service_role";
 
+GRANT ALL ON TABLE "management"."t_max_budget" TO "authenticated", "service_role";
 
+GRANT ALL PRIVILEGES ON "production"."m_bom" TO authenticated, service_role;
 
+GRANT ALL PRIVILEGES ON "production"."t_bom_item" TO authenticated, service_role;
 
+GRANT ALL PRIVILEGES ON "production"."m_bahan_baku" TO authenticated, service_role;
 
+GRANT ALL PRIVILEGES ON "production"."t_stok_mutasi" TO authenticated, service_role;
 
+GRANT ALL PRIVILEGES ON "production"."t_produksi_bahan" TO authenticated, service_role;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "core" GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "core" GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "service_role";
+GRANT ALL PRIVILEGES ON production.t_qc_inbound TO authenticated, service_role;
 
+GRANT ALL PRIVILEGES ON production.t_qc_outbound TO authenticated, service_role;
 
+GRANT ALL ON TABLE finance.t_payroll_item TO authenticated;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "finance" GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "service_role";
+GRANT SELECT, INSERT, DELETE, UPDATE ON TABLE finance.t_payroll_item TO service_role;
 
+GRANT EXECUTE ON FUNCTION core.is_developer() TO authenticated, service_role;
 
+GRANT EXECUTE ON FUNCTION core.is_strategic() TO authenticated, service_role;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "logistics" GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "logistics" GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "service_role";
+GRANT EXECUTE ON FUNCTION public.fn_dashboard_metrics TO authenticated, service_role;
 
+GRANT EXECUTE ON FUNCTION public.set_max_budget TO authenticated, service_role;
 
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
-
-
-
-
-
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
-
-
-
-
-
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
-
-
-
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "sales" GRANT SELECT ON TABLES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "sales" GRANT SELECT ON TABLES TO "service_role";
-
-
---
--- Trigger to clean up t_journal when a payroll record is deleted (cascades to t_journal_item and t_cashflow)
---
-CREATE OR REPLACE FUNCTION "finance"."fn_delete_journal_entry_on_payroll_delete"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    AS $$
-DECLARE
-    v_no_bukti varchar;
-BEGIN
-    v_no_bukti := 'PAY-' || OLD.employee_id || '-' || TO_CHAR(OLD.bulan, 'YYYYMM');
-    DELETE FROM "finance"."t_journal" WHERE "no_bukti" = v_no_bukti;
-    RETURN OLD;
-END;
-$$;
-
-ALTER FUNCTION "finance"."fn_delete_journal_entry_on_payroll_delete"() OWNER TO "postgres";
-
-CREATE OR REPLACE TRIGGER "trg_delete_journal_payroll" BEFORE DELETE ON "finance"."t_payroll_history" FOR EACH ROW EXECUTE FUNCTION "finance"."fn_delete_journal_entry_on_payroll_delete"();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+GRANT EXECUTE ON FUNCTION production.create_production_order_with_materials TO authenticated, service_role;
 
