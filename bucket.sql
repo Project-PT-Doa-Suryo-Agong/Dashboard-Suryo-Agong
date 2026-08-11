@@ -1,9 +1,10 @@
-INSERT INTO "storage"."buckets" (id, name, public)
+INSERT INTO "storage"."buckets" (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
-  ('employee_documents', 'employee_documents', false),
-  ('reimbursements', 'reimbursements', false),
-  ('products', 'products', true),
-  ('returns', 'returns', false)
+  ('employee_documents', 'employee_documents', false, NULL, NULL),
+  ('reimbursements', 'reimbursements', false, NULL, NULL),
+  ('products', 'products', true, NULL, NULL),
+  ('returns', 'returns', false, NULL, NULL),
+  ('branding', 'branding', true, 2097152, ARRAY['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/x-icon'])
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert Policies
