@@ -1329,6 +1329,222 @@ END;
 $$;
 
 
+CREATE OR REPLACE FUNCTION finance.fn_post_depreciation_journal(
+    p_schedule_id UUID
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'finance', 'core', 'public'
+AS $$
+DECLARE
+    v_schedule  RECORD;
+    v_asset     RECORD;
+    v_journal_id UUID;
+    v_no_bukti  TEXT;
+    v_keterangan TEXT;
+BEGIN
+    -- 1. SELECT + LOCK schedule (FOR UPDATE mencegah race condition)
+    SELECT s.* INTO v_schedule
+    FROM finance.t_asset_depreciation_schedule s
+    WHERE s.id = p_schedule_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'SCHEDULE_NOT_FOUND',
+            'message', 'Schedule tidak ditemukan.'
+        );
+    END IF;
+
+    -- 2. Cegah duplicate posting
+    IF v_schedule.is_posted THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'ALREADY_POSTED',
+            'message', 'Schedule ini sudah terposting.',
+            'journal_id', v_schedule.journal_id
+        );
+    END IF;
+
+    -- 3. Ambil data asset (COA ditentukan dari database, bukan frontend)
+    SELECT a.* INTO v_asset
+    FROM finance.t_asset a
+    WHERE a.id = v_schedule.asset_id;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'ASSET_NOT_FOUND',
+            'message', 'Data aset tidak ditemukan.'
+        );
+    END IF;
+
+    -- 4. Generate no_bukti dan keterangan
+    v_no_bukti   := 'AST-DEP-' || v_asset.kode_aset || '-' || TO_CHAR(v_schedule.periode, 'YYYY-MM-DD');
+    v_keterangan := 'Penyusutan Aset Tetap: ' || v_asset.nama_aset || ' - Periode ' || TO_CHAR(v_schedule.periode, 'YYYY-MM-DD');
+
+    -- 5. INSERT jurnal header
+    INSERT INTO finance.t_journal (tanggal, no_bukti, keterangan)
+    VALUES (v_schedule.periode, v_no_bukti, v_keterangan)
+    RETURNING id INTO v_journal_id;
+
+    -- 6. INSERT debit — Beban Penyusutan (coa_depr_expense_id)
+    INSERT INTO finance.t_journal_item (journal_id, coa_id, debit, kredit)
+    VALUES (v_journal_id, v_asset.coa_depr_expense_id, v_schedule.jumlah_penyusutan, 0);
+
+    -- 7. INSERT kredit — Akumulasi Penyusutan (coa_depr_accumulation_id)
+    INSERT INTO finance.t_journal_item (journal_id, coa_id, debit, kredit)
+    VALUES (v_journal_id, v_asset.coa_depr_accumulation_id, 0, v_schedule.jumlah_penyusutan);
+
+    -- 8. UPDATE schedule — tandai sudah terposting
+    UPDATE finance.t_asset_depreciation_schedule
+    SET is_posted = true,
+        journal_id = v_journal_id,
+        updated_at = NOW()
+    WHERE id = p_schedule_id;
+
+    -- 9. Return sukses
+    RETURN jsonb_build_object(
+        'success', true,
+        'journal_id', v_journal_id,
+        'message', 'Jurnal penyusutan berhasil diposting.'
+    );
+EXCEPTION WHEN OTHERS THEN
+    -- Auto-rollback oleh PostgreSQL — return error
+    RETURN jsonb_build_object(
+        'success', false,
+        'error_code', 'DB_ERROR',
+        'message', SQLERRM
+    );
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION finance.fn_post_asset_acquisition_journal(
+    p_asset_id UUID,
+    p_coa_kas_id UUID
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'finance', 'core', 'public'
+AS $$
+DECLARE
+    v_asset          RECORD;
+    v_coa_kas_exists BOOLEAN;
+    v_journal_id     UUID;
+    v_journal_number TEXT;
+    v_try            INTEGER := 0;
+BEGIN
+    -- 1. Validasi aset
+    SELECT a.* INTO v_asset
+    FROM finance.t_asset a
+    WHERE a.id = p_asset_id;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'ASSET_NOT_FOUND',
+            'message', 'Data aset tidak ditemukan.'
+        );
+    END IF;
+
+    -- 2. Cegah duplicate posting (idempotent)
+    IF v_asset.journal_id IS NOT NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'ALREADY_POSTED',
+            'message', 'Aset ini sudah memiliki jurnal akuisisi.',
+            'journal_id', v_asset.journal_id
+        );
+    END IF;
+
+    -- 3. Validasi nominal & COA aset
+    IF COALESCE(v_asset.nilai_perolehan, 0) <= 0 THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'INVALID_AMOUNT',
+            'message', 'Nilai perolehan aset harus lebih besar dari 0.'
+        );
+    END IF;
+
+    IF v_asset.coa_asset_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'ASSET_COA_MISSING',
+            'message', 'Aset belum memiliki akun aset (coa_asset_id).'
+        );
+    END IF;
+
+    -- 4. Validasi akun kas yang dipilih
+    SELECT EXISTS (
+        SELECT 1 FROM finance.m_coa c WHERE c.id = p_coa_kas_id
+    ) INTO v_coa_kas_exists;
+
+    IF NOT v_coa_kas_exists THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error_code', 'COA_NOT_FOUND',
+            'message', 'Akun kas yang dipilih tidak ditemukan di chart of accounts.'
+        );
+    END IF;
+
+    -- 5. Nomor jurnal: JRN-MMYY-NNNNN, cari slot bebas (count-based)
+    v_journal_id := gen_random_uuid();
+
+    LOOP
+        v_try := v_try + 1;
+        v_journal_number := 'JRN-' || TO_CHAR(v_asset.tanggal_perolehan, 'MMYY') || '-'
+                            || LPAD(v_try::TEXT, 5, '0');
+        EXIT WHEN NOT EXISTS (
+            SELECT 1 FROM finance.t_journal WHERE journal_number = v_journal_number
+        );
+    END LOOP;
+
+    -- 6. Insert header jurnal
+    INSERT INTO finance.t_journal (
+        id, no_bukti, tanggal, keterangan, referensi_id, journal_number, created_at, updated_at
+    ) VALUES (
+        v_journal_id,
+        'AST-AKQ-' || v_asset.kode_aset,
+        v_asset.tanggal_perolehan,
+        'Akuisisi Aset Tetap: ' || v_asset.nama_aset || ' (' || v_asset.kode_aset || ')',
+        v_asset.id,
+        v_journal_number,
+        NOW(),
+        NOW()
+    );
+
+    -- 7. Insert item DEBIT: Aset Tetap
+    INSERT INTO finance.t_journal_item (id, journal_id, coa_id, debit, kredit, created_at, updated_at)
+    VALUES (gen_random_uuid(), v_journal_id, v_asset.coa_asset_id, v_asset.nilai_perolehan, 0, NOW(), NOW());
+
+    -- 8. Insert item KREDIT: Kas
+    INSERT INTO finance.t_journal_item (id, journal_id, coa_id, debit, kredit, created_at, updated_at)
+    VALUES (gen_random_uuid(), v_journal_id, p_coa_kas_id, 0, v_asset.nilai_perolehan, NOW(), NOW());
+
+    -- 9. Tandai aset sudah terposting
+    UPDATE finance.t_asset
+    SET journal_id = v_journal_id,
+        updated_at = NOW()
+    WHERE id = p_asset_id;
+
+    -- 10. Return sukses
+    RETURN jsonb_build_object(
+        'success', true,
+        'journal_id', v_journal_id,
+        'message', 'Jurnal akuisisi aset berhasil diposting.'
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+        'success', false,
+        'error_code', 'DB_ERROR',
+        'message', SQLERRM
+    );
+END;
+$$;
+
+
 -- ----------------------------------------------------------------------------
 -- Fungsi baru (DB-ONLY yang ditemukan audit / migration live)
 -- ----------------------------------------------------------------------------
@@ -1569,12 +1785,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION "public"."count_sales_orders_this_month"("start_of_month" timestamp with time zone, "start_of_next_month" timestamp with time zone) RETURNS bigint
-    LANGUAGE "sql" SECURITY DEFINER
-    AS $$
-  SELECT COUNT(*)::bigint FROM sales.t_sales_order WHERE created_at >= start_of_month AND created_at < start_of_next_month;
-$$;
-
 
 -- ============================================================================
 -- TABLES
@@ -1648,6 +1858,16 @@ CREATE TABLE IF NOT EXISTS "core"."app_settings" (
     favicon_url "text",
     updated_by "uuid" REFERENCES core.profiles(id) ON DELETE SET NULL,
     updated_at timestamp with time zone DEFAULT "now"(),
+    "landing_background" "text",
+    "landing_primary" "text",
+    "landing_secondary" "text",
+    "login_background" "text",
+    "login_primary" "text",
+    "login_secondary" "text",
+    "dashboard_background" "text",
+    "dashboard_primary" "text",
+    "dashboard_secondary" "text",
+    "sidebar_background" "text",
     CONSTRAINT app_settings_pkey PRIMARY KEY (id),
     CONSTRAINT app_settings_single_row CHECK (id = 1)
 );
@@ -1874,7 +2094,8 @@ CREATE TABLE IF NOT EXISTS "finance"."t_utang_piutang" (
     "kas" "finance"."tipe_kas" DEFAULT 'tidak'::"finance"."tipe_kas",
     "coa" "uuid",
     "tipe" "finance"."tipe" NOT NULL,
-    "overdue" integer DEFAULT 0
+    "overdue" integer DEFAULT 0,
+    "employee_id" "uuid"
 );
 
 
@@ -2097,9 +2318,9 @@ ALTER TABLE "management"."t_max_budget" OWNER TO postgres;
 
 
 CREATE TABLE IF NOT EXISTS "production"."m_bom" (
-    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
-    "product_id" ""uuid"" NOT NULL,
-    "nama_resep" ""text"",
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "product_id" "uuid" NOT NULL,
+    "nama_resep" "text",
     "status_aktif" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
@@ -2113,9 +2334,9 @@ ALTER TABLE "production"."m_bom" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "production"."t_bom_item" (
-    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
-    "bom_id" ""uuid"" NOT NULL,
-    "bahan_baku_id" ""uuid"" NOT NULL,
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "bom_id" "uuid" NOT NULL,
+    "bahan_baku_id" "uuid" NOT NULL,
     "qty_per_unit" numeric NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     CONSTRAINT "t_bom_item_pkey" PRIMARY KEY ("id"),
@@ -2129,11 +2350,11 @@ ALTER TABLE "production"."t_bom_item" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "production"."m_bahan_baku" (
-    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
-    "kode_bahan" ""text"" NOT NULL,
-    "nama_bahan" ""text"" NOT NULL,
-    "kategori" ""text"",
-    "satuan" ""text"" NOT NULL,
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "kode_bahan" "text" NOT NULL,
+    "nama_bahan" "text" NOT NULL,
+    "kategori" "text",
+    "satuan" "text" NOT NULL,
     "stok" numeric DEFAULT 0 NOT NULL,
     "minimum_stok" numeric DEFAULT 0 NOT NULL,
     "status_aktif" boolean DEFAULT true NOT NULL,
@@ -2150,9 +2371,9 @@ ALTER TABLE "production"."m_bahan_baku" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "production"."t_produksi_bahan" (
-    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
-    "produksi_order_id" ""uuid"" NOT NULL,
-    "bahan_baku_id" ""uuid"" NOT NULL,
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "produksi_order_id" "uuid" NOT NULL,
+    "bahan_baku_id" "uuid" NOT NULL,
     "jumlah" numeric NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     CONSTRAINT "t_produksi_bahan_pkey" PRIMARY KEY ("id"),
@@ -2165,13 +2386,13 @@ ALTER TABLE "production"."t_produksi_bahan" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "production"."t_stok_mutasi" (
-    "id" ""uuid"" DEFAULT "gen_random_uuid"() NOT NULL,
-    "bahan_baku_id" ""uuid"" NOT NULL,
-    "produksi_order_id" ""uuid"", -- Hubungan ke order produksi jika tipe = 'produksi'
-    "tipe" ""text"" NOT NULL,
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "bahan_baku_id" "uuid" NOT NULL,
+    "produksi_order_id" "uuid", -- Hubungan ke order produksi jika tipe = 'produksi'
+    "tipe" "text" NOT NULL,
     "jumlah" numeric NOT NULL,
-    "keterangan" ""text"",
-    "operator" ""text"" NOT NULL,
+    "keterangan" "text",
+    "operator" "text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     CONSTRAINT "t_stok_mutasi_pkey" PRIMARY KEY ("id"),
     CONSTRAINT "t_stok_mutasi_bahan_baku_id_fkey" FOREIGN KEY ("bahan_baku_id") REFERENCES "production"."m_bahan_baku"("id") ON DELETE RESTRICT,
@@ -2183,8 +2404,24 @@ CREATE TABLE IF NOT EXISTS "production"."t_stok_mutasi" (
 ALTER TABLE "production"."t_stok_mutasi" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "production"."t_qc_inbound" (
+CREATE TABLE IF NOT EXISTS "production"."t_produksi_order" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "vendor_id" "uuid",
+    "product_id" "uuid",
+    "quantity" integer,
+    "status" "production"."production_status" DEFAULT 'draft'::"production"."production_status",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "produksi_number" "text",
+    CONSTRAINT "t_produksi_order_quantity_check" CHECK (("quantity" > 0))
+);
+
+
+ALTER TABLE "production"."t_produksi_order" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "production"."t_qc_inbound" (
+    "produksi_order_id" "uuid" NOT NULL,
     "hasil" "production"."qc_result",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "qc_in_number" "text",
@@ -2199,7 +2436,7 @@ ALTER TABLE "production"."t_qc_inbound" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "production"."t_qc_outbound" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "produksi_order_id" "uuid" NOT NULL,
     "hasil" "production"."qc_result",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "qc_out_number" "text",
@@ -2510,6 +2747,10 @@ ALTER TABLE ONLY "production"."t_qc_outbound"
     ADD CONSTRAINT "t_qc_outbound_pkey" PRIMARY KEY ("produksi_order_id");
 
 
+ALTER TABLE ONLY "production"."t_produksi_order"
+    ADD CONSTRAINT "t_produksi_order_pkey" PRIMARY KEY ("id");
+
+
 ALTER TABLE ONLY "public"."buku_tamu"
     ADD CONSTRAINT "buku_tamu_pkey" PRIMARY KEY ("id");
 
@@ -2627,6 +2868,10 @@ ALTER TABLE ONLY "finance"."t_utang_piutang"
     ADD CONSTRAINT "t_utang_piutang_coa_fkey" FOREIGN KEY ("coa") REFERENCES "finance"."m_coa"("id");
 
 
+ALTER TABLE ONLY "finance"."t_utang_piutang"
+    ADD CONSTRAINT "t_utang_piutang_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "hr"."m_karyawan"("id") ON DELETE SET NULL;
+
+
 ALTER TABLE ONLY "hr"."m_karyawan"
     ADD CONSTRAINT "m_karyawan_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "core"."profiles"("id") ON DELETE CASCADE;
 
@@ -2696,6 +2941,22 @@ ALTER TABLE ONLY "production"."t_qc_inbound"
 
 ALTER TABLE ONLY "production"."t_qc_inbound"
     ADD CONSTRAINT "t_qc_inbound_mutasi_stok_id_fkey" FOREIGN KEY ("mutasi_stok_id") REFERENCES "production"."t_stok_mutasi"("id") ON DELETE SET NULL;
+
+
+ALTER TABLE ONLY "production"."t_qc_inbound"
+    ADD CONSTRAINT "t_qc_inbound_produksi_order_id_fkey" FOREIGN KEY ("produksi_order_id") REFERENCES "production"."t_produksi_order"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "production"."t_qc_outbound"
+    ADD CONSTRAINT "t_qc_outbound_produksi_order_id_fkey" FOREIGN KEY ("produksi_order_id") REFERENCES "production"."t_produksi_order"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "production"."t_produksi_order"
+    ADD CONSTRAINT "t_produksi_order_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "core"."m_produk"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "production"."t_produksi_order"
+    ADD CONSTRAINT "t_produksi_order_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "core"."m_vendor"("id") ON DELETE CASCADE;
 
 -- ============================================================================
 -- UNIQUE CONSTRAINTS
@@ -2773,6 +3034,9 @@ CREATE UNIQUE INDEX "idx_qc_in_number" ON "production"."t_qc_inbound" USING "btr
 
 
 CREATE UNIQUE INDEX "idx_qc_out_number" ON "production"."t_qc_outbound" USING "btree" ("qc_out_number");
+
+
+CREATE UNIQUE INDEX "idx_produksi_number" ON "production"."t_produksi_order" USING "btree" ("produksi_number");
 
 
 CREATE UNIQUE INDEX "idx_affiliator_number" ON "sales"."m_affiliator" USING "btree" ("affiliator_number");
@@ -2899,6 +3163,9 @@ CREATE OR REPLACE TRIGGER tr_upd_finance_t_payroll_item
     BEFORE UPDATE ON finance.t_payroll_item
     FOR EACH ROW
     EXECUTE FUNCTION core.update_timestamp();
+
+
+CREATE OR REPLACE TRIGGER "tr_upd_production_t_produksi_order" BEFORE UPDATE ON "production"."t_produksi_order" FOR EACH ROW EXECUTE FUNCTION "core"."update_timestamp"();
 
 -- ============================================================================
 -- RLS POLICIES
@@ -3109,6 +3376,15 @@ CREATE POLICY "Mgmt: Budget admin/finance" ON "management"."t_budget_request" US
 CREATE POLICY "Mgmt: KPI admin" ON "management"."t_kpi_weekly" USING (("core"."is_admin"() OR ("core"."get_user_role"() = 'Super Admin'::"core"."user_role")));
 
 
+CREATE POLICY "Allow Public Read Access" ON "production"."t_produksi_order" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+CREATE POLICY "Prod: Staff access" ON "production"."t_produksi_order" USING (("core"."get_user_role"() = ANY (ARRAY['Produksi & Quality Control'::"core"."user_role", 'Super Admin'::"core"."user_role"])));
+
+
+CREATE POLICY "Prod: Developer access" ON "production"."t_produksi_order" FOR ALL TO "authenticated" USING (("core"."get_user_role_safe"() = 'Developer'::"core"."user_role")) WITH CHECK (("core"."get_user_role_safe"() = 'Developer'::"core"."user_role"));
+
+
 CREATE POLICY "Allow Public Read Access" ON "production"."t_qc_inbound" FOR SELECT TO "authenticated", "anon" USING (true);
 
 
@@ -3226,7 +3502,7 @@ CREATE POLICY "Allow all operations for authenticated users on m_bahan_baku" ON 
 
 CREATE POLICY "Allow all operations for authenticated users on t_stok_mutasi" ON "production"."t_stok_mutasi" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
 
-CREATE POLICY "Allow all operations for authenticated users on t_produksi_bahan" ON "production"."t_produksi_bahan" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations for authenticated users on t_produksi_baha" ON "production"."t_produksi_bahan" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
 
 -- ============================================================================
 -- ROW LEVEL SECURITY ENABLE
@@ -3311,6 +3587,9 @@ ALTER TABLE "management"."t_budget_request" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "management"."t_kpi_weekly" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "production"."t_produksi_order" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "production"."t_qc_inbound" ENABLE ROW LEVEL SECURITY;
 
 
@@ -3367,6 +3646,9 @@ ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "finance"."t_reimbursement"
 
 
 ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "logistics"."t_packing";
+
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "production"."t_produksi_order";
 
 
 -- ============================================================================
@@ -3871,6 +4153,8 @@ GRANT ALL PRIVILEGES ON "production"."t_stok_mutasi" TO authenticated, service_r
 
 GRANT ALL PRIVILEGES ON "production"."t_produksi_bahan" TO authenticated, service_role;
 
+GRANT ALL PRIVILEGES ON "production"."t_produksi_order" TO authenticated, service_role;
+
 GRANT ALL PRIVILEGES ON production.t_qc_inbound TO authenticated, service_role;
 
 GRANT ALL PRIVILEGES ON production.t_qc_outbound TO authenticated, service_role;
@@ -3888,4 +4172,8 @@ GRANT EXECUTE ON FUNCTION public.fn_dashboard_metrics TO authenticated, service_
 GRANT EXECUTE ON FUNCTION public.set_max_budget TO authenticated, service_role;
 
 GRANT EXECUTE ON FUNCTION production.create_production_order_with_materials TO authenticated, service_role;
+
+GRANT EXECUTE ON FUNCTION finance.fn_post_depreciation_journal(uuid) TO authenticated, service_role;
+
+GRANT EXECUTE ON FUNCTION finance.fn_post_asset_acquisition_journal(uuid, uuid) TO authenticated, service_role;
 
