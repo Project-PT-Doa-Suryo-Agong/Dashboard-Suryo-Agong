@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/supabase/auth-context";
 import { getBrandingConfig } from "@/lib/services/branding.service";
+import { primaryHoverColor } from "@/lib/utils/color";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -56,8 +57,22 @@ export default async function RootLayout({
   try {
     const branding = await getBrandingConfig();
     brandCssVars = {
-      "--brand-primary": branding.primaryColor,
-      "--brand-secondary": branding.secondaryColor,
+      "--brand-primary": branding.dashboardPrimary,
+      "--brand-primary-hover": primaryHoverColor(branding.dashboardPrimary),
+      "--brand-secondary": branding.dashboardSecondary,
+      "--brand-landing-background": branding.landingBackground,
+      "--brand-landing-primary": branding.landingPrimary,
+      "--brand-landing-primary-hover": primaryHoverColor(branding.landingPrimary),
+      "--brand-landing-secondary": branding.landingSecondary,
+      "--brand-login-background": branding.loginBackground,
+      "--brand-login-primary": branding.loginPrimary,
+      "--brand-login-primary-hover": primaryHoverColor(branding.loginPrimary),
+      "--brand-login-secondary": branding.loginSecondary,
+      "--brand-dashboard-background": branding.dashboardBackground,
+      "--brand-dashboard-primary": branding.dashboardPrimary,
+      "--brand-dashboard-primary-hover": primaryHoverColor(branding.dashboardPrimary),
+      "--brand-dashboard-secondary": branding.dashboardSecondary,
+      "--brand-sidebar-background": branding.sidebarBackground,
     } as React.CSSProperties;
   } catch {
     brandCssVars = {};

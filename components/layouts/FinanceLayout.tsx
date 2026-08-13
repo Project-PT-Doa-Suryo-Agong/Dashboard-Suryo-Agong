@@ -51,7 +51,7 @@ export default function FinanceClientLayout({
         onClose={() => setIsMobileSidebarOpen(false)}
       />
 
-      <main className="flex-1 min-w-0 w-full md:ml-0 overflow-x-hidden flex flex-col bg-slate-100/50">
+      <main className="flex-1 min-w-0 w-full md:ml-0 overflow-x-hidden flex flex-col bg-dashboard-background">
         <Topbar
           title="Finance Dashboard"
           user={topbarUser}

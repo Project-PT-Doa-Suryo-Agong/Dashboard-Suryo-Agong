@@ -470,7 +470,7 @@ export default function FinanceInvoicePage() {
               <div><p className="text-slate-500 text-xs font-semibold uppercase">Klien</p><p className="mt-1 font-semibold text-slate-800">{detailData.invoice.pelanggan}</p></div>
               <div><p className="text-slate-500 text-xs font-semibold uppercase">Tanggal</p><p className="mt-1 text-slate-800">{formatDate(detailData.invoice.tanggal)}</p></div>
               <div><p className="text-slate-500 text-xs font-semibold uppercase">Jatuh Tempo</p><p className="mt-1 text-slate-800">{detailData.invoice.jatuh_tempo ? formatDate(detailData.invoice.jatuh_tempo) : "-"}</p></div>
-              <div><p className="text-slate-500 text-xs font-semibold uppercase">Total Nominal</p><p className="mt-1 text-slate-800 font-bold text-[#BC934B]">{formatRupiah(detailData.invoice.total_amount)}</p></div>
+              <div><p className="text-slate-500 text-xs font-semibold uppercase">Total Nominal</p><p className="mt-1 text-slate-800 font-bold text-primary">{formatRupiah(detailData.invoice.total_amount)}</p></div>
               <div><p className="text-slate-500 text-xs font-semibold uppercase">DP / Bayar Cash</p><p className="mt-1 text-slate-800 font-semibold">{formatRupiah(detailData.invoice.bayar_cash ?? 0)}</p></div>
               <div><p className="text-slate-500 text-xs font-semibold uppercase">Bayar Piutang</p><p className="mt-1 text-slate-800 font-semibold">{formatRupiah(detailData.invoice.bayar_piutang ?? 0)}</p></div>
               <div className="col-span-2"><p className="text-slate-500 text-xs font-semibold uppercase">Nomor Faktur Pajak</p><p className="mt-1 font-mono text-slate-800">{detailData.invoice.nomor_faktur_pajak || "-"}</p></div>

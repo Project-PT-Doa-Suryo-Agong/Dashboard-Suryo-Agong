@@ -10,6 +10,10 @@ import {
   Lock,
   CheckCircle2,
   XCircle,
+  Eye,
+  Globe,
+  LogIn,
+  LayoutDashboard,
 } from "lucide-react";
 import type { ApiError, ApiSuccess } from "@/types/api";
 import { apiFetch } from "@/lib/utils/api-fetch";
@@ -19,7 +23,9 @@ import {
   extractBrandingStoragePath,
   validateBrandingAsset,
 } from "@/lib/utils/upload-branding-asset";
+import { primaryHoverColor } from "@/lib/utils/color";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ThemePreview from "@/components/ui/ThemePreview";
 
 type BrandingSettings = {
   companyName: string;
@@ -28,6 +34,16 @@ type BrandingSettings = {
   secondaryColor: string;
   logoUrl: string;
   faviconUrl: string;
+  landingBackground: string;
+  landingPrimary: string;
+  landingSecondary: string;
+  loginBackground: string;
+  loginPrimary: string;
+  loginSecondary: string;
+  dashboardBackground: string;
+  dashboardPrimary: string;
+  dashboardSecondary: string;
+  sidebarBackground: string;
 };
 
 type BrandingPayload = {
@@ -36,6 +52,29 @@ type BrandingPayload = {
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
 
+const INPUT_CLASS_NAME =
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
+
+function applyBrandTheme(settings: BrandingSettings) {
+  const el = document.documentElement;
+  el.style.setProperty("--brand-primary", settings.dashboardPrimary);
+  el.style.setProperty("--brand-primary-hover", primaryHoverColor(settings.dashboardPrimary));
+  el.style.setProperty("--brand-secondary", settings.dashboardSecondary);
+  el.style.setProperty("--brand-landing-background", settings.landingBackground);
+  el.style.setProperty("--brand-landing-primary", settings.landingPrimary);
+  el.style.setProperty("--brand-landing-primary-hover", primaryHoverColor(settings.landingPrimary));
+  el.style.setProperty("--brand-landing-secondary", settings.landingSecondary);
+  el.style.setProperty("--brand-login-background", settings.loginBackground);
+  el.style.setProperty("--brand-login-primary", settings.loginPrimary);
+  el.style.setProperty("--brand-login-primary-hover", primaryHoverColor(settings.loginPrimary));
+  el.style.setProperty("--brand-login-secondary", settings.loginSecondary);
+  el.style.setProperty("--brand-dashboard-background", settings.dashboardBackground);
+  el.style.setProperty("--brand-dashboard-primary", settings.dashboardPrimary);
+  el.style.setProperty("--brand-dashboard-primary-hover", primaryHoverColor(settings.dashboardPrimary));
+  el.style.setProperty("--brand-dashboard-secondary", settings.dashboardSecondary);
+  el.style.setProperty("--brand-sidebar-background", settings.sidebarBackground);
+}
+
 async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> {
   const payload = (await response.json()) as ApiSuccess<T> | ApiError;
   if (!response.ok || !payload.success) {
@@ -43,6 +82,48 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
     throw new Error(message);
   }
   return payload;
+}
+
+function ColorField({
+  id,
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="block text-xs font-semibold text-slate-600">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          disabled={disabled}
+          className="h-10 w-12 cursor-pointer rounded-lg border border-slate-200 bg-white p-1 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <input
+          id={id}
+          type="text"
+          maxLength={7}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className={INPUT_CLASS_NAME}
+          placeholder="#BC934B"
+        />
+      </div>
+      <p className="text-[11px] text-slate-400">Format HEX 6 digit (contoh: #BC934B).</p>
+    </div>
+  );
 }
 
 export default function WebCustomizationPage() {
@@ -56,6 +137,16 @@ export default function WebCustomizationPage() {
     secondaryColor: "#1e293b",
     logoUrl: "/logo.png",
     faviconUrl: "/icon.png",
+    landingBackground: "#33465c",
+    landingPrimary: "#BC934B",
+    landingSecondary: "#1e293b",
+    loginBackground: "#334155",
+    loginPrimary: "#BC934B",
+    loginSecondary: "#1e293b",
+    dashboardBackground: "#f1f5f9",
+    dashboardPrimary: "#BC934B",
+    dashboardSecondary: "#1e293b",
+    sidebarBackground: "#1e293b",
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -124,11 +215,24 @@ export default function WebCustomizationPage() {
   };
 
   const validateColors = (): string | null => {
-    if (!HEX_COLOR_REGEX.test(settings.primaryColor)) {
-      return "Primary color harus berupa kode HEX 6 digit (contoh: #BC934B).";
-    }
-    if (!HEX_COLOR_REGEX.test(settings.secondaryColor)) {
-      return "Secondary color harus berupa kode HEX 6 digit (contoh: #1e293b).";
+    const colorLabels: Array<[keyof BrandingSettings, string]> = [
+      ["primaryColor", "Primary color"],
+      ["secondaryColor", "Secondary color"],
+      ["landingBackground", "Background landing page"],
+      ["landingPrimary", "Primary landing page"],
+      ["landingSecondary", "Secondary landing page"],
+      ["loginBackground", "Background login page"],
+      ["loginPrimary", "Primary login page"],
+      ["loginSecondary", "Secondary login page"],
+      ["dashboardBackground", "Background dashboard"],
+      ["dashboardPrimary", "Primary dashboard"],
+      ["dashboardSecondary", "Secondary dashboard"],
+      ["sidebarBackground", "Background sidebar"],
+    ];
+    for (const [key, label] of colorLabels) {
+      if (!HEX_COLOR_REGEX.test(settings[key])) {
+        return `${label} harus berupa kode HEX 6 digit (contoh: #BC934B).`;
+      }
     }
     return null;
   };
@@ -174,12 +278,23 @@ export default function WebCustomizationPage() {
           appName: settings.appName.trim(),
           primaryColor: settings.primaryColor,
           secondaryColor: settings.secondaryColor,
+          landingBackground: settings.landingBackground,
+          landingPrimary: settings.landingPrimary,
+          landingSecondary: settings.landingSecondary,
+          loginBackground: settings.loginBackground,
+          loginPrimary: settings.loginPrimary,
+          loginSecondary: settings.loginSecondary,
+          dashboardBackground: settings.dashboardBackground,
+          dashboardPrimary: settings.dashboardPrimary,
+          dashboardSecondary: settings.dashboardSecondary,
+          sidebarBackground: settings.sidebarBackground,
           logoUrl,
           faviconUrl,
         }),
       });
       const payload = await parseJsonResponse<BrandingPayload>(response);
       setSettings(payload.data.settings);
+      applyBrandTheme(payload.data.settings);
       setLogoFile(null);
       setFaviconFile(null);
       setMessage({ type: "success", text: "Branding berhasil disimpan. Perubahan langsung berlaku di seluruh aplikasi." });
@@ -206,6 +321,7 @@ export default function WebCustomizationPage() {
       });
       const payload = await parseJsonResponse<BrandingPayload>(response);
       setSettings(payload.data.settings);
+      applyBrandTheme(payload.data.settings);
       setLogoFile(null);
       setFaviconFile(null);
       setMessage({ type: "success", text: "Branding berhasil direset ke default." });
@@ -219,8 +335,7 @@ export default function WebCustomizationPage() {
     }
   };
 
-  const inputClassName =
-    "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
+  const inputClassName = INPUT_CLASS_NAME;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -266,11 +381,11 @@ export default function WebCustomizationPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="space-y-6">
         {/* ── Form ─────────────────────────────────────────── */}
         <form
           onSubmit={handleSave}
-          className="space-y-6 xl:col-span-2"
+          className="space-y-6"
         >
           {/* Logo & Favicon */}
           <section className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -417,62 +532,113 @@ export default function WebCustomizationPage() {
             </div>
           </section>
 
-          {/* Warna */}
+          {/* Warna Per Halaman */}
           <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-800">
+            <h2 className="mb-1 flex items-center gap-2 text-sm font-bold text-slate-800">
               <Palette size={16} className="text-slate-500" />
-              Warna Tema
+              Warna Per Halaman
             </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label htmlFor="primaryColor" className="block text-xs font-semibold text-slate-600">
-                  Primary Color
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={settings.primaryColor}
-                    onChange={(e) => updateField("primaryColor", e.target.value.toUpperCase())}
+            <p className="mb-5 text-xs text-slate-500">
+              Warna dapat diatur berbeda untuk setiap area: Landing Page, Login
+              Page, dan Dashboard (setelah login).
+            </p>
+
+            <div className="space-y-6">
+              <div>
+                <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <Globe size={14} />
+                  Landing Page
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <ColorField
+                    id="landingBackground"
+                    label="Background"
+                    value={settings.landingBackground}
                     disabled={!isDeveloper}
-                    className="h-10 w-12 cursor-pointer rounded-lg border border-slate-200 bg-white p-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    onChange={(v) => updateField("landingBackground", v)}
                   />
-                  <input
-                    id="primaryColor"
-                    type="text"
-                    maxLength={7}
-                    value={settings.primaryColor}
-                    onChange={(e) => updateField("primaryColor", e.target.value)}
+                  <ColorField
+                    id="landingPrimary"
+                    label="Primary"
+                    value={settings.landingPrimary}
                     disabled={!isDeveloper}
-                    className={inputClassName}
-                    placeholder="#BC934B"
+                    onChange={(v) => updateField("landingPrimary", v)}
+                  />
+                  <ColorField
+                    id="landingSecondary"
+                    label="Secondary"
+                    value={settings.landingSecondary}
+                    disabled={!isDeveloper}
+                    onChange={(v) => updateField("landingSecondary", v)}
                   />
                 </div>
-                <p className="text-[11px] text-slate-400">Format HEX 6 digit (contoh: #BC934B).</p>
               </div>
-              <div className="space-y-1.5">
-                <label htmlFor="secondaryColor" className="block text-xs font-semibold text-slate-600">
-                  Secondary Color
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={settings.secondaryColor}
-                    onChange={(e) => updateField("secondaryColor", e.target.value.toUpperCase())}
+
+              <div>
+                <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <LogIn size={14} />
+                  Login Page
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <ColorField
+                    id="loginBackground"
+                    label="Background"
+                    value={settings.loginBackground}
                     disabled={!isDeveloper}
-                    className="h-10 w-12 cursor-pointer rounded-lg border border-slate-200 bg-white p-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    onChange={(v) => updateField("loginBackground", v)}
                   />
-                  <input
-                    id="secondaryColor"
-                    type="text"
-                    maxLength={7}
-                    value={settings.secondaryColor}
-                    onChange={(e) => updateField("secondaryColor", e.target.value)}
+                  <ColorField
+                    id="loginPrimary"
+                    label="Primary"
+                    value={settings.loginPrimary}
                     disabled={!isDeveloper}
-                    className={inputClassName}
-                    placeholder="#1e293b"
+                    onChange={(v) => updateField("loginPrimary", v)}
+                  />
+                  <ColorField
+                    id="loginSecondary"
+                    label="Secondary"
+                    value={settings.loginSecondary}
+                    disabled={!isDeveloper}
+                    onChange={(v) => updateField("loginSecondary", v)}
                   />
                 </div>
-                <p className="text-[11px] text-slate-400">Format HEX 6 digit (contoh: #1e293b).</p>
+              </div>
+
+              <div>
+                <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <LayoutDashboard size={14} />
+                  Dashboard (Setelah Login)
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                  <ColorField
+                    id="dashboardBackground"
+                    label="Background"
+                    value={settings.dashboardBackground}
+                    disabled={!isDeveloper}
+                    onChange={(v) => updateField("dashboardBackground", v)}
+                  />
+                  <ColorField
+                    id="dashboardPrimary"
+                    label="Primary"
+                    value={settings.dashboardPrimary}
+                    disabled={!isDeveloper}
+                    onChange={(v) => updateField("dashboardPrimary", v)}
+                  />
+                  <ColorField
+                    id="dashboardSecondary"
+                    label="Secondary"
+                    value={settings.dashboardSecondary}
+                    disabled={!isDeveloper}
+                    onChange={(v) => updateField("dashboardSecondary", v)}
+                  />
+                  <ColorField
+                    id="sidebarBackground"
+                    label="Sidebar Background"
+                    value={settings.sidebarBackground}
+                    disabled={!isDeveloper}
+                    onChange={(v) => updateField("sidebarBackground", v)}
+                  />
+                </div>
               </div>
             </div>
           </section>
@@ -499,92 +665,40 @@ export default function WebCustomizationPage() {
           </div>
         </form>
 
-        {/* ── Preview ──────────────────────────────────────── */}
-        <section className="h-fit rounded-2xl border border-slate-200 bg-white p-5 xl:sticky xl:top-20">
-          <h2 className="mb-4 text-sm font-bold text-slate-800">Preview Tampilan</h2>
+        {/* ── Preview Tema Per Halaman ─────────────────────── */}
+        <section>
+          <div className="mb-3 flex flex-col gap-1">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+              <Eye size={16} className="text-slate-500" />
+              Preview Tema Per Halaman
+            </h2>
+            <p className="text-xs text-slate-500">
+              Preview warna yang berlaku untuk Landing Page, Login Page, dan
+              Dashboard (setelah login).
+            </p>
+          </div>
           {isLoading ? (
-            <div className="flex h-64 items-center justify-center">
+            <div className="flex h-40 items-center justify-center rounded-2xl border border-slate-200 bg-white">
               <Loader2 size={20} className="animate-spin text-slate-400" />
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-                {/* Simulasi sidebar */}
-                <div className="flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4">
-                  <div className="flex h-9 w-20 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={logoPreview ?? settings.logoUrl}
-                      alt="Logo preview"
-                      className="h-full w-full object-contain"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-900">
-                      {settings.appName || "Nama Aplikasi"}
-                    </p>
-                    <p className="truncate text-[11px] text-slate-500">
-                      {settings.companyName || "Nama Perusahaan"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-3">
-                  <div className="h-8 w-8 rounded-lg" style={{ backgroundColor: settings.primaryColor }} />
-                  <div className="h-8 w-8 rounded-lg" style={{ backgroundColor: settings.secondaryColor }} />
-                  <span className="ml-2 text-[11px] text-slate-400">Primary &amp; Secondary</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  Contoh Tombol
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl px-4 py-2 text-xs font-bold text-white"
-                    style={{ backgroundColor: settings.primaryColor }}
-                  >
-                    Primary Button
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-xl px-4 py-2 text-xs font-bold text-white"
-                    style={{ backgroundColor: settings.secondaryColor }}
-                  >
-                    Secondary Button
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-xl border-2 px-4 py-2 text-xs font-bold"
-                    style={{ borderColor: settings.primaryColor, color: settings.primaryColor }}
-                  >
-                    Outline
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-7 w-7 rounded-full"
-                    style={{ backgroundColor: settings.primaryColor }}
-                  />
-                  <div>
-                    <p className="text-[11px] font-bold leading-tight text-slate-700">
-                      {settings.appName || "Nama Aplikasi"}
-                    </p>
-                    <p className="text-[10px] leading-tight text-slate-400">Preview favicon</p>
-                  </div>
-                </div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={faviconPreview ?? settings.faviconUrl}
-                  alt="Favicon preview"
-                  className="h-7 w-7 rounded object-contain"
-                />
-              </div>
-            </div>
+            <ThemePreview
+              primaryColor={settings.primaryColor}
+              secondaryColor={settings.secondaryColor}
+              appName={settings.appName}
+              companyName={settings.companyName}
+              logoUrl={logoPreview ?? settings.logoUrl}
+              landingBackground={settings.landingBackground}
+              landingPrimary={settings.landingPrimary}
+              landingSecondary={settings.landingSecondary}
+              loginBackground={settings.loginBackground}
+              loginPrimary={settings.loginPrimary}
+              loginSecondary={settings.loginSecondary}
+              dashboardBackground={settings.dashboardBackground}
+              dashboardPrimary={settings.dashboardPrimary}
+              dashboardSecondary={settings.dashboardSecondary}
+              sidebarBackground={settings.sidebarBackground}
+            />
           )}
         </section>
       </div>

@@ -58,9 +58,9 @@ export default function LoginPage() {
 	return (
 		<div className="font-display flex min-h-screen bg-slate-50">
 			{/* Left Column: Form */}
-			<div className="relative flex w-full flex-col bg-slate-700 justify-center px-4 sm:px-6 md:px-8 lg:w-1/2 lg:px-12 xl:px-24">
+			<div className="relative flex w-full flex-col bg-login-background justify-center px-4 sm:px-6 md:px-8 lg:w-1/2 lg:px-12 xl:px-24">
 				<div className="absolute top-6 left-6 md:top-8 md:left-8">
-					<Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-300 transition hover:text-[#BC934B]">
+					<Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-300 transition hover:text-login-primary">
 						<ArrowLeft className="h-6 w-6" />
 						<p className="text-lg">Kembali</p>
 					</Link>
@@ -101,7 +101,7 @@ export default function LoginPage() {
 								autoComplete="email"
 								required
 								disabled={isLoading}
-								className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20 disabled:opacity-50"
+								className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-login-primary focus:ring-2 focus:ring-login-primary/20 disabled:opacity-50"
 								placeholder="nama@perusahaan.com"
 							/>
 						</div>
@@ -118,7 +118,7 @@ export default function LoginPage() {
 									autoComplete="current-password"
 									required
 									disabled={isLoading}
-									className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm text-slate-900 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/20 disabled:opacity-50"
+									className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm text-slate-900 outline-none transition focus:border-login-primary focus:ring-2 focus:ring-login-primary/20 disabled:opacity-50"
 									placeholder="Masukkan password"
 								/>
 								<button
@@ -139,7 +139,7 @@ export default function LoginPage() {
 						<button
 							type="submit"
 							disabled={isLoading}
-							className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-3 mt-4 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-[#A88444] disabled:cursor-not-allowed disabled:opacity-50"
+							className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-login-primary px-4 py-3 mt-4 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-login-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{isLoading ? (
 								<>

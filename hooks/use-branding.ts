@@ -9,6 +9,16 @@ export interface BrandingSettings {
   secondaryColor: string;
   logoUrl: string;
   faviconUrl: string;
+  landingBackground: string;
+  landingPrimary: string;
+  landingSecondary: string;
+  loginBackground: string;
+  loginPrimary: string;
+  loginSecondary: string;
+  dashboardBackground: string;
+  dashboardPrimary: string;
+  dashboardSecondary: string;
+  sidebarBackground: string;
 }
 
 export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
@@ -18,6 +28,16 @@ export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   secondaryColor: "#1e293b",
   logoUrl: "/logo.png",
   faviconUrl: "/icon.png",
+  landingBackground: "#33465c",
+  landingPrimary: "#BC934B",
+  landingSecondary: "#1e293b",
+  loginBackground: "#334155",
+  loginPrimary: "#BC934B",
+  loginSecondary: "#1e293b",
+  dashboardBackground: "#f1f5f9",
+  dashboardPrimary: "#BC934B",
+  dashboardSecondary: "#1e293b",
+  sidebarBackground: "#1e293b",
 };
 
 type BrandingResponse = {

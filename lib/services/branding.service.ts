@@ -12,6 +12,16 @@ export interface BrandingConfig {
   secondaryColor: string;
   logoUrl: string;
   faviconUrl: string;
+  landingBackground: string;
+  landingPrimary: string;
+  landingSecondary: string;
+  loginBackground: string;
+  loginPrimary: string;
+  loginSecondary: string;
+  dashboardBackground: string;
+  dashboardPrimary: string;
+  dashboardSecondary: string;
+  sidebarBackground: string;
 }
 
 export const DEFAULT_BRANDING: BrandingConfig = {
@@ -21,6 +31,16 @@ export const DEFAULT_BRANDING: BrandingConfig = {
   secondaryColor: "#1e293b",
   logoUrl: "/logo.png",
   faviconUrl: "/icon.png",
+  landingBackground: "#33465c",
+  landingPrimary: "#BC934B",
+  landingSecondary: "#1e293b",
+  loginBackground: "#334155",
+  loginPrimary: "#BC934B",
+  loginSecondary: "#1e293b",
+  dashboardBackground: "#f1f5f9",
+  dashboardPrimary: "#BC934B",
+  dashboardSecondary: "#1e293b",
+  sidebarBackground: "#1e293b",
 };
 
 function pickString(value: string | null | undefined, fallback: string): string {
@@ -32,13 +52,25 @@ function pickString(value: string | null | undefined, fallback: string): string 
  * Never throws — missing/empty fields always fall back to defaults.
  */
 export function resolveBrandingConfig(row: AppSettings | null | undefined): BrandingConfig {
+  const legacyPrimaryFallback = row?.primary_color ?? DEFAULT_BRANDING.primaryColor;
+  const legacySecondaryFallback = row?.secondary_color ?? DEFAULT_BRANDING.secondaryColor;
   return {
     companyName: pickString(row?.company_name, DEFAULT_BRANDING.companyName),
     appName: pickString(row?.app_name, DEFAULT_BRANDING.appName),
-    primaryColor: pickString(row?.primary_color, DEFAULT_BRANDING.primaryColor),
-    secondaryColor: pickString(row?.secondary_color, DEFAULT_BRANDING.secondaryColor),
+    primaryColor: legacyPrimaryFallback,
+    secondaryColor: legacySecondaryFallback,
     logoUrl: pickString(row?.logo_url, DEFAULT_BRANDING.logoUrl),
     faviconUrl: pickString(row?.favicon_url, DEFAULT_BRANDING.faviconUrl),
+    landingBackground: pickString(row?.landing_background, DEFAULT_BRANDING.landingBackground),
+    landingPrimary: pickString(row?.landing_primary, legacyPrimaryFallback),
+    landingSecondary: pickString(row?.landing_secondary, legacySecondaryFallback),
+    loginBackground: pickString(row?.login_background, DEFAULT_BRANDING.loginBackground),
+    loginPrimary: pickString(row?.login_primary, legacyPrimaryFallback),
+    loginSecondary: pickString(row?.login_secondary, legacySecondaryFallback),
+    dashboardBackground: pickString(row?.dashboard_background, DEFAULT_BRANDING.dashboardBackground),
+    dashboardPrimary: pickString(row?.dashboard_primary, legacyPrimaryFallback),
+    dashboardSecondary: pickString(row?.dashboard_secondary, legacySecondaryFallback),
+    sidebarBackground: pickString(row?.sidebar_background, legacySecondaryFallback),
   };
 }
 
@@ -88,6 +120,16 @@ export async function saveBrandingConfig(
         secondary_color: input.secondaryColor ?? null,
         logo_url: input.logoUrl ?? null,
         favicon_url: input.faviconUrl ?? null,
+        landing_background: input.landingBackground ?? null,
+        landing_primary: input.landingPrimary ?? null,
+        landing_secondary: input.landingSecondary ?? null,
+        login_background: input.loginBackground ?? null,
+        login_primary: input.loginPrimary ?? null,
+        login_secondary: input.loginSecondary ?? null,
+        dashboard_background: input.dashboardBackground ?? null,
+        dashboard_primary: input.dashboardPrimary ?? null,
+        dashboard_secondary: input.dashboardSecondary ?? null,
+        sidebar_background: input.sidebarBackground ?? null,
         updated_by: updatedBy,
         updated_at: new Date().toISOString(),
       },

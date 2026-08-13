@@ -308,7 +308,7 @@ export default function PenilaianKaryawanPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Karyawan Terbaik (Bulan Ini)
               </p>
-              <p className="text-lg md:text-2xl font-bold text-[#BC934B] break-words">
+              <p className="text-lg md:text-2xl font-bold text-primary break-words">
                 {bestEmployee ? bestEmployee.dinilai_nama : "-"}
               </p>
             </div>

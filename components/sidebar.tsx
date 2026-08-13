@@ -257,7 +257,7 @@ export default function Sidebar(props: SidebarProps) {
   return (
     <>
       <aside
-        className={`fixed inset-y-0 left-0 z-50 h-screen w-64 shrink-0 bg-secondary text-slate-100 transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 h-screen w-64 shrink-0 bg-sidebar-background text-slate-100 transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:translate-x-0 ${
           mobileIsOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

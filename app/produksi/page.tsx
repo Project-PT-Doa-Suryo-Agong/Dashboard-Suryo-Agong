@@ -258,14 +258,14 @@ export default function ProduksiDashboardPage() {
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         <article className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
-          <div className="absolute -top-10 -right-8 h-28 w-28 rounded-full bg-[#BC934B]/10" aria-hidden="true" />
+          <div className="absolute -top-10 -right-8 h-28 w-28 rounded-full bg-primary/10" aria-hidden="true" />
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pesanan Aktif (Orders)</p>
               <p className="text-base md:text-2xl font-bold text-slate-900">{pesanan_aktif_count} Batch</p>
               <p className="text-xs md:text-sm text-slate-600">Sedang dalam proses (In Progress)</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#BC934B] text-white shrink-0">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white shrink-0">
               <ClipboardList className="h-5 w-5" />
             </span>
           </div>

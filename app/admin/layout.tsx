@@ -136,7 +136,7 @@ export default function AdminLayout({
       )}
 
       {/* Kanan: Area Utama */}
-      <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-slate-100/50">
+      <main className="flex-1 min-w-0 w-full overflow-x-hidden flex flex-col bg-dashboard-background">
         <Topbar
           title="Admin Dashboard"
           user={{ name: name ?? "...", role: role ?? "" }}

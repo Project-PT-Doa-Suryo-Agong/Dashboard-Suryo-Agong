@@ -80,6 +80,26 @@ export async function PUT(request: Request) {
   const faviconUrl = requireAssetUrl(input, "faviconUrl", { optional: true });
   if (!faviconUrl.ok) return fail(ErrorCode.VALIDATION_ERROR, faviconUrl.message, 400);
 
+  const AREA_COLOR_KEYS = [
+    "landingBackground",
+    "landingPrimary",
+    "landingSecondary",
+    "loginBackground",
+    "loginPrimary",
+    "loginSecondary",
+    "dashboardBackground",
+    "dashboardPrimary",
+    "dashboardSecondary",
+    "sidebarBackground",
+  ] as const;
+
+  const areaColors: Record<string, string> = {};
+  for (const key of AREA_COLOR_KEYS) {
+    const color = requireHexColor(input, key, { optional: true });
+    if (!color.ok) return fail(ErrorCode.VALIDATION_ERROR, color.message, 400);
+    if (color.data) areaColors[key] = color.data;
+  }
+
   try {
     const settings = await saveBrandingConfig(
       {
@@ -89,6 +109,7 @@ export async function PUT(request: Request) {
         secondaryColor: secondaryColor.data ?? undefined,
         logoUrl: logoUrl.data ?? undefined,
         faviconUrl: faviconUrl.data ?? undefined,
+        ...areaColors,
       },
       auth.ctx.userId
     );

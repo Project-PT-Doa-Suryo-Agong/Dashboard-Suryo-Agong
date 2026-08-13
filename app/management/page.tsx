@@ -177,7 +177,7 @@ export default function ManagementDashboardPage() {
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         <article className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
-          <div className="absolute -top-12 -right-10 h-32 w-32 rounded-full bg-[#BC934B]/10" aria-hidden="true" />
+          <div className="absolute -top-12 -right-10 h-32 w-32 rounded-full bg-primary/10" aria-hidden="true" />
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Budget Tahun Ini</p>
@@ -186,7 +186,7 @@ export default function ManagementDashboardPage() {
               </p>
               <p className="text-xs md:text-sm text-slate-600">Terserap: {budgetSerapanPersen}%</p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#BC934B] text-white">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
               <Landmark className="h-5 w-5" />
             </span>
           </div>

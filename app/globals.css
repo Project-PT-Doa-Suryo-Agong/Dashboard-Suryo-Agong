@@ -15,14 +15,42 @@
   --background: #292d3e;
   --foreground: #171717;
   --brand-primary: #bc934b;
+  --brand-primary-hover: #a88444;
   --brand-secondary: #1e293b;
+  --brand-landing-background: #33465c;
+  --brand-landing-primary: #bc934b;
+  --brand-landing-primary-hover: #a88444;
+  --brand-landing-secondary: #1e293b;
+  --brand-login-background: #334155;
+  --brand-login-primary: #bc934b;
+  --brand-login-primary-hover: #a88444;
+  --brand-login-secondary: #1e293b;
+  --brand-dashboard-background: #f1f5f9;
+  --brand-dashboard-primary: #bc934b;
+  --brand-dashboard-primary-hover: #a88444;
+  --brand-dashboard-secondary: #1e293b;
+  --brand-sidebar-background: #1e293b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--brand-primary);
+  --color-primary-hover: var(--brand-primary-hover);
   --color-secondary: var(--brand-secondary);
+  --color-landing-background: var(--brand-landing-background);
+  --color-landing-primary: var(--brand-landing-primary);
+  --color-landing-primary-hover: var(--brand-landing-primary-hover);
+  --color-landing-secondary: var(--brand-landing-secondary);
+  --color-login-background: var(--brand-login-background);
+  --color-login-primary: var(--brand-login-primary);
+  --color-login-primary-hover: var(--brand-login-primary-hover);
+  --color-login-secondary: var(--brand-login-secondary);
+  --color-dashboard-background: var(--brand-dashboard-background);
+  --color-dashboard-primary: var(--brand-dashboard-primary);
+  --color-dashboard-primary-hover: var(--brand-dashboard-primary-hover);
+  --color-dashboard-secondary: var(--brand-dashboard-secondary);
+  --color-sidebar-background: var(--brand-sidebar-background);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

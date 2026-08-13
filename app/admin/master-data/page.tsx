@@ -32,7 +32,7 @@ const MASTER_DATA_CARDS = [
     icon: Tags,
     description: "Atur SKU, nama varian, dan harga jual untuk setiap variasi produk.",
     key: "varian",
-    color: "text-[#BC934B]",
+    color: "text-primary",
     bg: "bg-yellow-50",
   },
   {
@@ -177,7 +177,7 @@ export default function MasterDataPage() {
                   Total: <span className="text-slate-700">{isLoading ? "..." : cardCountByKey[card.key]}</span> entri
                 </span>
                 <ArrowRight
-                  className="h-4 w-4 shrink-0 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-[#BC934B] md:h-5 md:w-5"
+                  className="h-4 w-4 shrink-0 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-primary md:h-5 md:w-5"
                 />
               </div>
             </Link>

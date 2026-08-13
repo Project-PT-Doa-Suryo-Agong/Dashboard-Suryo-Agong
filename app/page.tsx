@@ -65,7 +65,7 @@ async function parseJsonResponse<T>(response: Response): Promise<ApiSuccess<T>> 
 export default function LandingPage() {
   const { logoUrl, appName, companyName } = useBranding();
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#33465c] text-slate-100 font-sans antialiased">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-landing-background text-slate-100 font-sans antialiased">
       <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-slate-900/60 px-4 py-4 backdrop-blur-lg md:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -87,7 +87,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/auth/login"
-              className="flex h-10 items-center justify-center rounded-xl bg-[#BC934B] px-5 text-xs font-bold text-white shadow-lg shadow-[#BC934B]/20 transition-all duration-200 hover:bg-[#A88444] hover:shadow-[#BC934B]/30 hover:scale-[1.02] active:scale-[0.98] md:px-6 md:text-sm"
+              className="flex h-10 items-center justify-center rounded-xl bg-landing-primary px-5 text-xs font-bold text-white shadow-lg shadow-landing-primary/20 transition-all duration-200 hover:bg-landing-primary-hover hover:shadow-landing-primary/30 hover:scale-[1.02] active:scale-[0.98] md:px-6 md:text-sm"
             >
               Sign In
             </Link>
@@ -107,7 +107,7 @@ export default function LandingPage() {
           <div className="flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row lg:gap-4">
             <Link
               href="/auth/login"
-              className="flex h-12 items-center justify-center rounded-xl bg-[#BC934B] px-8 text-sm font-bold text-white shadow-lg shadow-[#BC934B]/20 transition-all duration-200 hover:bg-[#A88444] hover:shadow-[#BC934B]/30 hover:scale-[1.02] active:scale-[0.98] md:h-13 md:text-base"
+              className="flex h-12 items-center justify-center rounded-xl bg-landing-primary px-8 text-sm font-bold text-white shadow-lg shadow-landing-primary/20 transition-all duration-200 hover:bg-landing-primary-hover hover:shadow-landing-primary/30 hover:scale-[1.02] active:scale-[0.98] md:h-13 md:text-base"
             >
               Access System
             </Link>
@@ -129,11 +129,11 @@ export default function LandingPage() {
                 className="group relative flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl md:p-6 lg:p-8"
               >
                 <div className="mb-4 flex items-center justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#BC934B]/10 text-[#BC934B] transition-colors duration-300 group-hover:bg-[#BC934B] group-hover:text-white md:h-14 md:w-14">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-landing-primary/10 text-landing-primary transition-colors duration-300 group-hover:bg-landing-primary group-hover:text-white md:h-14 md:w-14">
                     <dept.icon className="h-6 w-6 md:h-7 md:w-7" />
                   </div>
                 </div>
-                <h3 className="mb-2 text-base font-bold text-slate-900 transition-colors duration-200 group-hover:text-[#BC934B] md:text-lg lg:text-xl">
+                <h3 className="mb-2 text-base font-bold text-slate-900 transition-colors duration-200 group-hover:text-landing-primary md:text-lg lg:text-xl">
                   {dept.title}
                 </h3>
                 <p className="grow text-xs leading-relaxed text-slate-600 md:text-sm">

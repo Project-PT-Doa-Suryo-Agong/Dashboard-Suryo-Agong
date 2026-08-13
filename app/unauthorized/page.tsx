@@ -10,7 +10,7 @@ export default function UnauthorizedPage() {
         </p>
         <Link
           href="/"
-          className="mt-6 inline-flex rounded-xl bg-[#BC934B] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#A88444]"
+          className="mt-6 inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover"
         >
           Kembali ke Dashboard
         </Link>

@@ -63,7 +63,7 @@ const statusBadgeClass: Record<ProductionQcResult, string> = {
 };
 
 const CRUD_PRIMARY_BUTTON_CLASS =
-  "inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC934B]/30 disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50";
 const CRUD_CANCEL_BUTTON_CLASS =
   "inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-200 disabled:opacity-50";
 
@@ -408,7 +408,7 @@ export default function QcInboundPage() {
           <select
             value={filterStatus}
             onChange={(event) => setFilterStatus(event.target.value as "all" | ProductionQcResult)}
-            className="w-full sm:w-56 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-[#BC934B]/20"
+            className="w-full sm:w-56 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">Semua Status</option>
             <option value="pass">Lolos QC</option>

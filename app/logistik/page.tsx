@@ -214,7 +214,7 @@ export default function LogistikDashboardPage() {
                   : `${packingBreakdown.packed} Selesai, ${packingBreakdown.pending} Proses, ${packingBreakdown.shipped} Dikirim`}
               </p>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#BC934B] text-white">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
               <Package className="h-5 w-5" />
             </span>
           </div>

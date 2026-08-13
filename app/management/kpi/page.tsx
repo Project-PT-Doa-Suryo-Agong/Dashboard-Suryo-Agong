@@ -371,7 +371,7 @@ export default function ManagementKpiPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Divisi Terbaik</p>
-              <p className="text-lg md:text-2xl font-bold text-[#BC934B] break-words">
+              <p className="text-lg md:text-2xl font-bold text-primary break-words">
                 {bestDivision ? `${bestDivision.divisi ?? "-"} (${getScore(bestDivision)}%)` : "-"}
               </p>
             </div>

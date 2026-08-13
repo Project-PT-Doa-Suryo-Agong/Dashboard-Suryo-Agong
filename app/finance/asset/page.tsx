@@ -537,7 +537,7 @@ export default function AssetManagementPage() {
           </button>
           <button
             onClick={handleOpenAddModal}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#BC934B]/10 transition-all hover:bg-[#A88444] hover:shadow-[#A88444]/20 active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/10 transition-all hover:bg-primary-hover hover:shadow-primary-hover/20 active:scale-95"
           >
             <PlusCircle size={18} />
             Registrasi Aset Baru
@@ -554,7 +554,7 @@ export default function AssetManagementPage() {
           </div>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Nilai Aset</p>
           <h3 className="mt-3 text-2xl font-black text-slate-900">{formatRupiah(stats.totalValue)}</h3>
-          <p className="mt-2 flex items-center gap-1 text-xs text-[#BC934B] font-semibold">
+          <p className="mt-2 flex items-center gap-1 text-xs text-primary font-semibold">
             <Coins size={14} /> Nilai historis perolehan
           </p>
         </div>
@@ -589,8 +589,8 @@ export default function AssetManagementPage() {
             <DollarSign size={96} className="opacity-10" />
           </div>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Nilai Buku Bersih (NBV)</p>
-          <h3 className="mt-3 text-2xl font-black text-[#BC934B]">{formatRupiah(stats.netValue)}</h3>
-          <p className="mt-2 flex items-center gap-1 text-xs text-[#BC934B] font-semibold">
+          <h3 className="mt-3 text-2xl font-black text-primary">{formatRupiah(stats.netValue)}</h3>
+          <p className="mt-2 flex items-center gap-1 text-xs text-primary font-semibold">
             <ArrowRight size={14} /> Nilai sisa aset saat ini
           </p>
         </div>
@@ -602,7 +602,7 @@ export default function AssetManagementPage() {
           onClick={() => setActiveTab("daftar")}
           className={`pb-4 text-sm font-semibold transition-all border-b-2 px-6 ${
             activeTab === "daftar"
-              ? "border-[#BC934B] text-white"
+              ? "border-primary text-white"
               : "border-transparent text-white/60 hover:text-white"
           }`}
         >
@@ -612,7 +612,7 @@ export default function AssetManagementPage() {
           onClick={() => setActiveTab("jadwal")}
           className={`pb-4 text-sm font-semibold transition-all border-b-2 px-6 ${
             activeTab === "jadwal"
-              ? "border-[#BC934B] text-white"
+              ? "border-primary text-white"
               : "border-transparent text-white/60 hover:text-white"
           }`}
         >
@@ -633,7 +633,7 @@ export default function AssetManagementPage() {
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Cari aset berdasarkan kode atau nama..."
-                className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-sm outline-none transition-all focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/10"
+                className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
               />
             </div>
           </div>
@@ -783,7 +783,7 @@ export default function AssetManagementPage() {
                           <h3 className="font-bold text-slate-800">{asset.nama_aset}</h3>
                           <p className="mt-0.5 text-xs font-mono text-slate-400">{asset.kode_aset}</p>
                         </div>
-                        <Activity size={18} className="text-[#BC934B]" />
+                        <Activity size={18} className="text-primary" />
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600">
@@ -827,7 +827,7 @@ export default function AssetManagementPage() {
                             setViewAsset(asset);
                             setIsViewScheduleModalOpen(true);
                           }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#BC934B] px-4 py-2 text-xs font-bold text-white transition-all hover:bg-[#A88444]"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white transition-all hover:bg-primary-hover"
                         >
                           <Calendar size={14} />
                           Lihat Jadwal
@@ -858,7 +858,7 @@ export default function AssetManagementPage() {
                 value={formData.kode_aset}
                 onChange={e => setFormData({ ...formData, kode_aset: e.target.value })}
                 required
-                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
               />
             </div>
 
@@ -871,7 +871,7 @@ export default function AssetManagementPage() {
                 onChange={e => setFormData({ ...formData, nama_aset: e.target.value })}
                 required
                 placeholder="Contoh: Laptop Macbook Pro"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
               />
             </div>
 
@@ -883,7 +883,7 @@ export default function AssetManagementPage() {
                 value={formData.divisi}
                 onChange={e => setFormData({ ...formData, divisi: e.target.value })}
                 placeholder="Contoh: IT / Keuangan / Produksi"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
               />
             </div>
 
@@ -895,7 +895,7 @@ export default function AssetManagementPage() {
                 value={formData.tanggal_perolehan}
                 onChange={e => setFormData({ ...formData, tanggal_perolehan: e.target.value })}
                 required
-                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
               />
             </div>
 
@@ -905,7 +905,7 @@ export default function AssetManagementPage() {
               <select
                 value={formData.metode_penyusutan}
                 onChange={e => setFormData({ ...formData, metode_penyusutan: e.target.value as any })}
-                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
               >
                 <option value="straight_line">Garis Lurus (Straight Line)</option>
                 <option value="double_declining">Saldo Menurun Ganda (Double Declining)</option>
@@ -922,7 +922,7 @@ export default function AssetManagementPage() {
                 onChange={e => setFormData({ ...formData, nilai_perolehan: e.target.value })}
                 required
                 placeholder="Contoh: 15000000"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
               />
             </div>
 
@@ -934,7 +934,7 @@ export default function AssetManagementPage() {
                 value={formData.nilai_residu}
                 onChange={e => setFormData({ ...formData, nilai_residu: e.target.value })}
                 placeholder="Contoh: 1000000"
-                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
               />
             </div>
 
@@ -945,7 +945,7 @@ export default function AssetManagementPage() {
                 value={formData.masa_manfaat_bulan}
                 onChange={e => setFormData({ ...formData, masa_manfaat_bulan: e.target.value })}
                 required
-                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
               >
                 <option value="48">4 Tahun (48 Bulan) - Golongan 1</option>
                 <option value="96">8 Tahun (96 Bulan) - Golongan 2</option>
@@ -960,7 +960,7 @@ export default function AssetManagementPage() {
               <select
                 value={formData.status}
                 onChange={e => setFormData({ ...formData, status: e.target.value })}
-                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
               >
                 <option value="active">Aktif</option>
                 <option value="disposed">Disposed / Dilepas</option>
@@ -971,7 +971,7 @@ export default function AssetManagementPage() {
           {/* COA Mapping Section */}
           <div className="border-t border-slate-100 pt-5">
             <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-1.5">
-              <BookOpen size={16} className="text-[#BC934B]" /> Akuntansi & Pemetaan COA (Chart of Accounts)
+              <BookOpen size={16} className="text-primary" /> Akuntansi & Pemetaan COA (Chart of Accounts)
             </h4>
             <div className="grid gap-4 sm:grid-cols-3">
               {/* COA Asset */}
@@ -981,7 +981,7 @@ export default function AssetManagementPage() {
                   value={formData.coa_asset_id}
                   onChange={e => setFormData({ ...formData, coa_asset_id: e.target.value })}
                   required
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-[#BC934B]"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-primary"
                 >
                   <option value="">Pilih COA...</option>
                   {coaOptions
@@ -1001,7 +1001,7 @@ export default function AssetManagementPage() {
                   value={formData.coa_depr_accumulation_id}
                   onChange={e => setFormData({ ...formData, coa_depr_accumulation_id: e.target.value })}
                   required
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-[#BC934B]"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-primary"
                 >
                   <option value="">Pilih COA...</option>
                   {coaOptions
@@ -1021,7 +1021,7 @@ export default function AssetManagementPage() {
                   value={formData.coa_depr_expense_id}
                   onChange={e => setFormData({ ...formData, coa_depr_expense_id: e.target.value })}
                   required
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-[#BC934B]"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-primary"
                 >
                   <option value="">Pilih COA...</option>
                   {coaOptions
@@ -1043,7 +1043,7 @@ export default function AssetManagementPage() {
               value={formData.keterangan}
               onChange={e => setFormData({ ...formData, keterangan: e.target.value })}
               rows={2}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#BC934B]"
+              className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary"
             />
           </div>
 
@@ -1058,7 +1058,7 @@ export default function AssetManagementPage() {
             <button
               type="submit"
               disabled={isInserting || isUpdating}
-              className="inline-flex items-center justify-center rounded-xl bg-[#BC934B] px-6 py-3 text-sm font-semibold text-white hover:bg-[#A88444] transition-colors disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
               {isInserting || isUpdating ? "Menyimpan..." : "Simpan Data"}
             </button>
@@ -1105,7 +1105,7 @@ export default function AssetManagementPage() {
                   <CheckCircle size={18} className="text-emerald-500" />
                 </div>
               ) : (
-                <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-dashed border-[#BC934B]/60 bg-amber-50/60 p-4">
+                <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-dashed border-primary/60 bg-amber-50/60 p-4">
                   <div className="min-w-[220px] flex-1">
                     <p className="text-xs font-bold text-slate-700">Posting Jurnal Akuisisi Aset</p>
                     <p className="text-xs text-slate-500">
@@ -1116,7 +1116,7 @@ export default function AssetManagementPage() {
                   <select
                     value={acquisitionKasId ?? ""}
                     onChange={(event) => setAcquisitionKasId(event.target.value || null)}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#BC934B]/40"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     {kasOptions.children.length === 0 ? (
                       <option value="">Tidak ada akun kas</option>
@@ -1159,7 +1159,7 @@ export default function AssetManagementPage() {
                       ) : (
                         assetSchedules.map((item: TAssetDepreciationSchedule) => (
                           <tr key={item.id} className="hover:bg-slate-50/50">
-                            <td className="px-5 py-3.5 font-mono text-[#BC934B] font-bold">{item.periode}</td>
+                            <td className="px-5 py-3.5 font-mono text-primary font-bold">{item.periode}</td>
                             <td className="px-5 py-3.5 font-semibold text-slate-800">{formatRupiah(item.jumlah_penyusutan || 0)}</td>
                             <td className="px-5 py-3.5">
                               <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -1185,7 +1185,7 @@ export default function AssetManagementPage() {
                                       onClick={() => handlePostJournal(item)}
                                       disabled={postingId === item.id || isFuture}
                                       title={isFuture ? "Periode masih di masa depan, belum dapat diposting." : undefined}
-                                      className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#BC934B] px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-[#A88444] disabled:opacity-50"
+                                      className="inline-flex items-center justify-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-primary-hover disabled:opacity-50"
                                     >
                                       {postingId === item.id ? "Memproses..." : isFuture ? "Masa Depan" : "Posting Jurnal"}
                                     </button>

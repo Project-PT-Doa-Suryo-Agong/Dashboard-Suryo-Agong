@@ -197,7 +197,7 @@ export default function AdminBukuTamuPage() {
           <ChevronRight size={13} className="text-slate-30" />
           <Link href="/admin/master-data" className="hover:text-slate-300 text-slate-100 transition-colors">Master Data</Link>
           <ChevronRight size={13} className="text-slate-30" />
-          <span className="text-[#BC934B] font-medium">Buku Tamu</span>
+          <span className="text-primary font-medium">Buku Tamu</span>
         </nav>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -212,7 +212,7 @@ export default function AdminBukuTamuPage() {
           <button
             onClick={handleExportCSV}
             disabled={filtered.length === 0}
-            className="inline-flex items-center justify-center gap-2 bg-[#BC934B] hover:bg-[#A88444] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all text-sm uppercase tracking-wider"
+            className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all text-sm uppercase tracking-wider"
           >
             <Download size={16} />
             Export CSV
@@ -255,7 +255,7 @@ export default function AdminBukuTamuPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl outline-none focus:border-[#BC934B] text-sm transition-all"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl outline-none focus:border-primary text-sm transition-all"
               >
                 <option value="ALL">Semua Status</option>
                 <option value="AS GUEST (TAMU)">AS GUEST (TAMU)</option>
@@ -271,7 +271,7 @@ export default function AdminBukuTamuPage() {
               <select
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl outline-none focus:border-[#BC934B] text-sm transition-all"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl outline-none focus:border-primary text-sm transition-all"
               >
                 <option value="ALL">Semua Sumber Info</option>
                 {uniqueSources.map((src) => (
@@ -501,7 +501,7 @@ export default function AdminBukuTamuPage() {
           onClose={resetEditForm}
           title={
             <div className="flex items-center gap-2">
-              <PlusCircle className="h-5 w-5 text-[#BC934B]" />
+              <PlusCircle className="h-5 w-5 text-primary" />
               <h3 className="text-lg font-bold text-slate-900">Ubah Data Buku Tamu</h3>
             </div>
           }
@@ -519,7 +519,7 @@ export default function AdminBukuTamuPage() {
                     key={st}
                     className={`flex cursor-pointer items-center justify-center rounded-xl border p-3 text-xs font-bold uppercase tracking-wide transition-all ${
                       editForm.status_hello === st
-                        ? "border-[#BC934B] bg-[#BC934B]/10 text-slate-800"
+                        ? "border-primary bg-primary/10 text-slate-800"
                         : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
                     }`}
                   >
@@ -549,7 +549,7 @@ export default function AdminBukuTamuPage() {
                 required
                 value={editForm.nama_kamu}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, nama_kamu: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-[#BC934B]/20 focus:border-[#BC934B] text-sm outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm outline-none transition-all"
               />
             </div>
 
@@ -565,7 +565,7 @@ export default function AdminBukuTamuPage() {
                 onChange={(e) =>
                   setEditForm((prev) => ({ ...prev, nomor_telepon: e.target.value }))
                 }
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-[#BC934B]/20 focus:border-[#BC934B] text-sm outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm outline-none transition-all"
               />
             </div>
 
@@ -578,7 +578,7 @@ export default function AdminBukuTamuPage() {
                 type="text"
                 value={editForm.asal_instansi}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, asal_instansi: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-[#BC934B]/20 focus:border-[#BC934B] text-sm outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm outline-none transition-all"
               />
             </div>
 
@@ -591,7 +591,7 @@ export default function AdminBukuTamuPage() {
                 rows={2}
                 value={editForm.alamat}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, alamat: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-[#BC934B]/20 focus:border-[#BC934B] text-sm outline-none transition-all resize-none"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm outline-none transition-all resize-none"
               />
             </div>
 
@@ -605,7 +605,7 @@ export default function AdminBukuTamuPage() {
                 rows={2.5}
                 value={editForm.keperluan}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, keperluan: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-[#BC934B]/20 focus:border-[#BC934B] text-sm outline-none transition-all resize-none"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm outline-none transition-all resize-none"
               />
             </div>
 
@@ -621,7 +621,7 @@ export default function AdminBukuTamuPage() {
                 onChange={(e) =>
                   setEditForm((prev) => ({ ...prev, tau_utero_darimana: e.target.value }))
                 }
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-[#BC934B]/20 focus:border-[#BC934B] text-sm outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm outline-none transition-all"
               />
             </div>
 
@@ -634,7 +634,7 @@ export default function AdminBukuTamuPage() {
                 rows={2.5}
                 value={editForm.kritik_saran}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, kritik_saran: e.target.value }))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-[#BC934B]/20 focus:border-[#BC934B] text-sm outline-none transition-all resize-none"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm outline-none transition-all resize-none"
               />
             </div>
 

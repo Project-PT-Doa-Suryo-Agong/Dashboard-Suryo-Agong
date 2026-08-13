@@ -96,7 +96,7 @@ const statusBadgeClass: Record<ProductionStatus, string> = {
 };
 
 const CRUD_PRIMARY_BUTTON_CLASS =
-  "inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BC934B]/30 disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50";
 const CRUD_EDIT_BUTTON_CLASS =
   "inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 disabled:opacity-50";
 const CRUD_DELETE_BUTTON_CLASS =
@@ -563,7 +563,7 @@ export default function ProductionOrdersPage() {
           <select
             value={filterStatus}
             onChange={(event) => setFilterStatus(event.target.value as "all" | ProductionStatus)}
-            className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-[#BC934B]/20"
+            className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">Semua Status</option>
             <option value="draft">Draft</option>

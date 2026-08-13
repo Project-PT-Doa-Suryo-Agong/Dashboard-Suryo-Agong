@@ -114,15 +114,15 @@ export default function PublicBukuTamuPage() {
     <div className="font-display relative flex min-h-screen items-center justify-center bg-[#0b0f19] py-12 px-4 sm:px-6 lg:px-8 antialiased overflow-x-hidden">
       {/* Dynamic premium glowing background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-[#BC934B]/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-[#BC934B]/5 rounded-full blur-[120px]" />
+        <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-landing-primary/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-landing-primary/5 rounded-full blur-[120px]" />
       </div>
 
       {/* Back Button */}
       <div className="absolute top-6 left-6 md:top-8 md:left-8 z-20">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-[#BC934B]"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-landing-primary"
         >
           <ArrowLeft className="h-5 w-5" />
           <span>Kembali ke Utama</span>
@@ -162,7 +162,7 @@ export default function PublicBukuTamuPage() {
             <button
               type="button"
               onClick={() => setSuccess(false)}
-              className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-[#BC934B] px-4 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-[#A88444]"
+              className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-landing-primary px-4 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-landing-primary-hover"
             >
               Isi Buku Tamu Baru
             </button>
@@ -184,7 +184,7 @@ export default function PublicBukuTamuPage() {
                 <label
                   className={`flex cursor-pointer items-center justify-center rounded-xl border p-3.5 text-xs font-bold uppercase tracking-wide transition-all ${
                     formData.status_hello === "AS GUEST (TAMU)"
-                      ? "border-[#BC934B] bg-[#BC934B]/10 text-white"
+                      ? "border-landing-primary bg-landing-primary/10 text-white"
                       : "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-950/80"
                   }`}
                 >
@@ -203,7 +203,7 @@ export default function PublicBukuTamuPage() {
                 <label
                   className={`flex cursor-pointer items-center justify-center rounded-xl border p-3.5 text-xs font-bold uppercase tracking-wide transition-all ${
                     formData.status_hello === "AS TEAM"
-                      ? "border-[#BC934B] bg-[#BC934B]/10 text-white"
+                      ? "border-landing-primary bg-landing-primary/10 text-white"
                       : "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-950/80"
                   }`}
                 >
@@ -240,7 +240,7 @@ export default function PublicBukuTamuPage() {
                     setFormData((prev) => ({ ...prev, nama_kamu: e.target.value }))
                   }
                   placeholder="Masukkan nama lengkap Anda"
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/10"
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-landing-primary focus:ring-2 focus:ring-landing-primary/10"
                 />
               </div>
             </div>
@@ -263,7 +263,7 @@ export default function PublicBukuTamuPage() {
                     setFormData((prev) => ({ ...prev, nomor_telepon: e.target.value }))
                   }
                   placeholder="Contoh: 081234567890"
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/10"
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-landing-primary focus:ring-2 focus:ring-landing-primary/10"
                 />
               </div>
             </div>
@@ -285,7 +285,7 @@ export default function PublicBukuTamuPage() {
                     setFormData((prev) => ({ ...prev, asal_instansi: e.target.value }))
                   }
                   placeholder="Nama sekolah / universitas / perusahaan Anda"
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/10"
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-landing-primary focus:ring-2 focus:ring-landing-primary/10"
                 />
               </div>
             </div>
@@ -307,7 +307,7 @@ export default function PublicBukuTamuPage() {
                     setFormData((prev) => ({ ...prev, alamat: e.target.value }))
                   }
                   placeholder="Masukkan alamat domisili lengkap Anda"
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/10 resize-none"
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-landing-primary focus:ring-2 focus:ring-landing-primary/10 resize-none"
                 />
               </div>
             </div>
@@ -330,7 +330,7 @@ export default function PublicBukuTamuPage() {
                     setFormData((prev) => ({ ...prev, keperluan: e.target.value }))
                   }
                   placeholder="Tuliskan tujuan / keperluan kedatangan Anda"
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/10 resize-none"
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-landing-primary focus:ring-2 focus:ring-landing-primary/10 resize-none"
                 />
               </div>
             </div>
@@ -353,12 +353,12 @@ export default function PublicBukuTamuPage() {
                     type="button"
                     onClick={() => handleSourceChange(src)}
                     className={`flex items-center gap-2 rounded-lg border p-3 text-left transition ${
-                      formData.tau_utero_darimana === src && !otherSource
-                        ? "border-[#BC934B] bg-[#BC934B]/10 font-bold"
-                        : "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-950/80"
+                    formData.tau_utero_darimana === src && !otherSource
+                      ? "border-landing-primary bg-landing-primary/10 font-bold"
+                      : "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-950/80"
                     }`}
                   >
-                    <HelpCircle className="h-4 w-4 text-[#BC934B] shrink-0" />
+                    <HelpCircle className="h-4 w-4 text-landing-primary shrink-0" />
                     <span className="leading-tight">{src}</span>
                   </button>
                 ))}
@@ -367,11 +367,11 @@ export default function PublicBukuTamuPage() {
                   onClick={() => handleSourceChange("Other")}
                   className={`flex items-center gap-2 rounded-lg border p-3 text-left transition ${
                     otherSource
-                      ? "border-[#BC934B] bg-[#BC934B]/10 font-bold"
+                      ? "border-landing-primary bg-landing-primary/10 font-bold"
                       : "border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-950/80"
                   }`}
                 >
-                  <HelpCircle className="h-4 w-4 text-[#BC934B] shrink-0" />
+                  <HelpCircle className="h-4 w-4 text-landing-primary shrink-0" />
                   <span>LAINNYA</span>
                 </button>
               </div>
@@ -384,7 +384,7 @@ export default function PublicBukuTamuPage() {
                     value={customSource}
                     onChange={(e) => setCustomSource(e.target.value)}
                     placeholder="Sebutkan sumber lainnya..."
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-[#BC934B]"
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition focus:border-landing-primary"
                   />
                 </div>
               )}
@@ -407,7 +407,7 @@ export default function PublicBukuTamuPage() {
                     setFormData((prev) => ({ ...prev, kritik_saran: e.target.value }))
                   }
                   placeholder="Beri masukan membangun untuk pelayanan kami"
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-[#BC934B] focus:ring-2 focus:ring-[#BC934B]/10 resize-none"
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition focus:border-landing-primary focus:ring-2 focus:ring-landing-primary/10 resize-none"
                 />
               </div>
             </div>
@@ -416,7 +416,7 @@ export default function PublicBukuTamuPage() {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#BC934B] px-4 py-3.5 mt-2 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-[#A88444] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-landing-primary px-4 py-3.5 mt-2 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-landing-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (
                 <>

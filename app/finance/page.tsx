@@ -289,7 +289,7 @@ export default function FinanceDashboardPage() {
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           <Link
             href="/finance/reimburse"
-            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-[#BC934B]/60 transition-colors"
+            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-primary/60 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-3 min-w-0">
@@ -310,7 +310,7 @@ export default function FinanceDashboardPage() {
           </Link>
           <Link
             href="/finance/payroll"
-            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-[#BC934B]/60 transition-colors"
+            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-primary/60 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-3 min-w-0">
@@ -349,7 +349,7 @@ export default function FinanceDashboardPage() {
           </Link>
           <Link
             href="/finance/coa"
-            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-[#BC934B]/60 transition-colors"
+            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-primary/60 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-3 min-w-0">
@@ -368,7 +368,7 @@ export default function FinanceDashboardPage() {
           </Link>
           <Link
             href="/finance/journal"
-            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-[#BC934B]/60 transition-colors"
+            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-primary/60 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-3 min-w-0">
@@ -387,7 +387,7 @@ export default function FinanceDashboardPage() {
           </Link>
           <Link
             href="/finance/invoice"
-            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-[#BC934B]/60 transition-colors"
+            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-primary/60 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-3 min-w-0">
@@ -406,7 +406,7 @@ export default function FinanceDashboardPage() {
           </Link>
           <Link
             href="/finance/utang"
-            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-[#BC934B]/60 transition-colors"
+            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-primary/60 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-3 min-w-0">
@@ -425,7 +425,7 @@ export default function FinanceDashboardPage() {
           </Link>
           <Link
             href="/finance/piutang"
-            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-[#BC934B]/60 transition-colors"
+            className="group bg-white border border-slate-200 shadow-sm rounded-xl p-4 md:p-6 hover:border-primary/60 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-3 min-w-0">

@@ -691,7 +691,7 @@ export default function LaporanKeuanganPage() {
         onClick={() => handleTabChange(tab.id)}
         className={`flex items-center gap-2 pb-3 text-sm font-semibold transition-all border-b-2 px-4 ${
           isActive
-            ? "border-[#BC934B] text-white"
+            ? "border-primary text-white"
             : "border-transparent text-white/60 hover:text-white"
         }`}
       >
@@ -798,7 +798,7 @@ export default function LaporanKeuanganPage() {
 
       {isLoading && (
         <section className="flex items-center justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-[#BC934B]/30 border-t-[#BC934B] rounded-full" />
+          <div className="animate-spin h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full" />
         </section>
       )}
 
