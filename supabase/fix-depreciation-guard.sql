@@ -15,7 +15,7 @@
 --   b. Jurnal depresiasi kini memuat journal_number JRN-MMYY-NNNNN
 --      (count-based, cari slot bebas) — konsisten dengan jurnal lain.
 --
--- Urutan deploy: file ini -> add-asset-acquisition-journal.sql
+-- Urutan deploy: file ini -> migration-fase8-asset-cashflow.sql
 --               -> backfill-asset-acquisition.sql
 -- Cara pakai: jalankan di Supabase SQL Editor. Aman dijalankan ulang.
 -- ============================================================================
