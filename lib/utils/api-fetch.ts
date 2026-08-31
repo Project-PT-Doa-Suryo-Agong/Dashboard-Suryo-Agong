@@ -31,7 +31,7 @@ export async function apiFetch(url: string, options?: ApiFetchOptions): Promise<
 
   if (response.status === 401 && typeof window !== "undefined" && !suppressAuthRedirect) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-    const base = (siteUrl ? siteUrl : window.location.origin).replace(/\/$/, "");
+    const base = (window.location.origin || siteUrl || "").replace(/\/$/, "");
     const loginUrl = `${base}/auth/login?message=Sesi+telah+berakhir,+silakan+login+kembali`;
 
     // Avoid noisy reload loops when already on login screen.
