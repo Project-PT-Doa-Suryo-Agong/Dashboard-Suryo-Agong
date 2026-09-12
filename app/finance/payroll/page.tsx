@@ -137,6 +137,43 @@ function prepareReportRows(
   ]);
 }
 
+const PDF_HEADERS = [
+  "Periode",
+  "Nama Karyawan",
+  "Gaji Pokok",
+  "BPJS JHT",
+  "BPJS JP",
+  "Potongan Kasbon",
+  "Potongan Manual",
+  "Total Potongan",
+  "Gaji Bersih",
+] as const;
+
+function preparePDFRows(
+  data: TPayrollHistoryWithCoa[],
+  employeeLookup: Record<string, string>,
+): string[][] {
+  return data.map((item) => {
+    const bpjsJht = item.bpjs_jht ?? 0;
+    const bpjsJp = item.bpjs_jp ?? 0;
+    const potonganKasbon = item.potongan_kasbon ?? 0;
+    const potonganManual = item.potongan_manual ?? 0;
+    const totalPotongan = bpjsJht + bpjsJp + potonganKasbon + potonganManual;
+    const gajiBersih = item.gaji_bersih ?? item.total ?? 0;
+    return [
+      item.bulan ? formatPeriod(item.bulan) : "-",
+      employeeLookup[item.employee_id ?? ""] ?? "Karyawan tidak ditemukan",
+      formatRupiah(item.gaji_pokok ?? 0),
+      formatRupiah(bpjsJht),
+      formatRupiah(bpjsJp),
+      formatRupiah(potonganKasbon),
+      formatRupiah(potonganManual),
+      formatRupiah(totalPotongan),
+      formatRupiah(gajiBersih),
+    ];
+  });
+}
+
 const NAVY = "bg-[#1B365D]";
 
 /** Opacity default untuk baris slip gaji yang diberi background semi-transparan. */
@@ -763,11 +800,22 @@ export default function FinancePayrollPage() {
       // Fallback ke PDF standar tanpa kop surat bila asset gagal dimuat.
     }
     exportToPDF({
-      title: REPORT_CONFIG.title,
-      headers: [...REPORT_CONFIG.headers],
-      rows: reportRows,
+      title: "Laporan Payroll - PT Doa Suryo Agong",
+      headers: [...PDF_HEADERS],
+      rows: preparePDFRows(filteredPayroll, employeeById),
       fileName: "Slip_Gaji_PT_Doa_Suryo_Agong.pdf",
       fullPageBackground,
+      orientation: "landscape",
+      columnStyles: {
+        1: { cellWidth: 45 },
+        2: { halign: "right" },
+        3: { halign: "right" },
+        4: { halign: "right" },
+        5: { halign: "right" },
+        6: { halign: "right" },
+        7: { halign: "right" },
+        8: { halign: "right", cellWidth: 30 },
+      },
     });
   };
 
@@ -893,20 +941,53 @@ export default function FinancePayrollPage() {
   const handleExportSlipGaji = async (item: TPayrollHistoryWithCoa) => {
     const employee = employeeDataById[item.employee_id ?? ""];
     const employeeName = employee?.nama ?? "Karyawan";
+
+    // ── Pendapatan ──
     const gajiPokok = item.gaji_pokok ?? 0;
-    const totalDibayar = item.gaji_bersih ?? item.total ?? 0;
-    const potongan = item.potongan_kasbon ?? 0;
+    const tunjangan = item.tunjangan ?? 0;
+    const lembur = item.lembur ?? 0;
+    const bonus = item.bonus ?? 0;
+    const insentif = item.insentif ?? 0;
+    const gajiKotor = item.gaji_kotor ?? 0;
+
+    // ── Potongan ──
+    const bpjsJht = item.bpjs_jht ?? 0;
+    const bpjsJp = item.bpjs_jp ?? 0;
+    const potonganKasbon = item.potongan_kasbon ?? 0;
+    const potonganManual = item.potongan_manual ?? 0;
+    const totalPotongan = bpjsJht + bpjsJp + potonganKasbon + potonganManual;
+    const adaPotongan = totalPotongan > 0;
+    const bpjsJkkJkm = item.bpjs_jkk_jkm ?? 0;
+
+    // ── Gaji Bersih (field jadi, jangan dihitung ulang) ──
+    const gajiBersih = item.gaji_bersih ?? item.total ?? 0;
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const pageW = 210;
+    const pageH = 297;
     const mx = 20;
     const contentW = pageW - mx * 2;
+    let kopSuratFullPage: string | null = null;
+    let hasKopSurat = false;
+    const ttdY = 245;
+
+    /** Tambah halaman baru bila konten melewati batas bawah, lalu gambar ulang
+     *  background kop surat dan header agar halaman ke-2 tampil utuh. */
+    const ensureSpace = (y: number, need = 12) => {
+      if (y > pageH - need) {
+        doc.addPage();
+        if (kopSuratFullPage) {
+          doc.addImage(kopSuratFullPage, "PNG", 0, 0, pageW, pageH, undefined, "FAST");
+        }
+        return 62;
+      }
+      return y;
+    };
 
     // ── Background full-page A4 (template 2481×3508, harus PALING BAWAH) ──
-    let hasKopSurat = false;
     try {
-      const kopSuratFullPage = await getKopSuratFullPageDataUrl();
-      doc.addImage(kopSuratFullPage, "PNG", 0, 0, pageW, 297, undefined, "FAST");
+      kopSuratFullPage = await getKopSuratFullPageDataUrl();
+      doc.addImage(kopSuratFullPage, "PNG", 0, 0, pageW, pageH, undefined, "FAST");
       hasKopSurat = true;
     } catch {
       // Fallback ke header teks lama bila asset kop surat gagal dimuat.
@@ -961,6 +1042,15 @@ export default function FinancePayrollPage() {
     // ── Pendapatan Table ──
     iy += 4;
     const rowH = 7;
+    const pendapatan: [string, number][] = [
+      ["Gaji Pokok", gajiPokok],
+      ["Tunjangan", tunjangan],
+      ["Lembur", lembur],
+      ["Bonus", bonus],
+      ["Insentif", insentif],
+    ];
+
+    iy = ensureSpace(iy, rowH);
     doc.setFillColor(27, 54, 93);
     doc.rect(mx, iy, contentW, rowH, "F");
     doc.setTextColor(255, 255, 255);
@@ -970,21 +1060,26 @@ export default function FinancePayrollPage() {
     doc.text("JUMLAH", pageW - mx - 4, iy + 5, { align: "right" });
     iy += rowH;
 
-    doc.setTextColor(50, 50, 50);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text("Gaji Pokok", mx + 4, iy + 5);
-    doc.text(formatRupiah(gajiPokok), pageW - mx - 4, iy + 5, { align: "right" });
-    iy += rowH;
+    for (const [label, value] of pendapatan) {
+      iy = ensureSpace(iy, rowH);
+      doc.setTextColor(50, 50, 50);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text(label, mx + 4, iy + 5);
+      doc.text(formatRupiah(value), pageW - mx - 4, iy + 5, { align: "right" });
+      iy += rowH;
+    }
 
+    iy = ensureSpace(iy, rowH);
     fillSlipRow(doc, mx, iy, contentW, rowH, [232, 240, 254]);
     doc.setTextColor(27, 54, 93);
     doc.setFont("helvetica", "bold");
-    doc.text("Total Pendapatan", mx + 4, iy + 5);
-    doc.text(formatRupiah(gajiPokok), pageW - mx - 4, iy + 5, { align: "right" });
+    doc.text("Gaji Kotor (Bruto)", mx + 4, iy + 5);
+    doc.text(formatRupiah(gajiKotor), pageW - mx - 4, iy + 5, { align: "right" });
     iy += rowH + 3;
 
     // ── Potongan Table ──
+    iy = ensureSpace(iy, rowH);
     doc.setFillColor(27, 54, 93);
     doc.rect(mx, iy, contentW, rowH, "F");
     doc.setTextColor(255, 255, 255);
@@ -994,30 +1089,53 @@ export default function FinancePayrollPage() {
     doc.text("JUMLAH", pageW - mx - 4, iy + 5, { align: "right" });
     iy += rowH;
 
-    if (potongan > 0) {
-      doc.setTextColor(50, 50, 50);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.text("Potongan Kasbon", mx + 4, iy + 5);
-      doc.text(formatRupiah(potongan), pageW - mx - 4, iy + 5, { align: "right" });
-      iy += rowH;
-    } else {
+    if (!adaPotongan) {
+      iy = ensureSpace(iy, rowH);
       doc.setTextColor(150, 150, 150);
       doc.setFont("helvetica", "italic");
       doc.setFontSize(8);
       doc.text("Tidak ada potongan", mx + 4, iy + 5);
       iy += rowH;
+    } else {
+      const potongan: [string, number][] = [
+        ["BPJS JHT (2%)", bpjsJht],
+        ["BPJS JP (1%)", bpjsJp],
+        ["Kasbon", potonganKasbon],
+        ["Potongan Manual", potonganManual],
+      ];
+      for (const [label, value] of potongan) {
+        iy = ensureSpace(iy, rowH);
+        doc.setTextColor(50, 50, 50);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.text(label, mx + 4, iy + 5);
+        doc.text(formatRupiah(value), pageW - mx - 4, iy + 5, { align: "right" });
+        iy += rowH;
+      }
     }
 
+    iy = ensureSpace(iy, rowH);
     fillSlipRow(doc, mx, iy, contentW, rowH, [255, 232, 232]);
     doc.setTextColor(180, 40, 40);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.text("Total Potongan", mx + 4, iy + 5);
-    doc.text(formatRupiah(potongan), pageW - mx - 4, iy + 5, { align: "right" });
-    iy += rowH + 3;
+    doc.text(formatRupiah(totalPotongan), pageW - mx - 4, iy + 5, { align: "right" });
+    iy += rowH + 2;
+
+    if (bpjsJkkJkm > 0) {
+      iy = ensureSpace(iy, rowH);
+      doc.setTextColor(150, 150, 150);
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7.5);
+      doc.text(`BPJS JKK+JKM (info, dibayar perusahaan): ${formatRupiah(bpjsJkkJkm)}`, mx + 4, iy + 5);
+      iy += rowH;
+    }
+
+    iy += 1;
 
     // ── Grand Total ──
+    iy = ensureSpace(iy, rowH + 2);
     fillSlipRow(doc, mx, iy, contentW, rowH + 2, [232, 240, 254]);
     doc.setDrawColor(27, 54, 93);
     doc.setLineWidth(0.5);
@@ -1026,21 +1144,21 @@ export default function FinancePayrollPage() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text("TOTAL DITERIMA", mx + 4, iy + 6);
-    doc.text(formatRupiah(totalDibayar), pageW - mx - 4, iy + 6, { align: "right" });
+    doc.text(formatRupiah(gajiBersih), pageW - mx - 4, iy + 6, { align: "right" });
     iy += rowH + 6;
 
     // ── Tanda Tangan ──
-    const ttdY = Math.max(iy + 8, 210);
+    const ttdPosition = ensureSpace(ttdY, 30);
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.3);
-    doc.line(mx, ttdY, pageW - mx, ttdY);
+    doc.line(mx, ttdPosition, pageW - mx, ttdPosition);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
-    doc.text("Nganjuk, " + formatDate(new Date().toISOString()), pageW - mx - 4, ttdY + 6, { align: "right" });
-    doc.text("Finance & Administration", pageW - mx - 4, ttdY + 12, { align: "right" });
-    doc.text("( _______________________ )", pageW - mx - 4, ttdY + 24, { align: "right" });
+    doc.text("Nganjuk, " + formatDate(new Date().toISOString()), pageW - mx - 4, ttdPosition + 6, { align: "right" });
+    doc.text("Finance & Administration", pageW - mx - 4, ttdPosition + 12, { align: "right" });
+    doc.text("( _______________________ )", pageW - mx - 4, ttdPosition + 24, { align: "right" });
 
     doc.save(`Slip_Gaji_${employeeName.replace(/\s+/g, "_")}_${(item.bulan ?? "unknown").substring(0, 7)}.pdf`);
   };
