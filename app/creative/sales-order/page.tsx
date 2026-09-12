@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { Edit, Plus, ShoppingBag, Trash2, Download, Upload, FileSpreadsheet, X, CheckCircle, AlertCircle, Printer } from "lucide-react";
+import { Edit, Plus, ShoppingBag, Trash2, Download, Upload, FileSpreadsheet, X, CheckCircle, AlertCircle, Printer, Zap } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Modal from "@/components/ui/Modal";
 import type { ApiError, ApiSuccess } from "@/types/api";
@@ -24,6 +24,14 @@ type TSalesOrderWithCoa = TSalesOrder & {
   m_coa?: { kode_akun: string; nama_akun: string } | null;
 };
 import { RowActions, EditButton, DetailButton, DeleteButton } from "@/components/ui/RowActions";
+
+const PRINT_AGENT_URL = process.env.NEXT_PUBLIC_PRINT_AGENT_URL ?? "http://localhost:9100";
+
+// Feature flag print: "thermal" (default — jalur baru via printer-agent) atau
+// "legacy" (print browser + Generate PDF lama). Bisa diset lewat env
+// NEXT_PUBLIC_PRINT_MODE tanpa deploy ulang.
+const PRINT_MODE: "thermal" | "legacy" =
+  (process.env.NEXT_PUBLIC_PRINT_MODE ?? "thermal") === "legacy" ? "legacy" : "thermal";
 
 const NAMA_BULAN = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -63,6 +71,16 @@ type MembershipListPayload = {
     limit: number;
     total: number;
   };
+};
+
+type MembershipCreatePayload = {
+  membership: TMembership;
+};
+
+type RegisterMemberField = {
+  nama: string;
+  telepon: string;
+  lokasi: string;
 };
 
 type FormItem = {
@@ -200,6 +218,12 @@ export default function SalesOrderPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  // Registrasi Member Baru states
+  const [isRegisterMemberOpen, setIsRegisterMemberOpen] = useState(false);
+  const [registerField, setRegisterField] = useState<RegisterMemberField>({ nama: "", telepon: "", lokasi: "" });
+  const [isRegMemberSubmitting, setIsRegMemberSubmitting] = useState(false);
+  const [regMemberError, setRegMemberError] = useState<string | null>(null);
+
   // Import Excel states
   const [isImporting, setIsImporting] = useState(false);
   const [isImportResultOpen, setIsImportResultOpen] = useState(false);
@@ -208,7 +232,9 @@ export default function SalesOrderPage() {
     details: { row: number; status: string; message: string; order_number?: string }[];
   } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  // [TO-BE-REMOVED after thermal verified] State pilihan ukuran kertas (fitur lama).
   const [printPaperId, setPrintPaperId] = useState<string>(DEFAULT_PAPER_ID);
+  const [isPrintThermalLoading, setIsPrintThermalLoading] = useState(false);
 
   const variantMap = useMemo(
     () => new Map<string, MVarian>(variants.map((item) => [item.id, item])),
@@ -459,6 +485,63 @@ export default function SalesOrderPage() {
     void fetchDefaultOrderNumber();
   };
 
+  const openRegisterMember = () => {
+    setRegisterField({ nama: "", telepon: "", lokasi: "" });
+    setRegMemberError(null);
+    setIsRegisterMemberOpen(true);
+  };
+
+  const closeRegisterMember = () => {
+    setIsRegisterMemberOpen(false);
+    setRegMemberError(null);
+  };
+
+  const handleRegisterMemberSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isRegMemberSubmitting) return;
+
+    if (!registerField.nama || !registerField.nama.trim()) {
+      setRegMemberError("Nama pelanggan wajib diisi.");
+      return;
+    }
+
+    setIsRegMemberSubmitting(true);
+    setRegMemberError(null);
+    try {
+      const response = await apiFetch("/api/sales/membership", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nama: registerField.nama,
+          telepon: registerField.telepon || undefined,
+          lokasi: registerField.lokasi || undefined,
+        }),
+      });
+      const payload = await parseJsonResponse<MembershipCreatePayload>(response);
+      const member = payload.data.membership;
+      if (!member) throw new Error("Member baru gagal diproses.");
+
+      setMemberships((prev) => {
+        if (prev.some((m) => m.id === member.id)) return prev;
+        return [...prev, member];
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        nama_pelanggan: member.nama ?? "",
+        nomor_telepon: member.telepon ?? "",
+        lokasi: member.lokasi ?? "",
+      }));
+
+      closeRegisterMember();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menambahkan member baru.";
+      setRegMemberError(message);
+    } finally {
+      setIsRegMemberSubmitting(false);
+    }
+  };
+
   const fetchDefaultOrderNumber = useCallback(async () => {
     try {
       const response = await apiFetch("/api/sales/order-number", {
@@ -584,6 +667,8 @@ export default function SalesOrderPage() {
     setIsDetailModalOpen(false);
   };
 
+  // [TO-BE-REMOVED after thermal verified] Generate PDF lama (jsPDF). Dipertahankan
+  // sementara sebagai fallback; akan dihapus setelah jalur thermal terverifikasi.
   const handleGeneratePDF = (order: TSalesOrder) => {
     const opt = getSoPaperOption(printPaperId) ?? getSoPaperOption(DEFAULT_PAPER_ID)!;
     const doc = createSoPdfDoc(opt);
@@ -607,7 +692,14 @@ export default function SalesOrderPage() {
     doc.save(`Sales_Order_${getOrderDisplayCode(order)}.pdf`);
   };
 
-  const handlePrint = () => {
+  const handlePrint = (order: TSalesOrder) => {
+    // Jalur BARU (default): print struk via printer-agent (thermal).
+    if (PRINT_MODE === "thermal") {
+      handlePrintThermal(order);
+      return;
+    }
+
+    // [TO-BE-REMOVED after thermal verified] Jalur LAMA (window.print di browser).
     const el = printRef.current;
     if (!el) return;
 
@@ -638,6 +730,98 @@ export default function SalesOrderPage() {
 
     win.onload = () => { win.focus(); win.print(); };
     win.onafterprint = () => win.close();
+  };
+
+  const handlePrintThermal = async (order: TSalesOrder) => {
+    if (isPrintThermalLoading) return;
+
+    // Lebar struk tidak lagi diambil dari fitur pilih kertas (printableWidthMm).
+    // Agent memakai PRINTER_WIDTH_MM di printer-agent/.env sebagai charactersPerLine.
+    setIsPrintThermalLoading(true);
+    try {
+      const rawItems = (order as unknown as { items?: Array<{ id_varian?: string; qty?: number | string; harga?: number | string; harga_total?: number | string }> }).items;
+      const items = Array.isArray(rawItems) && rawItems.length > 0
+        ? rawItems.map((it) => ({
+            name: variantMap.get(it.id_varian ?? "")?.nama_varian ?? "Produk Varian",
+            qty: Number(it.qty ?? 0),
+            price: Number(it.harga ?? 0),
+            total: Number(it.harga_total ?? 0),
+          }))
+        : [
+            {
+              name: variantMap.get(order.varian_id ?? "")?.nama_varian ?? "Produk Varian",
+              qty: getOrderQuantity(order),
+              price: getOrderQuantity(order) > 0 ? Number(order.total_price || 0) / getOrderQuantity(order) : 0,
+              total: Number(order.total_price || 0),
+            },
+          ];
+
+      const payload = {
+        store: {
+          name: "PT. DOA SURYO AGONG",
+          address: [
+            "Jl. Nglinggo, Gobang, Nglinggo,",
+            "Kec. Gondang, Kab. Nganjuk, Jatim 64451",
+          ],
+          phone: "Telp: 0851-4123-9009",
+        },
+        order: {
+          number: getOrderDisplayCode(order),
+          date: formatDate(order.created_at),
+        },
+        customer: {
+          name: order.nama_pelanggan || "-",
+          phone: order.nomor_telepon || "-",
+          address: order.lokasi || "-",
+        },
+        items,
+        totals: {
+          totalBarang: Number(order.total_price || 0),
+          diskon: Number(order.diskon || 0),
+          cashLabel: Number(order.terms_of_payment ?? 0) > 0 ? "Jumlah DP" : "Jumlah Cash",
+          cashValue: Number(order.jumlah_cash ?? (order.total_price || 0)),
+          piutang: Number(order.jumlah_piutang || 0),
+          totalBayar: Number(order.total_bayar ?? (order.total_price || 0)),
+        },
+        footnote: {
+          thankYou: "Terima kasih atas kunjungan Anda.",
+          itemCount: getOrderQuantity(order),
+        },
+      };
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(`${PRINT_AGENT_URL}/print`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        let message = `Printer agent error (${response.status}).`;
+        try {
+          const body = await response.json();
+          if (body && body.error) message = body.error;
+        } catch {
+          /* respon bukan JSON */
+        }
+        alert(`${message}\n\nPastikan printer-agent berjalan di komputer kasir.\nFallback print browser: set NEXT_PUBLIC_PRINT_MODE=legacy lalu build ulang.`);
+        return;
+      }
+
+      alert("Struk terkirim ke printer.");
+    } catch (err) {
+      const aborted = err && (err as { name?: string }).name === "AbortError";
+      alert(
+        aborted
+          ? "Printer agent tidak merespons (timeout). Pastikan aplikasi printer-agent berjalan di komputer kasir.\n\nFallback print browser: set NEXT_PUBLIC_PRINT_MODE=legacy lalu build ulang."
+          : "Printer agent tidak terhubung. Pastikan aplikasi printer-agent berjalan di komputer kasir dan PRINTER_INTERFACE sudah diisi.\n\nFallback print browser: set NEXT_PUBLIC_PRINT_MODE=legacy lalu build ulang."
+      );
+    } finally {
+      setIsPrintThermalLoading(false);
+    }
   };
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
@@ -900,6 +1084,10 @@ export default function SalesOrderPage() {
                   value=""
                   onChange={(event) => {
                     const memberId = event.target.value;
+                    if (memberId === "__register__") {
+                      openRegisterMember();
+                      return;
+                    }
                     if (!memberId) return;
                     const member = memberships.find((m) => m.id === memberId);
                     if (member) {
@@ -920,6 +1108,7 @@ export default function SalesOrderPage() {
                       {m.nama ?? "Tanpa Nama"} {m.telepon ? `(${m.telepon})` : ""}
                     </option>
                   ))}
+                  <option value="__register__" className="text-blue-600 font-bold">+ Registrasi Member Baru</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -1472,6 +1661,10 @@ export default function SalesOrderPage() {
                   value=""
                   onChange={(event) => {
                     const memberId = event.target.value;
+                    if (memberId === "__register__") {
+                      openRegisterMember();
+                      return;
+                    }
                     if (!memberId) return;
                     const member = memberships.find((m) => m.id === memberId);
                     if (member) {
@@ -1492,6 +1685,7 @@ export default function SalesOrderPage() {
                       {m.nama ?? "Tanpa Nama"} {m.telepon ? `(${m.telepon})` : ""}
                     </option>
                   ))}
+                  <option value="__register__" className="text-blue-600 font-bold">+ Registrasi Member Baru</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -1898,6 +2092,7 @@ export default function SalesOrderPage() {
               </p>
             </div>
             <div className="no-print border-t border-slate-100 pt-3">
+              {/* [TO-BE-REMOVED after thermal verified] Selector "Jenis & Ukuran Kertas" (fitur lama). */}
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Jenis & Ukuran Kertas</label>
               <select
                 value={printPaperId}
@@ -1915,17 +2110,31 @@ export default function SalesOrderPage() {
                   </optgroup>
                 ))}
               </select>
-              <p className="mt-1.5 text-[11px] text-slate-400">Pilih jenis printer dan ukuran kertas sebelum mencetak. Berlaku untuk Print dan Generate PDF.</p>
+              <p className="mt-1.5 text-[11px] text-slate-400">Pilih jenis printer dan ukuran kertas sebelum mencetak. Berlaku untuk Print, Generate PDF, dan Print via Thermal (Agent).</p>
             </div>
             <div className="flex justify-end gap-2 pt-4 no-print">
+              {/* Dalam mode "legacy", tombol thermal eksplisit hanya untuk layout thermal.
+                  Dalam mode "thermal" (default), tombol Print di bawah sudah pakai thermal. */}
+              {PRINT_MODE !== "thermal" && getSoPaperOption(printPaperId)?.layout === "thermal" && (
+                <button
+                  type="button"
+                  onClick={() => handlePrintThermal(detailData)}
+                  disabled={isPrintThermalLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Zap className="w-4 h-4" />
+                  {isPrintThermalLoading ? "Mencetak..." : "Print via Thermal (Agent)"}
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handlePrint}
+                onClick={() => handlePrint(detailData)}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700"
               >
                 <Printer className="w-4 h-4" />
                 Print
               </button>
+              {/* [TO-BE-REMOVED after thermal verified] Generate PDF lama tetap dipertahankan sementara. */}
               <button
                 type="button"
                 onClick={() => handleGeneratePDF(detailData)}
@@ -2031,6 +2240,95 @@ export default function SalesOrderPage() {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {isRegisterMemberOpen && (
+        <Modal
+          isOpen={isRegisterMemberOpen}
+          onClose={closeRegisterMember}
+          maxWidth="max-w-md"
+          title={
+            <div className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-bold text-slate-900">Registrasi Member Baru</h3>
+            </div>
+          }
+        >
+          <form onSubmit={handleRegisterMemberSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">
+                Nama Pelanggan <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={registerField.nama}
+                onChange={(event) => setRegisterField((prev) => ({ ...prev, nama: event.target.value }))}
+                required
+                placeholder="contoh: Budi Santoso"
+                className="w-full px-4 py-3 bg-slate-200 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-amber-200/50 focus:border-amber-400 text-sm outline-none transition-all"
+                disabled={isRegMemberSubmitting}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">
+                Nomor Telepon
+              </label>
+              <input
+                type="text"
+                value={registerField.telepon}
+                onChange={(event) => setRegisterField((prev) => ({ ...prev, telepon: event.target.value }))}
+                placeholder="contoh: 0812-3456-7890"
+                className="w-full px-4 py-3 bg-slate-200 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-amber-200/50 focus:border-amber-400 text-sm outline-none transition-all"
+                disabled={isRegMemberSubmitting}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">
+                Lokasi / Alamat
+              </label>
+              <input
+                type="text"
+                value={registerField.lokasi}
+                onChange={(event) => setRegisterField((prev) => ({ ...prev, lokasi: event.target.value }))}
+                placeholder="contoh: Surabaya, Jawa Timur"
+                className="w-full px-4 py-3 bg-slate-200 border border-slate-200 text-slate-700 rounded-xl focus:ring-2 focus:ring-amber-200/50 focus:border-amber-400 text-sm outline-none transition-all"
+                disabled={isRegMemberSubmitting}
+              />
+            </div>
+
+            <p className="text-xs text-slate-500 bg-blue-50 border border-blue-100 text-blue-700 p-3 rounded-lg font-medium">
+              Member baru ini otomatis akan diregistrasikan ke database master dan muncul di halaman Membership.
+            </p>
+
+            {regMemberError && (
+              <p className="text-sm text-rose-600 font-medium bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                {regMemberError}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                type="button"
+                onClick={closeRegisterMember}
+                disabled={isRegMemberSubmitting}
+                className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-semibold py-2.5 px-5 rounded-xl transition-all"
+              >
+                <X size={16} />
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isRegMemberSubmitting}
+                className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-5 rounded-xl shadow-md shadow-green-200 transition-all"
+              >
+                <Plus size={16} />
+                {isRegMemberSubmitting ? "Menyimpan..." : "Daftarkan"}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

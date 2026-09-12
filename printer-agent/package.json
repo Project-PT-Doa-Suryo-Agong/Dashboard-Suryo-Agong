@@ -1,0 +1,22 @@
+{
+  "name": "suryo-agong-printer-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local print agent (thermal/dot-matrix receipt) for Suryo Agong Sales Order. Runs on the cashier PC, NOT deployed with the Next.js app.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "smoke": "node smoke-test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "node-thermal-printer": "^4.6.1"
+  }
+}
