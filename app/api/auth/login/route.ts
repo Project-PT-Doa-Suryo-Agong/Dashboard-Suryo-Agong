@@ -18,9 +18,6 @@ function isAllowedOrigin(origin: string | null): origin is string {
     const parsed = new URL(origin);
     if (!["http:", "https:"].includes(parsed.protocol)) return false;
 
-    // Allow Vercel preview/prod domains.
-    if (parsed.hostname.endsWith(".vercel.app")) return true;
-
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (siteUrl) {
       const base = new URL(
@@ -119,20 +116,26 @@ function buildRedirectUrl(
   dashboardPath: string,
   requestOrigin: string,
 ): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  let baseUrl: URL | null = null;
 
-  if (siteUrl) {
-    const base = siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`;
-    const baseUrl = new URL(base);
-    return `${baseUrl.origin}${dashboardPath}`;
-  }
-
+  // Prefer the origin the request actually came from (e.g. http://localhost:3000
+  // in local dev), so the browser never bounces to a hardcoded deployed domain.
   try {
-    const fallback = new URL(requestOrigin);
-    return `${fallback.origin}${dashboardPath}`;
+    baseUrl = new URL(requestOrigin);
   } catch {
-    return dashboardPath;
+    baseUrl = null;
   }
+
+  if (!baseUrl) {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    if (siteUrl) {
+      baseUrl = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`);
+    }
+  }
+
+  if (baseUrl) return `${baseUrl.origin}${dashboardPath}`;
+
+  return dashboardPath;
 }
 
 // --------------- CORS preflight ---------------
