@@ -8,6 +8,7 @@ import { RowActions, DetailButton, DeleteButton } from "@/components/ui/RowActio
 import { FileText, PlusCircle, Printer } from "lucide-react";
 import type { TPKWT } from "@/types/supabase";
 import { jsPDF } from "jspdf";
+import { getKopSuratFullPageDataUrl } from "@/lib/utils/export-pdf";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 
@@ -189,15 +190,35 @@ function ContractDocument({ content }: { content: string | null }) {
     }
 
     return (
-      <div className="bg-white text-slate-900 p-8 md:p-12 shadow-inner border border-slate-200 rounded-sm max-w-[21cm] mx-auto min-h-[29.7cm] flex flex-col justify-between font-serif text-sm lining-nums">
-        <div>
-          {/* Kop Surat (Letterhead) */}
-          <div className="border-b-4 border-slate-950 pb-4 mb-6 text-center">
-            <h1 className="text-xl font-bold tracking-wide uppercase text-slate-950 font-serif">PT DOA SURYO AGONG</h1>
-            <p className="text-xs text-slate-700 mt-1 font-sans">
-              Jl. Nglinggo, Gobang, Nglinggo, Kec. Gondang, Kabupaten Nganjuk, Jawa Timur 64451
-            </p>
-          </div>
+      <div
+        className="contract-sheet text-slate-900 p-8 md:p-12 shadow-inner border border-slate-200 rounded-sm max-w-[21cm] mx-auto min-h-[29.7cm] flex flex-col justify-between font-serif text-sm lining-nums"
+        style={{
+          position: "relative",
+          boxSizing: "border-box",
+          backgroundImage: "url(\"/Kop%20Surat%20DSA.png\")",
+          backgroundSize: "21cm 29.7cm",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "top left",
+          backgroundColor: "transparent",
+        }}
+      >
+        {/* Kop Surat background fix (berulang per halaman cetak) — pola sama seperti Payroll */}
+        <div
+          className="contract-bg-fixed"
+          style={{
+            display: "none",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "21cm",
+            height: "29.7cm",
+            backgroundImage: "url(\"/Kop%20Surat%20DSA.png\")",
+            backgroundSize: "21cm 29.7cm",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
+        <div className="flex flex-col justify-between">
+        <div className="pt-[4.2cm]" style={{ position: "relative", zIndex: 1 }}>
           
           {/* Date */}
           {dateText && (
@@ -281,6 +302,7 @@ function ContractDocument({ content }: { content: string | null }) {
             ))}
           </div>
         )}
+        </div>
       </div>
     );
   } catch (err) {
@@ -453,14 +475,37 @@ export default function PKWTPage() {
     }
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (!previewContent) return;
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const marginX = 54; // standard 0.75 in margin
     const maxTextWidth = pageWidth - (marginX * 2);
-    let cursorY = 54;
+
+    // ── Kop Surat full-page A4 (template public/Kop Surat DSA.png) ──
+    let hasKopSurat = false;
+    let fullPageBackground: string | undefined;
+    try {
+      fullPageBackground = await getKopSuratFullPageDataUrl();
+      doc.addImage(fullPageBackground, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+      hasKopSurat = true;
+    } catch {
+      // Fallback ke teks lama bila asset kop surat gagal dimuat.
+      fullPageBackground = undefined;
+      hasKopSurat = false;
+    }
+
+    // Posisi awal konten: di bawah area kop surat asli (pakai offset proporsional
+    // terhadap tinggi template, mengikuti pola Payroll slip gaji).
+    const KOP_SURAT_CONTENT_OFFSET = 124; // pt, di bawah tinggi kop surat pada template
+    let cursorY = hasKopSurat ? KOP_SURAT_CONTENT_OFFSET : 54;
+
+    const drawPageBackground = () => {
+      if (fullPageBackground) {
+        doc.addImage(fullPageBackground, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+      }
+    };
 
     const rawLines = previewContent.split("\n");
     const pihak1Details: { key: string; val: string }[] = [];
@@ -579,25 +624,29 @@ export default function PKWTPage() {
     const checkPageBreak = (neededHeight: number) => {
       if (cursorY + neededHeight > pageHeight - 54) {
         doc.addPage();
-        cursorY = 54;
+        // Kop surat digambar ulang di setiap halaman baru.
+        drawPageBackground();
+        cursorY = hasKopSurat ? KOP_SURAT_CONTENT_OFFSET : 54;
       }
     };
 
-    // Draw Letterhead (Kop Surat)
-    doc.setFont("times", "bold");
-    doc.setFontSize(16);
-    doc.text("PT DOA SURYO AGONG", pageWidth / 2, cursorY, { align: "center" });
-    cursorY += 16;
-    
-    doc.setFont("times", "normal");
-    doc.setFontSize(10);
-    doc.text("Jl. Nglinggo, Gobang, Nglinggo, Kec. Gondang, Kabupaten Nganjuk, Jawa Timur 64451", pageWidth / 2, cursorY, { align: "center" });
-    cursorY += 12;
-    
-    // Draw Single Thick Separator Line
-    doc.setLineWidth(3);
-    doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
-    cursorY += 24;
+    // Draw Letterhead (Kop Surat) — fallback teks HANYA bila PNG gagal dimuat.
+    if (!hasKopSurat) {
+      doc.setFont("times", "bold");
+      doc.setFontSize(16);
+      doc.text("PT DOA SURYO AGONG", pageWidth / 2, cursorY, { align: "center" });
+      cursorY += 16;
+      
+      doc.setFont("times", "normal");
+      doc.setFontSize(10);
+      doc.text("Jl. Nglinggo, Gobang, Nglinggo, Kec. Gondang, Kabupaten Nganjuk, Jawa Timur 64451", pageWidth / 2, cursorY, { align: "center" });
+      cursorY += 12;
+      
+      // Draw Single Thick Separator Line
+      doc.setLineWidth(3);
+      doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 24;
+    }
 
     // Draw Date
     if (dateText) {
@@ -802,10 +851,16 @@ export default function PKWTPage() {
     if (!win) return;
 
     win.document.open();
-    win.document.write(`<!DOCTYPE html><html><head><title>Print - ${templateType.toUpperCase()}</title>${stylesHTML}<style>body{padding:40px;font-family:serif}@page{margin:15mm}</style></head><body>${clone.outerHTML}</body></html>`);
+    win.document.write(`<!DOCTYPE html><html><head><title>Print - ${templateType.toUpperCase()}</title>${stylesHTML}<link rel="preload" as="image" href="/Kop%20Surat%20DSA.png"><style>@page{size:A4;margin:0}html,body{margin:0;padding:0}body{background:#fff}.contract-bg-fixed{display:block !important;position:fixed !important;top:0 !important;left:0 !important;width:210mm !important;height:297mm !important;background-image:url("/Kop%20Surat%20DSA.png") !important;background-size:210mm 297mm !important;background-repeat:no-repeat !important;z-index:0}.contract-sheet{background-image:none !important;min-height:297mm;margin:0 !important;max-width:none !important}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>${clone.outerHTML}</body></html>`);
     win.document.close();
 
-    win.onload = () => { win.focus(); win.print(); };
+    const triggerPrint = () => {
+      const image = win.document.createElement("img");
+      image.src = "/Kop%20Surat%20DSA.png";
+      image.onload = () => { win.focus(); win.print(); };
+      image.onerror = () => { win.focus(); win.print(); };
+    };
+    win.onload = triggerPrint;
     win.onafterprint = () => win.close();
   };
 
