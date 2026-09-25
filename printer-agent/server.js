@@ -49,11 +49,16 @@ app.get("/status", async (_req, res) => {
     try {
       const printer = buildPrinter();
       connected = await printer.isPrinterConnected();
+      // isPrinterConnected untuk path local/COM hanya fs.existsSync — ini hanya
+      // membuktikan Windows/driver melihat port itu, BUKAN link aktif/printer hidup.
+      const isLocalPort = /COM\d+$/i.test(config.interface);
       if (!connected) {
-        error = "Printer tidak terhubung (isPrinterConnected=false).";
+        error = isLocalPort
+          ? "Port COM/local tidak terdeteksi oleh Windows (isPrinterConnected hanya cek fs.existsSync). Ini bukan kepastian printer mati — endpoint /print tetap mencoba print langsung."
+          : "Printer tidak terdeteksi (isPrinterConnected=false). Endpoint /print tetap mencoba print langsung — nilai ini hanya informasi.";
       }
     } catch (err) {
-      error = err.message || "Gagal mengecek koneksi printer.";
+      error = "Gagal mengecek koneksi (tidak memblokir /print): " + (err && err.message ? err.message : "error tidak dikenal.");
     }
   } else {
     error = "PRINTER_INTERFACE belum diisi. Lihat printer-agent/.env";
@@ -82,6 +87,8 @@ app.post("/print", async (req, res) => {
     await printReceipt(payload);
     return res.status(200).json({ ok: true, message: "Struk terkirim ke printer." });
   } catch (err) {
+    console.error("[printer-agent] Detail error cetak (OS/Driver):", err);
+
     if (err instanceof PrinterNotConfiguredError) {
       return sendError(res, 409, err.message, { code: "PRINTER_NOT_CONFIGURED" });
     }
@@ -91,7 +98,16 @@ app.post("/print", async (req, res) => {
     if (err && err.message && err.message.includes("Payload")) {
       return sendError(res, 400, err.message);
     }
-    return sendError(res, 500, err && err.message ? err.message : "Terjadi kesalahan pada printer agent.", {
+    let message = err && err.message ? err.message : "Terjadi kesalahan pada printer agent.";
+    if (
+      message.includes("open '\\\\.\\COM") ||
+      message.includes("open '\\\\.\\com") ||
+      message.includes("UNKNOWN: unknown error, open")
+    ) {
+      const config = getPrinterConfig();
+      message = `Gagal membuka port printer COM (${config.rawInterface}). Pastikan printer Bluetooth menyala, terhubung (paired), dan port tidak sedang digunakan aplikasi lain.`;
+    }
+    return sendError(res, 500, message, {
       code: "PRINTER_ERROR",
     });
   }

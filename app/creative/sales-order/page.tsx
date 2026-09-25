@@ -807,7 +807,7 @@ export default function SalesOrderPage() {
         } catch {
           /* respon bukan JSON */
         }
-        alert(`${message}\n\nPastikan printer-agent berjalan di komputer kasir.\nFallback print browser: set NEXT_PUBLIC_PRINT_MODE=legacy lalu build ulang.`);
+        alert(`${message}\n\nPastikan printer-agent berjalan di komputer kasir.\nCatatan: /status mungkin menampilkan connected:false tapi /print tetap mencoba print langsung.\nFallback print browser: set NEXT_PUBLIC_PRINT_MODE=legacy lalu build ulang.`);
         return;
       }
 
@@ -817,7 +817,7 @@ export default function SalesOrderPage() {
       alert(
         aborted
           ? "Printer agent tidak merespons (timeout). Pastikan aplikasi printer-agent berjalan di komputer kasir.\n\nFallback print browser: set NEXT_PUBLIC_PRINT_MODE=legacy lalu build ulang."
-          : "Printer agent tidak terhubung. Pastikan aplikasi printer-agent berjalan di komputer kasir dan PRINTER_INTERFACE sudah diisi.\n\nFallback print browser: set NEXT_PUBLIC_PRINT_MODE=legacy lalu build ulang."
+          : "Printer agent tidak terhubung. Pastikan aplikasi printer-agent berjalan di komputer kasir dan PRINTER_INTERFACE sudah diisi.\n\nCatatan: /status boleh menampilkan connected:false — /print tetap mencoba print langsung.\nFallback print browser: set NEXT_PUBLIC_PRINT_MODE=legacy lalu build ulang."
       );
     } finally {
       setIsPrintThermalLoading(false);
