@@ -1595,7 +1595,7 @@ $$ LANGUAGE plpgsql;
 -- SECTION 10: VIEWS
 -- ============================================================================
 
-CREATE OR REPLACE VIEW "finance"."v_laba_rugi" AS
+CREATE OR REPLACE VIEW "finance"."v_laba_rugi" WITH (security_invoker = true) AS
  SELECT "c"."kode_akun", "c"."nama_akun", "c"."kategori",
     "sum"(("ji"."kredit" - "ji"."debit")) AS "saldo"
    FROM (("finance"."m_coa" "c"
@@ -1604,8 +1604,9 @@ CREATE OR REPLACE VIEW "finance"."v_laba_rugi" AS
   WHERE ("c"."kategori" = ANY (ARRAY['Pendapatan'::"finance"."coa_category", 'Beban'::"finance"."coa_category", 'Beban Lain-lain'::"finance"."coa_category"]))
   GROUP BY "c"."id", "c"."kode_akun", "c"."nama_akun", "c"."kategori";
 ALTER VIEW "finance"."v_laba_rugi" OWNER TO "postgres";
+ALTER VIEW "finance"."v_laba_rugi" SET (security_invoker = true);
 
-CREATE OR REPLACE VIEW "management"."view_rekap_penilaian" AS
+CREATE OR REPLACE VIEW "management"."view_rekap_penilaian" WITH (security_invoker = true) AS
  SELECT "k"."nama" AS "nama_karyawan",
     "count"("p"."penilai") AS "jumlah_penilai",
     EXTRACT(month FROM "p"."tanggal_penilaian") AS "bulan",
@@ -1624,6 +1625,7 @@ CREATE OR REPLACE VIEW "management"."view_rekap_penilaian" AS
   GROUP BY "k"."nama", "p"."dinilai", (EXTRACT(month FROM "p"."tanggal_penilaian")), (EXTRACT(year FROM "p"."tanggal_penilaian"))
   ORDER BY (EXTRACT(year FROM "p"."tanggal_penilaian")) DESC, (EXTRACT(month FROM "p"."tanggal_penilaian")) DESC;
 ALTER VIEW "management"."view_rekap_penilaian" OWNER TO "postgres";
+ALTER VIEW "management"."view_rekap_penilaian" SET (security_invoker = true);
 
 
 -- ============================================================================
@@ -1920,7 +1922,7 @@ CREATE POLICY "finance.t_payroll_history: Manage" ON "finance"."t_payroll_histor
 CREATE POLICY "finance.t_payroll_history: Read all" ON "finance"."t_payroll_history" FOR SELECT USING (true);
 
 -- finance.t_payroll_item
-CREATE POLICY "Allow Public Read Access" ON "finance"."t_payroll_item" FOR SELECT TO "authenticated", "anon" USING (true);
+-- Policy "Allow Public Read Access" untuk t_payroll_item dinonaktifkan (RLS ketat).
 CREATE POLICY "finance.t_payroll_item: Manage" ON "finance"."t_payroll_item" USING (("core"."is_admin"() OR ("core"."get_user_role"() = ANY (ARRAY['HR & Operation Manager'::"core"."user_role", 'Finance & Administration'::"core"."user_role", 'Super Admin'::"core"."user_role"]))));
 CREATE POLICY "finance.t_payroll_item: Read all" ON "finance"."t_payroll_item" FOR SELECT USING (true);
 
@@ -1980,6 +1982,8 @@ CREATE POLICY "Mgmt: KPI admin" ON "management"."t_kpi_weekly" USING (("core"."i
 CREATE POLICY "Authenticated users can read max budget" ON "management"."t_max_budget" FOR SELECT TO "authenticated" USING (true);
 CREATE POLICY "Strategic can insert max budget" ON "management"."t_max_budget" FOR INSERT TO "authenticated" WITH CHECK (("core"."is_strategic"()));
 CREATE POLICY "Strategic can update max budget" ON "management"."t_max_budget" FOR UPDATE TO "authenticated" USING (("core"."is_strategic"())) WITH CHECK (("core"."is_strategic"()));
+
+CREATE POLICY "Penilaian: read app roles" ON "management"."penilaian_kerja" FOR SELECT TO "authenticated" USING (("core"."get_user_role_safe"() = ANY (ARRAY['Super Admin'::"core"."user_role", 'Admin'::"core"."user_role", 'Management & Strategy'::"core"."user_role", 'HR & Operation Manager'::"core"."user_role", 'Finance & Administration'::"core"."user_role"])));
 
 -- production
 CREATE POLICY "Allow Public Read Access" ON "production"."t_produksi_order" FOR SELECT TO "authenticated", "anon" USING (true);
@@ -2101,3 +2105,4 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 -- END OF FINAL CONSOLIDATED MIGRATION
 -- ============================================================================
+
